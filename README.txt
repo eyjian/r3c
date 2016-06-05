@@ -7,4 +7,5 @@ r3c基于redis官方的c库hiredis实现，全称是redis cluster C++ client，支持redis clus
 编译r3c成功后，将生成libr3c.a静态库，没有共享库被生成。
 也可以直接将r3c.h和r3c.cpp两个文件加入到自己项目代码中一起编译，而不独立编译r3c。
 
-r3c_cmd.cpp是r3c的命令行测试工具，具备redis-cli的一些功能，但用法有些不同，将逐步将覆盖redis-cli的所有功能。
+r3c_cmd.cpp是r3c的非交互式命令行工具，具备redis-cli的一些功能，但用法不尽相同，将逐步将覆盖redis-cli的所有功能。
+r3c_test.cpp是r3c的单元测试程序，试行make test即可。

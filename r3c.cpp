@@ -40,6 +40,12 @@
 #include <time.h>
 #include <unistd.h>
 
+#ifdef __GNUC__
+#  define UNUSED(x) UNUSED_ ## x __attribute__((__unused__))
+#else
+#  define UNUSED(x) UNUSED_ ## x
+#endif
+
 #define THROW_REDIS_EXCEPTION(errcode, errmsg) throw CRedisException(errcode, errmsg, __FILE__, __LINE__)
 #define THROW_REDIS_EXCEPTION_WITH_NODE(errcode, errmsg, node_ip, node_port) throw CRedisException(errcode, errmsg, __FILE__, __LINE__, node_ip, node_port, NULL, NULL)
 #define THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(errcode, errmsg, node_ip, node_port, command, key) throw CRedisException(errcode, errmsg, __FILE__, __LINE__, node_ip, node_port, command, key)
@@ -243,7 +249,7 @@ std::string format_string(const char* format, ...)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-static void null_log_write(const char* format, ...)
+static void null_log_write(const char* UNUSED(format), ...)
 {
 }
 
@@ -541,9 +547,13 @@ bool CRedisClient::setnx(const std::string& key, const std::string& value, std::
 
 void CRedisClient::setex(const std::string& key, const std::string& value, uint32_t seconds, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-    double seconds64 = seconds;
+	union X { int64_t i; double d; } x;
+	x.i = seconds;
+    double seconds_d = x.d;
+
     PREPARE_REDIS_COMMAND("SETEX", sizeof("SETEX")-1);
-    m1_ = &seconds64;
+    str1_ = &value;
+    m1_ = &seconds_d;
     (void)REDIS_COMMAND(REDIS_REPLY_STATUS);
 }
 
@@ -563,7 +573,10 @@ bool CRedisClient::del(const std::string& key, std::pair<std::string, uint16_t>*
 
 int64_t CRedisClient::incrby(const std::string& key, int64_t increment, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-    double increment_d = static_cast<double>(increment);
+	union X { int64_t i; double d; } x;
+	x.i = increment;
+    double increment_d = x.d;
+
     PREPARE_REDIS_COMMAND("INCRBY", sizeof("INCRBY")-1);
     m1_ = &increment_d;
     return REDIS_COMMAND(REDIS_REPLY_INTEGER);
@@ -716,12 +729,14 @@ bool CRedisClient::hget(const std::string& key, const std::string& field, std::s
 
 int64_t CRedisClient::hincrby(const std::string& key, const std::string& field, int64_t increment, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-    double increment_d = static_cast<double>(increment);
+	union X { int64_t i; double d; } x;
+	x.i = increment;
+    double increment_d = x.d;
+
     PREPARE_REDIS_COMMAND("HINCRBY", sizeof("HINCRBY")-1);
     str1_ = &field;
     m1_ = &increment_d;
-    int64_t result = REDIS_COMMAND(REDIS_REPLY_INTEGER);
-    return result;
+    return REDIS_COMMAND(REDIS_REPLY_INTEGER);
 }
 
 void CRedisClient::hmset(const std::string& key, const std::map<std::string, std::string>& map, std::pair<std::string, uint16_t>* which) throw (CRedisException)
@@ -813,16 +828,18 @@ double CRedisClient::zincrby(const std::string& key, const std::string& field, d
 
 int CRedisClient::zrange(const std::string& key, int start, int end, bool withscores, std::map<std::string, double>* map, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-    double start64 = start;
-    double end64 = end;
+	union X { int64_t i; double d; } x1, x2;
+	x1.i = start;
+	x2.i = end;
+    double start_d = x1.d;
+    double end_d = x2.d;
 
     PREPARE_REDIS_COMMAND("ZRANGE", sizeof("ZRANGE")-1);
-    m1_ = &start64;
-    m2_ = &end64;
+    m1_ = &start_d;
+    m2_ = &end_d;
     withscores_ = &withscores;
     out_map2_ = map;
     int64_t result = REDIS_COMMAND(REDIS_REPLY_ARRAY);
-
     return static_cast<int>(result);
 }
 
@@ -940,7 +957,7 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, const char* command
 
 	int i = 0;
 	int index = 0;
-    int argc = calc_argc(command, key, str1, str2, array, in_map1, in_map2, m1, m2, tag);
+    int argc = calc_argc(key, str1, str2, array, in_map1, in_map2, m1, m2, tag);
     char** argv = new char*[argc];
 	size_t* argv_len = new size_t[argc];
 	std::string str;
@@ -1164,7 +1181,7 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, const char* command
 	return result;
 }
 
-int CRedisClient::calc_argc(const char* command, const std::string* key, const std::string* str1, const std::string* str2, const std::vector<std::string>* array, const std::map<std::string, std::string>* in_map1, const std::map<std::string, double>* in_map2, const double* m1, const double* m2, const char* tag) const
+int CRedisClient::calc_argc(const std::string* key, const std::string* str1, const std::string* str2, const std::vector<std::string>* array, const std::map<std::string, std::string>* in_map1, const std::map<std::string, double>* in_map2, const double* m1, const double* m2, const char* tag) const
 {
 	size_t argc = 1;
 	if (key != NULL) argc += 1;

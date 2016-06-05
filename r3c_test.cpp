@@ -28,9 +28,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #include "r3c.h"
+#include <math.h>
+
 #define PRINT_COLOR_NONE   "\033[m"
 #define PRINT_COLOR_RED    "\033[0;32;31m"
 #define PRINT_COLOR_YELLOW "\033[1;33m"
+
+#define PRECISION 0.000001
 
 #define TIPS_PRINT() tips_print(__FUNCTION__)
 #define ERROR_PRINT(format, ...) error_print(__FILE__, __LINE__, __FUNCTION__, format, __VA_ARGS__)
@@ -664,9 +668,9 @@ void test_sorted_set(const std::string& redis_cluster_nodes)
         rc.zadd(key, field, 3);
         printf("zadd %s ok\n", field.c_str());
         score = rc.zscore(key, field);
-        if (score != 3.0)
+        if (fabs(score-3.0) > PRECISION)
         {
-            ERROR_PRINT("score error: %"PRId64, score);
+            ERROR_PRINT("score error: %f", score);
             return;
         }
 

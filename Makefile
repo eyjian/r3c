@@ -23,14 +23,16 @@ INSTALL_INCLUDE_PATH= $(PREFIX)/$(INCLUDE_PATH)
 INSTALL_LIBRARY_PATH= $(PREFIX)/$(LIBRARY_PATH)
 INSTALL?= cp -a
 
-R3C_GCC?=g++
-R3C_AR?=ar cr
+OPTIMIZATION?=-O3
+DEBUG?= -g -ggdb
+WARNINGS=-Wall -W -Wwrite-strings
+REAL_CPPFLAGS=$(CPPFLAGS) $(ARCH) -I$(HIREDIS)/include -D__STDC_FORMAT_MACROS=1 -fstrict-aliasing -fPIC $(DEBUG) $(OPTIMIZATION) $(WARNINGS)
+REAL_LDFLAGS=$(LDFLAGS) $(ARCH) $(HIREDIS)/lib/libhiredis.a
 
-CPPFLAGS=-I$(HIREDIS)/include -g -Wall -D__STDC_FORMAT_MACROS=1
-LDFLAGS=$(HIREDIS)/lib/libhiredis.a -g
-
+CXX:=$(shell sh -c 'type $(CXX) >/dev/null 2>/dev/null && echo $(CXX) || echo g++')
 STLIBSUFFIX=a
 STLIBNAME=$(LIBNAME).$(STLIBSUFFIX)
+STLIB_MAKE_CMD=ar rcs
 
 all: $(STLIBNAME) $(CMD) $(TEST)
 
@@ -41,16 +43,16 @@ r3c_cmd.o: r3c_cmd.cpp r3c.h
 r3c_test.o: r3c_test.cpp r3c.h
 
 %.o: %.cpp
-	$(R3C_GCC) -c $< $(CPPFLAGS)
+	$(CXX) -c $< $(REAL_CPPFLAGS)
 
 $(STLIBNAME): crc16.o r3c.o
-	rm -f $@;$(R3C_AR) $@ $^
+	rm -f $@;$(STLIB_MAKE_CMD) $@ $^
 
 $(CMD): r3c_cmd.o $(STLIBNAME)
-	$(R3C_GCC) -o $@ $^ $(LDFLAGS)
+	$(CXX) -o $@ $^ $(REAL_LDFLAGS)
 
 $(TEST): r3c_test.o $(STLIBNAME)
-	$(R3C_GCC) -o $@ $^ $(LDFLAGS)
+	$(CXX) -o $@ $^ $(REAL_LDFLAGS)
 
 clean:
 	rm -f $(STLIBNAME) $(CMD) $(TEST) *.o core core.*
@@ -62,7 +64,7 @@ install:
 	$(INSTALL) $(CMD) $(INSTALL_BIN)
 
 dep:
-	$(R3C_GCC) -MM *.cpp
+	$(CXX) -MM *.cpp
 
 test: all
 	./r3c_test $(REDIS_CLUSTER_NODES)
