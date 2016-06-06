@@ -71,8 +71,6 @@ int main(int argc, char* argv[])
         int count = 0;
         int end = 0;
         int start = 0;
-        int64_t score;
-        int64_t new_score;
         int64_t min;
         int64_t max;
         int64_t increment;
@@ -536,21 +534,24 @@ int main(int argc, char* argv[])
         else if (0 == strcasecmp(cmd, "zadd"))
         {
             // ZADD command
-            if (argc != 5)
+            if ((argc < 5) || (argc%2!=1))
             {
-                fprintf(stderr, "Usage: r3c_cmd zadd key field score\n");
+                fprintf(stderr, "Usage: r3c_cmd zadd key score1 field1 score2 field2 ...\n");
                 exit(1);
             }
 
-            score = atoll(argv[4]);
-            new_score = redis_client.zadd(key, argv[3], score, &which_node);
-            if (new_score < score)
+            if (5 == argc)
             {
-                fprintf(stderr, "[%s] less\n", key);
+                count = redis_client.zadd(key, argv[4], atol(argv[3]), r3c::Z_NS, &which_node);
+                fprintf(stdout, "%d\n", count);
             }
             else
             {
-                fprintf(stdout, "%s:%s => %"PRId64"\n", key, argv[3], new_score);
+                std::map<std::string, int64_t> map;
+                for (i=3; i<argc; i+=2)
+                    map[argv[i+1]] = atol(argv[i]);
+                count = redis_client.zadd(key, map, r3c::Z_NS, &which_node);
+                fprintf(stdout, "%d\n", count);
             }
         }
         else if (0 == strcasecmp(cmd, "zcount"))
@@ -566,6 +567,86 @@ int main(int argc, char* argv[])
             max = atoll(argv[4]);
             count = redis_client.zcount(key, min, max, &which_node);
             fprintf(stdout, "%d\n", count);
+        }
+        else if (0 == strcasecmp(cmd, "zincrby"))
+        {
+            // ZINCRBY command
+            if (argc != 5)
+            {
+                fprintf(stderr, "Usage: r3c_cmd zincrby key increment field\n");
+                exit(1);
+            }
+
+            int64_t m = redis_client.zincrby(key, argv[4], atoll(argv[3]), &which_node);
+            fprintf(stdout, "%"PRId64"\n", m);
+        }
+        else if (0 == strcasecmp(cmd, "zrange"))
+        {
+            // ZRANGE command
+            if (argc != 5)
+            {
+                fprintf(stderr, "Usage: r3c_cmd zrange key start end\n");
+                exit(1);
+            }
+
+            start = atoi(argv[3]);
+            end = atoi(argv[4]);
+            std::vector<std::pair<std::string, int64_t> > vec;
+            redis_client.zrange(key, start, end, true, &vec, &which_node);
+            for (std::vector<std::pair<std::string, int64_t> >::iterator iter=vec.begin(); iter!=vec.end(); ++iter)
+                fprintf(stdout, "[%s] => %"PRId64"\n", iter->first.c_str(), iter->second);
+        }
+        else if (0 == strcasecmp(cmd, "zrevrange"))
+        {
+            // ZREVRANGE command
+            if (argc != 5)
+            {
+                fprintf(stderr, "Usage: r3c_cmd zrevrange key start end\n");
+                exit(1);
+            }
+
+            start = atoi(argv[3]);
+            end = atoi(argv[4]);
+            std::vector<std::pair<std::string, int64_t> > vec;
+            redis_client.zrevrange(key, start, end, true, &vec, &which_node);
+            for (std::vector<std::pair<std::string, int64_t> >::iterator iter=vec.begin(); iter!=vec.end(); ++iter)
+                fprintf(stdout, "[%s] => %"PRId64"\n", iter->first.c_str(), iter->second);
+        }
+        else if (0 == strcasecmp(cmd, "zrank"))
+        {
+            // ZRANK command
+            if (argc != 4)
+            {
+                fprintf(stderr, "Usage: r3c_cmd zrank key field\n");
+                exit(1);
+            }
+
+            int rank = redis_client.zrank(key, argv[3], &which_node);
+            fprintf(stdout, "[%s] => %d\n", argv[3], rank);
+        }
+        else if (0 == strcasecmp(cmd, "zrevrank"))
+        {
+            // ZREVRANK command
+            if (argc != 4)
+            {
+                fprintf(stderr, "Usage: r3c_cmd zrevrank key field\n");
+                exit(1);
+            }
+
+            int rank = redis_client.zrevrank(key, argv[3], &which_node);
+            fprintf(stdout, "[%s] => %d\n", argv[3], rank);
+        }
+        else if (0 == strcasecmp(cmd, "zscore"))
+        {
+            // ZSCORE command
+            if (argc != 4)
+            {
+                fprintf(stderr, "Usage: r3c_cmd zscore key field\n");
+                exit(1);
+            }
+
+            double score = redis_client.zscore(key, argv[3], &which_node);
+            fprintf(stdout, "[%s] => %.2f\n", argv[3], score);
         }
         else
         {

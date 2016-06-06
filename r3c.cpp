@@ -40,6 +40,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#define R3C_ASSERT(x) assert(x)
+
 #ifdef __GNUC__
 #  define UNUSED(x) UNUSED_ ## x __attribute__((__unused__))
 #else
@@ -49,26 +51,25 @@
 #define THROW_REDIS_EXCEPTION(errcode, errmsg) throw CRedisException(errcode, errmsg, __FILE__, __LINE__)
 #define THROW_REDIS_EXCEPTION_WITH_NODE(errcode, errmsg, node_ip, node_port) throw CRedisException(errcode, errmsg, __FILE__, __LINE__, node_ip, node_port, NULL, NULL)
 #define THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(errcode, errmsg, node_ip, node_port, command, key) throw CRedisException(errcode, errmsg, __FILE__, __LINE__, node_ip, node_port, command, key)
-#define REDIS_COMMAND(excepted_reply_type_) redis_command(excepted_reply_type_, command_, command_length_, key_, str1_, str2_, array_, in_map1_, in_map2_, m1_, m2_, d1_, d2_, tag_, tag_length_, value_, values_, out_map1_, out_map2_, keep_null_, withscores_, which_)
+#define REDIS_COMMAND(excepted_reply_type_) redis_command(excepted_reply_type_, command_, command_length_, key_, str1_, str2_, str3_, array_, in_map1_, in_map2_, str6_, str7_, tag_, tag_length_, value_, values_, out_map_, out_vec_, keep_null_, withscores_, which_)
 #define PREPARE_REDIS_COMMAND(command, command_length) \
     const char* command_ = command; \
     size_t command_length_ = command_length; \
     const std::string* key_ = &key; \
     const std::string* str1_ = NULL; \
     const std::string* str2_ = NULL; \
+    const std::string* str3_ = NULL; \
     const std::vector<std::string>* array_ = NULL; \
     const std::map<std::string, std::string>* in_map1_ = NULL; \
-    const std::map<std::string, double>* in_map2_ = NULL; \
-    const int64_t* m1_ = NULL; \
-    const int64_t* m2_ = NULL; \
-    const double* d1_ = NULL; \
-    const double* d2_ = NULL; \
+    const std::map<std::string, int64_t>* in_map2_ = NULL; \
+    const std::string* str6_ = NULL; \
+    const std::string* str7_ = NULL; \
     const char* tag_ = NULL; \
     size_t tag_length_ = 0; \
     std::string* value_ = NULL; \
     std::vector<std::string>* values_ = NULL; \
-    std::map<std::string, std::string>* out_map1_ = NULL; \
-    std::map<std::string, double>* out_map2_ = NULL; \
+    std::map<std::string, std::string>* out_map_ = NULL; \
+    std::vector<std::pair<std::string, int64_t> >* out_vec_ = NULL; \
     const bool* keep_null_ = NULL; \
     const bool* withscores_ = NULL; \
     std::pair<std::string, uint16_t>* which_ = which
@@ -526,10 +527,10 @@ bool CRedisClient::exists(const std::string& key, std::pair<std::string, uint16_
 
 bool CRedisClient::expire(const std::string& key, uint32_t seconds, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-	int64_t seconds64 = seconds;
+    const std::string str6  = any2string(seconds);
 
     PREPARE_REDIS_COMMAND("EXPIRE", sizeof("EXPIRE")-1);
-    m1_ = &seconds64;
+    str6_ = &str6;
     int64_t result = REDIS_COMMAND(REDIS_REPLY_INTEGER);
     return result > 0;
 }
@@ -550,11 +551,11 @@ bool CRedisClient::setnx(const std::string& key, const std::string& value, std::
 
 void CRedisClient::setex(const std::string& key, const std::string& value, uint32_t seconds, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-	int64_t seconds64 = seconds;
+    const std::string str6 = any2string(seconds);
 
     PREPARE_REDIS_COMMAND("SETEX", sizeof("SETEX")-1);
     str1_ = &value;
-    m1_ = &seconds64;
+    str6_ = &str6;
     (void)REDIS_COMMAND(REDIS_REPLY_STATUS);
 }
 
@@ -574,8 +575,10 @@ bool CRedisClient::del(const std::string& key, std::pair<std::string, uint16_t>*
 
 int64_t CRedisClient::incrby(const std::string& key, int64_t increment, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
+    const std::string str6 = any2string(increment);
+
     PREPARE_REDIS_COMMAND("INCRBY", sizeof("INCRBY")-1);
-    m1_ = &increment;
+    str6_ = &str6;
     return REDIS_COMMAND(REDIS_REPLY_INTEGER);
 }
 
@@ -612,12 +615,12 @@ int CRedisClient::lpush(const std::string& key, const std::vector<std::string>& 
 
 int CRedisClient::lrange(const std::string& key, int start, int end, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-    int64_t start64 =  start;
-    int64_t end64 = end;
+    const std::string str6 = any2string(start);
+    const std::string str7 = any2string(end);
 
     PREPARE_REDIS_COMMAND("LRANGE", sizeof("LRANGE")-1);
-    m1_ = &start64;
-    m2_ = &end64;
+    str6_ = &str6;
+    str7_ = &str7;
     values_ = values;
     (void)REDIS_COMMAND(REDIS_REPLY_ARRAY);
     return static_cast<int>(values->size());
@@ -625,12 +628,12 @@ int CRedisClient::lrange(const std::string& key, int start, int end, std::vector
 
 bool CRedisClient::ltrim(const std::string& key, int start, int end, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-	int64_t start64 = start;
-	int64_t end64 = end;
+    const std::string str6 = any2string(start);
+    const std::string str7 = any2string(end);
 
 	PREPARE_REDIS_COMMAND("LTRIM", sizeof("LTRIM")-1);
-    m1_ = &start64;
-    m2_ = &end64;
+	str6_ = &str6;
+    str7_ = &str7;
     int64_t result = REDIS_COMMAND(REDIS_REPLY_STATUS);
     return 1 == result;
 }
@@ -726,9 +729,11 @@ bool CRedisClient::hget(const std::string& key, const std::string& field, std::s
 
 int64_t CRedisClient::hincrby(const std::string& key, const std::string& field, int64_t increment, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
+    const std::string str6 = any2string(increment);
+
     PREPARE_REDIS_COMMAND("HINCRBY", sizeof("HINCRBY")-1);
     str1_ = &field;
-    m1_ = &increment;
+    str6_ = &str6;
     return REDIS_COMMAND(REDIS_REPLY_INTEGER);
 }
 
@@ -743,7 +748,7 @@ int CRedisClient::hmget(const std::string& key, const std::vector<std::string>& 
 {
     PREPARE_REDIS_COMMAND("HMGET", sizeof("HMGET")-1);
     array_ = &fields;
-    out_map1_ = map;
+    out_map_ = map;
     keep_null_ = &keep_null;
     int64_t result = REDIS_COMMAND(REDIS_REPLY_ARRAY);
     return static_cast<int>(result);
@@ -752,7 +757,7 @@ int CRedisClient::hmget(const std::string& key, const std::vector<std::string>& 
 int CRedisClient::hgetall(const std::string& key, std::map<std::string, std::string>* map, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     PREPARE_REDIS_COMMAND("HGETALL", sizeof("HGETALL")-1);
-    out_map1_ = map;
+    out_map_ = map;
     (void)REDIS_COMMAND(REDIS_REPLY_ARRAY);
     return static_cast<int>(map->size());
 }
@@ -786,49 +791,86 @@ int CRedisClient::hvals(const std::string& key, std::vector<std::string>* vals, 
 
 ////////////////////////////////////////////////////////////////////////////////
 // SORTED SET
-int CRedisClient::zadd(const std::string& key, const std::string& field, double score, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+int CRedisClient::zadd(const std::string& key, const std::string& field, int64_t score, ZADDFLAG flag, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-    std::map<std::string, double> map;
+    std::map<std::string, int64_t> map;
     map[field] = score;
-    return zadd(key, map, which);
+    return zadd(key, map, flag, which);
 }
 
-int CRedisClient::zadd(const std::string& key, const std::map<std::string, double>& map, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+int CRedisClient::zadd(const std::string& key, const std::map<std::string, int64_t>& map, ZADDFLAG flag, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
+    std::string str1;
+    if (Z_XX == flag)
+        str1 = "XX";
+    else if (Z_NX == flag)
+        str1 = "NX";
+    else if (Z_CH == flag)
+        str1 = "CH";
+    else if (flag != Z_NS)
+        THROW_REDIS_EXCEPTION(ERR_PARAMETER, "invalid zadd flag");
+
     PREPARE_REDIS_COMMAND("ZADD", sizeof("ZADD")-1);
+    if (!str1.empty())
+        str1_ = & str1;
     in_map2_ = &map;
     int64_t result = REDIS_COMMAND(REDIS_REPLY_INTEGER);
     return static_cast<int>(result);
 }
 
-int CRedisClient::zcount(const std::string& key, double min, double max , std::pair<std::string, uint16_t>* which) throw (CRedisException)
+int CRedisClient::zcount(const std::string& key, int64_t min, int64_t max , std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
+    const std::string str6 = any2string(min);
+    const std::string str7 = any2string(max);
+
     PREPARE_REDIS_COMMAND("ZCOUNT", sizeof("ZCOUNT")-1);
-    d1_ = &min;
-    d2_ = &max;
+    str6_ = &str6;
+    str7_ = &str7;
     int64_t result = REDIS_COMMAND(REDIS_REPLY_INTEGER);
     return static_cast<int>(result);
 }
 
-double CRedisClient::zincrby(const std::string& key, const std::string& field, double increment, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+int64_t CRedisClient::zincrby(const std::string& key, const std::string& field, int64_t increment, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
+    std::string value;
+    std::string str1 = any2string(increment);
+
     PREPARE_REDIS_COMMAND("ZINCRBY", sizeof("ZINCRBY")-1);
-    str1_ = &field;
-    d1_ = &increment;
-    int64_t result = REDIS_COMMAND(REDIS_REPLY_STRING);
+    str1_ = &str1;
+    str2_ = &field;
+    value_ = &value;
+    (void)REDIS_COMMAND(REDIS_REPLY_STRING);
+    return atoll(value.c_str());
+}
+
+int CRedisClient::zrange(const std::string& key, int start, int end, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    const std::string str6 = any2string(start);
+    const std::string str7 = any2string(end);
+
+    PREPARE_REDIS_COMMAND("ZRANGE", sizeof("ZRANGE")-1);
+    str6_ = &str6;
+    str7_ = &str7;
+    tag_ = "withscores";
+    tag_length_ = sizeof("withscores") - 1 ;
+    withscores_ = &withscores;
+    out_vec_ = vec;
+    int64_t result = REDIS_COMMAND(REDIS_REPLY_ARRAY);
     return static_cast<int>(result);
 }
 
-int CRedisClient::zrange(const std::string& key, int start, int end, bool withscores, std::map<std::string, double>* map, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+int CRedisClient::zrevrange(const std::string& key, int start, int end, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-	int64_t start64 = start;
-	int64_t end64 = end;
+    const std::string str6 = any2string(start);
+    const std::string str7 = any2string(end);
 
-    PREPARE_REDIS_COMMAND("ZRANGE", sizeof("ZRANGE")-1);
-    m1_ = &start64;
-    m2_ = &end64;
+    PREPARE_REDIS_COMMAND("ZREVRANGE", sizeof("ZREVRANGE")-1);
+    str6_ = &str6;
+    str7_ = &str7;
+    tag_ = "withscores";
+    tag_length_ = sizeof("withscores") - 1 ;
     withscores_ = &withscores;
-    out_map2_ = map;
+    out_vec_ = vec;
     int64_t result = REDIS_COMMAND(REDIS_REPLY_ARRAY);
     return static_cast<int>(result);
 }
@@ -837,7 +879,7 @@ int CRedisClient::zrank(const std::string& key, const std::string& field, std::p
 {
     PREPARE_REDIS_COMMAND("ZRANK", sizeof("ZRANK")-1);
     str1_ = &field;
-    int64_t result = REDIS_COMMAND(REDIS_REPLY_ARRAY);
+    int64_t result = REDIS_COMMAND(REDIS_REPLY_INTEGER);
     return static_cast<int>(result);
 }
 
@@ -845,18 +887,18 @@ int CRedisClient::zrevrank(const std::string& key, const std::string& field, std
 {
     PREPARE_REDIS_COMMAND("ZREVRANK", sizeof("ZREVRANK")-1);
     str1_ = &field;
-    int64_t result = REDIS_COMMAND(REDIS_REPLY_ARRAY);
+    int64_t result = REDIS_COMMAND(REDIS_REPLY_INTEGER);
     return static_cast<int>(result);
 }
 
-double CRedisClient::zscore(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+int64_t CRedisClient::zscore(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     std::string value;
     PREPARE_REDIS_COMMAND("ZSCORE", sizeof("ZSCORE")-1);
     str1_ = &field;
     value_ = &value;
     (void)REDIS_COMMAND(REDIS_REPLY_STRING);
-    return atof(value.c_str());
+    return atoll(value.c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -925,8 +967,10 @@ const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair
             else if (redis_reply->type != excepted_reply_type)
             {
                 //#define REDIS_REPLY_ERROR 6
-                const int errcode = redis_reply->type;
-                const std::string errmsg = redis_reply->str;
+                int errcode = redis_reply->type;
+                std::string errmsg;
+                if (redis_reply->str != NULL)
+                    errmsg = redis_reply->str;
                 freeReplyObject(redis_reply);
                 redis_reply = NULL;
                 THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(errcode, errmsg.c_str(), redis_context->tcp.host, redis_context->tcp.port, command, key.c_str());
@@ -937,17 +981,24 @@ const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair
     }
 
     if (errcode != 0)
+    {
+        if (redis_reply != NULL)
+        {
+            freeReplyObject(redis_reply);
+            redis_reply = NULL;
+        }
         THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(errcode, errmsg, node.first, node.second, command, key.c_str());
+    }
     return redis_reply;
 }
 
-int64_t CRedisClient::redis_command(int excepted_reply_type, const char* command, size_t command_length, const std::string* key, const std::string* str1, const std::string* str2, const std::vector<std::string>* array, const std::map<std::string, std::string>* in_map1, const std::map<std::string, double>* in_map2, const int64_t* m1, const int64_t* m2, const double* d1, const double* d2, const char* tag, size_t tag_length, std::string* value, std::vector<std::string>* values, std::map<std::string, std::string>* out_map1, std::map<std::string, double>* out_map2, const bool* keep_null, const bool* withscores, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+int64_t CRedisClient::redis_command(int excepted_reply_type, const char* command, size_t command_length, const std::string* key, const std::string* str1, const std::string* str2, const std::string* str3, const std::vector<std::string>* array, const std::map<std::string, std::string>* in_map1, const std::map<std::string, int64_t>* in_map2, const std::string* str6, const std::string* str7, const char* tag, size_t tag_length, std::string* value, std::vector<std::string>* values, std::map<std::string, std::string>* out_map, std::vector<std::pair<std::string, int64_t> >* out_vec, const bool* keep_null, const bool* withscores, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
 	int64_t result = 0;
 
 	int i = 0;
 	int index = 0;
-    int argc = calc_argc(key, str1, str2, array, in_map1, in_map2, m1, m2, d1, d2, tag);
+    int argc = calc_argc(key, str1, str2, str3, array, in_map1, in_map2, str6, str7, tag);
     char** argv = new char*[argc];
 	size_t* argv_len = new size_t[argc];
 	std::string str;
@@ -985,6 +1036,15 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, const char* command
         ++index;
     }
 
+    // str3
+    if (str3 != NULL)
+    {
+        argv_len[index] = (*str3).size();
+        argv[index] = new char[argv_len[index]];
+        memcpy(argv[index], (*str3).c_str(), argv_len[index]);
+        ++index;
+    }
+
     // array
     if (array != NULL)
     {
@@ -1017,7 +1077,7 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, const char* command
     // in_map2
     if (in_map2 != NULL)
     {
-        for (std::map<std::string, double>::const_iterator c_iter=(*in_map2).begin(); c_iter!=(*in_map2).end(); ++c_iter)
+        for (std::map<std::string, int64_t>::const_iterator c_iter=(*in_map2).begin(); c_iter!=(*in_map2).end(); ++c_iter)
         {
             // score
             str = any2string(c_iter->second);
@@ -1034,23 +1094,21 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, const char* command
         }
     }
 
-    // m1
-    if (m1 != NULL)
+    // str6
+    if (str6 != NULL)
     {
-    	str = any2string(*m1);
-        argv_len[index] = str.size();
+        argv_len[index] = str6->size();
         argv[index] = new char[argv_len[index]];
-        memcpy(argv[index], str.c_str(), argv_len[index]);
+        memcpy(argv[index], str6->c_str(), argv_len[index]);
         ++index;
     }
 
-    // m2
-    if (m2 != NULL)
+    // str7
+    if (str7)
     {
-    	str = any2string(*m2);
-        argv_len[index] = str.size();
+        argv_len[index] = str7->size();
         argv[index] = new char[argv_len[index]];
-        memcpy(argv[index], str.c_str(), argv_len[index]);
+        memcpy(argv[index], str7->c_str(), argv_len[index]);
         ++index;
     }
 
@@ -1067,10 +1125,10 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, const char* command
     if (value != NULL) value->clear();
     // values
     if (values != NULL) values->clear();
-    // out_map1
-    if (out_map1 != NULL) out_map1->clear();
-    // out_map2
-    if (out_map2 != NULL) out_map2->clear();
+    // out_map
+    if (out_map != NULL) out_map->clear();
+    // out_vec
+    if (out_vec != NULL) out_vec->clear();
 
     const FreeArgvHelper fah(argc, argv, argv_len);
     const redisReply* redis_reply = redis_command(excepted_reply_type, which, *key, command, argc, (const char**)argv, argv_len);
@@ -1087,6 +1145,8 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, const char* command
     	}
     	else if (REDIS_REPLY_STRING == redis_reply->type)
     	{
+    	    R3C_ASSERT(value != NULL);
+
     		result = 1;
     		value->assign(redis_reply->str, redis_reply->len);
     	}
@@ -1094,7 +1154,7 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, const char* command
     	{
     		if (values != NULL)
     		{
-    			assert(NULL == out_map1);
+    		    R3C_ASSERT(NULL == out_map);
     			result = static_cast<int64_t>(redis_reply->elements);
 
     			values->resize(redis_reply->elements);
@@ -1104,7 +1164,7 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, const char* command
     	            (*values)[i] = v;
     	        }
     		}
-    		else if (out_map2 != NULL) // zrange
+    		else if (out_vec != NULL) // zrange
             {
                 for (size_t i=0; i<redis_reply->elements;)
                 {
@@ -1113,18 +1173,18 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, const char* command
                     const std::string k(redis_reply->element[i]->str, redis_reply->element[i]->len);
                     if (!*withscores)
                     {
-                        (*out_map2)[k] = 0.0;
+                        out_vec->push_back(std::make_pair(k, 0));
                         i += 1;
                     }
                     else
                     {
                         const std::string v(redis_reply->element[i+1]->str, redis_reply->element[i+1]->len);
-                        (*out_map2)[k] = atof(v.c_str());
+                        out_vec->push_back(std::make_pair(k, atoll(v.c_str())));
                         i += 2;
                     }
                 }
             } // zrange
-    		else if (out_map1 != NULL) // hmget & hgetall
+    		else if (out_map != NULL) // hmget & hgetall
     		{
     		    if (NULL == keep_null) // hgetall
     		    {
@@ -1134,12 +1194,12 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, const char* command
                     {
                         const std::string k(redis_reply->element[i]->str, redis_reply->element[i]->len);
                         const std::string v(redis_reply->element[i+1]->str, redis_reply->element[i+1]->len);
-                        (*out_map1)[k] = v;
+                        (*out_map)[k] = v;
                     }
     		    } // hgetall
     		    else // hmget
     			{
-    				assert(array != NULL);
+    		        R3C_ASSERT(array != NULL);
 
 					for (size_t i=0; i<redis_reply->elements; ++i)
 					{
@@ -1147,17 +1207,17 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, const char* command
 						{
 							++result;
 							const std::string value(redis_reply->element[i]->str, redis_reply->element[i]->len);
-							(*out_map1)[(*array)[i]] = value;
+							(*out_map)[(*array)[i]] = value;
 						}
 						else if (REDIS_REPLY_INTEGER == redis_reply->element[i]->type)
 						{
 							++result;
-							(*out_map1)[(*array)[i]] = any2string(redis_reply->element[i]->integer);
+							(*out_map)[(*array)[i]] = any2string(redis_reply->element[i]->integer);
 						}
 						else if (REDIS_REPLY_NIL == redis_reply->element[i]->type)
                         {
                             if (*keep_null)
-                                (*out_map1)[(*array)[i]] = std::string("");
+                                (*out_map)[(*array)[i]] = std::string("");
                         }
 					}
     			} // hmget
@@ -1171,22 +1231,21 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, const char* command
 	return result;
 }
 
-int CRedisClient::calc_argc(const std::string* key, const std::string* str1, const std::string* str2, const std::vector<std::string>* array, const std::map<std::string, std::string>* in_map1, const std::map<std::string, double>* in_map2, const int64_t* m1, const int64_t* m2, const double* d1, const double* d2, const char* tag) const
+int CRedisClient::calc_argc(const std::string* key, const std::string* str1, const std::string* str2, const std::string* str3, const std::vector<std::string>* array, const std::map<std::string, std::string>* in_map1, const std::map<std::string, int64_t>* in_map2, const std::string* str6, const std::string* str7, const char* tag) const
 {
 	size_t argc = 1;
 	if (key != NULL) argc += 1;
 
 	if (str1 != NULL) argc += 1;
 	if (str2 != NULL) argc += 1;
+	if (str3 != NULL) argc += 1;
 
 	if (array != NULL) argc += array->size();
 	if (in_map1 != NULL) argc += in_map1->size() + in_map1->size();
 	if (in_map2 != NULL) argc += in_map2->size() + in_map2->size();
 
-	if (m1 != NULL) argc += 1;
-	if (m2 != NULL) argc += 1;
-	if (d1 != NULL) argc += 1;
-	if (d2 != NULL) argc += 1;
+	if (str6 != NULL) argc += 1;
+	if (str7 != NULL) argc += 1;
 
 	if (tag != NULL) argc += 1;
 	return static_cast<int>(argc);
@@ -1262,7 +1321,7 @@ void CRedisClient::init() throw (CRedisException)
 
 redisContext* CRedisClient::get_redis_context(unsigned int slot, std::pair<std::string, uint16_t>* node)
 {
-    assert(slot < CLUSTER_SLOTS);
+    R3C_ASSERT(slot < CLUSTER_SLOTS);
     redisContext* redis_context = NULL;
 
     if (slot < CLUSTER_SLOTS)

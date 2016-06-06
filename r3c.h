@@ -42,6 +42,14 @@
 #include <vector>
 namespace r3c {
 
+enum ZADDFLAG
+{
+    Z_NS, // Don't set options
+    Z_XX, // Only update elements that already exist. Never add elements.
+    Z_NX, // Don't update already existing elements. Always add new elements.
+    Z_CH  // Modify the return value from the number of new elements added
+};
+
 // Error code
 enum
 {
@@ -177,14 +185,15 @@ public:
     int sscan(const std::string& key, const std::string& pattern, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
 
     // sort set
-    int zadd(const std::string& key, const std::string& field, double score, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int zadd(const std::string& key, const std::map<std::string, double>& map, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int zcount(const std::string& key, double min, double max , std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    double zincrby(const std::string& key, const std::string& field, double increment, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int zrange(const std::string& key, int start, int end, bool withscores, std::map<std::string, double>* map, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    int zadd(const std::string& key, const std::string& field, int64_t score, ZADDFLAG flag=Z_NS, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    int zadd(const std::string& key, const std::map<std::string, int64_t>& map, ZADDFLAG flag=Z_NS, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    int zcount(const std::string& key, int64_t min, int64_t max , std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    int64_t zincrby(const std::string& key, const std::string& field, int64_t increment, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    int zrange(const std::string& key, int start, int end, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    int zrevrange(const std::string& key, int start, int end, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     int zrank(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     int zrevrank(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    double zscore(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    int64_t zscore(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
 
     // raw command, binary unsafe
     const redisReply* redis_command(int excepted_reply_type, std::pair<std::string, uint16_t>* which, const std::string& key, const char* command, const std::string& command_string) throw (CRedisException);
@@ -193,8 +202,8 @@ public:
 
 private:
     const redisReply* redis_command(int excepted_reply_type, std::pair<std::string, uint16_t>* which, const std::string& key, const char* command, const std::string& command_string, int argc, const char* argv[], const size_t* argv_len) throw (CRedisException);
-    int64_t redis_command(int excepted_reply_type, const char* command, size_t command_length, const std::string* key, const std::string* str1, const std::string* str2, const std::vector<std::string>* array, const std::map<std::string, std::string>* in_map1, const std::map<std::string, double>* in_map2, const int64_t* m1, const int64_t* m2, const double* d1, const double* d2, const char* tag, size_t tag_length, std::string* value, std::vector<std::string>* values, std::map<std::string, std::string>* out_map1, std::map<std::string, double>* out_map2, const bool* keep_null, const bool* withscores, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int calc_argc(const std::string* key, const std::string* str1, const std::string* str2, const std::vector<std::string>* array, const std::map<std::string, std::string>* in_map1, const std::map<std::string, double>* in_map2, const int64_t* m1, const int64_t* m2, const double* d1, const double* d2, const char* tag) const;
+    int64_t redis_command(int excepted_reply_type, const char* command, size_t command_length, const std::string* key, const std::string* str1, const std::string* str2, const std::string* str3, const std::vector<std::string>* array, const std::map<std::string, std::string>* in_map1, const std::map<std::string, int64_t>* in_map2, const std::string* str6, const std::string* str7, const char* tag, size_t tag_length, std::string* value, std::vector<std::string>* values, std::map<std::string, std::string>* out_map, std::vector<std::pair<std::string, int64_t> >* out_vec, const bool* keep_null, const bool* withscores, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    int calc_argc(const std::string* key, const std::string* str1, const std::string* str2, const std::string* str3, const std::vector<std::string>* array, const std::map<std::string, std::string>* in_map1, const std::map<std::string, int64_t>* in_map2, const std::string* str6, const std::string* str7, const char* tag) const;
 
 private:
     void parse_nodes() throw (CRedisException);

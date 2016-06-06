@@ -662,19 +662,19 @@ void test_sorted_set(const std::string& redis_cluster_nodes)
         r3c::CRedisClient rc(redis_cluster_nodes);
         const std::string key = "r3c_kk";
         std::string field = "f 1";
-        double score = 0;
+        int64_t score = 0;
         int count = 0;
 
         rc.zadd(key, field, 3);
         printf("zadd %s ok\n", field.c_str());
         score = rc.zscore(key, field);
-        if (fabs(score-3.0) > PRECISION)
+        if (score != 3)
         {
-            ERROR_PRINT("score error: %f", score);
+            ERROR_PRINT("score error: %"PRId64, score);
             return;
         }
 
-        std::map<std::string, double> map;
+        std::map<std::string, int64_t> map;
         map["f 2"] = 5;
         map["f 3"] = 7;
         count = rc.zadd(key, map);
