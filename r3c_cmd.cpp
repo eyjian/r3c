@@ -81,6 +81,7 @@ int main(int argc, char* argv[])
         std::string value;
         std::vector<std::string> fields;
         std::vector<std::string> values;
+        std::vector<std::pair<std::string, int64_t> > values2;
         std::map<std::string, std::string> map;
         std::map<std::string, std::string>::iterator iter;
         std::vector<std::string> vec;
@@ -817,6 +818,39 @@ int main(int argc, char* argv[])
 
             double score = redis_client.zscore(key, argv[3], &which_node);
             fprintf(stdout, "[%s] => %.2f\n", argv[3], score);
+        }
+        else if (0 == strcasecmp(cmd, "zscan"))
+        {
+            // ZSCAN command
+            if ((argc < 4) || (argc > 6))
+            {
+                fprintf(stderr, "Usage1: r3c_cmd zscan key cursor\n");
+                fprintf(stderr, "Usage2: r3c_cmd zscan key cursor count\n");
+                fprintf(stderr, "Usage3: r3c_cmd zscan key cursor pattern\n");
+                fprintf(stderr, "Usage4: r3c_cmd zscan key cursor pattern count\n");
+                exit(1);
+            }
+
+            cursor = atoi(argv[3]);
+            if (4 == argc)
+            {
+                count = redis_client.zscan(key, cursor, &values2, &which_node);
+            }
+            if (5 == argc)
+            {
+                count = atoi(argv[4]);
+                if (count > 0)
+                    count = redis_client.zscan(key, cursor, count, &values2, &which_node);
+                else
+                    count = redis_client.zscan(key, cursor, argv[4], &values2, &which_node);
+            }
+            if (6 == argc)
+            {
+                count = redis_client.zscan(key, cursor, argv[3], atoi(argv[4]), &values2, &which_node);
+            }
+
+            for (i=0; i<static_cast<int>(values2.size()); ++i)
+                fprintf(stdout, "%s => %"PRId64"\n", values2[i].first.c_str(), values2[i].second);
         }
         else
         {

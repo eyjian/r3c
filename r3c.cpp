@@ -1066,12 +1066,62 @@ int CRedisClient::zrevrank(const std::string& key, const std::string& field, std
 int64_t CRedisClient::zscore(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     std::string value;
+
     PREPARE_REDIS_COMMAND("ZSCORE", sizeof("ZSCORE")-1);
     str1_ = &field;
     value_ = &value;
     (void)REDIS_COMMAND(REDIS_REPLY_STRING);
     return atoll(value.c_str());
 }
+
+int CRedisClient::zscan(const std::string& key, int cursor, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    const std::string str1 = any2string(cursor);
+
+    PREPARE_REDIS_COMMAND("ZSCAN", sizeof("ZSCAN")-1);
+    str1_ = &str1;
+    out_vec_ = values;
+    return REDIS_COMMAND(REDIS_REPLY_ARRAY);
+}
+
+int CRedisClient::zscan(const std::string& key, int cursor, int count, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    const std::string str1 = any2string(cursor);
+    const std::string str3 = format_string("COUNT %d", count);
+
+    PREPARE_REDIS_COMMAND("ZSCAN", sizeof("ZSCAN")-1);
+    str1_ = &str1;
+    str3_ = &str3;
+    out_vec_ = values;
+    return REDIS_COMMAND(REDIS_REPLY_ARRAY);
+}
+
+int CRedisClient::zscan(const std::string& key, int cursor, const std::string& pattern, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    const std::string str1 = any2string(cursor);
+    const std::string str2 = format_string("MATCH %s", pattern.c_str());
+
+    PREPARE_REDIS_COMMAND("ZSCAN", sizeof("ZSCAN")-1);
+    str1_ = &str1;
+    str2_ = &str2;
+    out_vec_ = values;
+    return REDIS_COMMAND(REDIS_REPLY_ARRAY);
+}
+
+int CRedisClient::zscan(const std::string& key, int cursor, const std::string& pattern, int count, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    const std::string str1 = any2string(cursor);
+    const std::string str2 = format_string("MATCH %s", pattern.c_str());
+    const std::string str3 = format_string("COUNT %d", count);
+
+    PREPARE_REDIS_COMMAND("ZSCAN", sizeof("ZSCAN")-1);
+    str1_ = &str1;
+    str2_ = &str2;
+    str3_ = &str3;
+    out_vec_ = values;
+    return REDIS_COMMAND(REDIS_REPLY_ARRAY);
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // RAW COMMAND
@@ -1168,9 +1218,9 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, const char* command
 {
 	int64_t result = 0;
 	size_t elements;
+	size_t i;
     struct redisReply** element;
 
-	int i = 0;
 	int index = 0;
     int argc = calc_argc(key, str1, str2, str3, array, in_map1, in_map2, str6, str7, tag);
     char** argv = new char*[argc];
@@ -1222,7 +1272,7 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, const char* command
     // array
     if (array != NULL)
     {
-		for (i=0; i<static_cast<int>(array->size()); ++i)
+		for (i=0; i<array->size(); ++i)
 		{
 			argv_len[index] = (*array)[i].size();
 			argv[index] = new char[argv_len[index]];
@@ -1346,7 +1396,7 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, const char* command
     		    }
 
     			values->resize(elements);
-    	        for (size_t i=0; i<elements; ++i)
+    	        for (i=0; i<elements; ++i)
     	        {
     	            const std::string v(element[i]->str, element[i]->len);
     	            (*values)[i] = v;
@@ -1354,23 +1404,37 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, const char* command
     		}
     		else if (out_vec != NULL) // zrange
             {
-                for (size_t i=0; i<redis_reply->elements;)
-                {
-                    ++result;
+    		    if (strcasecmp(command, "zscan") != 0)
+    		    {
+                    for (i=0; i<redis_reply->elements;)
+                    {
+                        ++result;
 
-                    const std::string k(redis_reply->element[i]->str, redis_reply->element[i]->len);
-                    if (!*withscores)
-                    {
-                        out_vec->push_back(std::make_pair(k, 0));
-                        i += 1;
+                        const std::string k(redis_reply->element[i]->str, redis_reply->element[i]->len);
+                        if (!*withscores)
+                        {
+                            out_vec->push_back(std::make_pair(k, 0));
+                            i += 1;
+                        }
+                        else
+                        {
+                            const std::string v(redis_reply->element[i+1]->str, redis_reply->element[i+1]->len);
+                            out_vec->push_back(std::make_pair(k, atoll(v.c_str())));
+                            i += 2;
+                        }
                     }
-                    else
-                    {
-                        const std::string v(redis_reply->element[i+1]->str, redis_reply->element[i+1]->len);
-                        out_vec->push_back(std::make_pair(k, atoll(v.c_str())));
-                        i += 2;
-                    }
-                }
+    		    }
+    		    else
+    		    {
+    		        result = redis_reply->element[0]->integer; // cursor
+
+    		        for (i=0; i<redis_reply->element[1]->elements; i+=2)
+    		        {
+    		            const std::string k(redis_reply->element[1]->element[i]->str, redis_reply->element[1]->element[i]->len);
+    		            const std::string v(redis_reply->element[1]->element[i+1]->str, redis_reply->element[1]->element[i+1]->len);
+    		            out_vec->push_back(std::make_pair(k, atoll(v.c_str())));
+    		        }
+    		    }
             } // zrange
     		else if (out_map != NULL) // hmget & hgetall
     		{
@@ -1389,7 +1453,7 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, const char* command
     		            result = redis_reply->element[1]->integer; // cursor
     		        }
 
-                    for (size_t i=0; i<elements; i+=2)
+                    for (i=0; i<elements; i+=2)
                     {
                         const std::string k(element[i]->str, element[i]->len);
                         const std::string v(element[i+1]->str, element[i+1]->len);
@@ -1400,7 +1464,7 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, const char* command
     			{
     		        R3C_ASSERT(array != NULL);
 
-					for (size_t i=0; i<redis_reply->elements; ++i)
+					for (i=0; i<redis_reply->elements; ++i)
 					{
 						if (REDIS_REPLY_STRING == redis_reply->element[i]->type)
 						{
