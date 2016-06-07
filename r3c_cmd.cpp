@@ -526,9 +526,147 @@ int main(int argc, char* argv[])
                     fprintf(stdout, "%s\n", values[k].c_str());
             }
         }
+        else if (0 == strcasecmp(cmd, "hscan"))
+        {
+            // HSCAN command
+            if (argc < 4)
+            {
+                fprintf(stderr, "Usage: r3c_cmd hscan key cursor [pattern] [count]\n");
+                exit(1);
+            }
+
+            if (4 == argc)
+                count = redis_client.hscan(key, atoi(argv[3]), &map, &which_node);
+            else
+                count = redis_client.hscan(key, atoi(argv[3]), argv[4], atoi(argv[5]), &map, &which_node);
+
+            fprintf(stdout, "count: %d\n", count);
+            for (iter=map.begin(); iter!=map.end(); ++iter)
+                fprintf(stdout, "%s => %s\n", iter->first.c_str(), iter->second.c_str());
+        }
         ////////////////////////////////////////////////////////////////////////////
         // SET
+        else if (0 == strcasecmp(cmd, "sadd"))
+        {
+            // SADD command
+            if (argc < 4)
+            {
+                fprintf(stderr, "Usage: r3c_cmd sadd key value1 value2 ...\n");
+                exit(1);
+            }
 
+            if (4 == argc)
+            {
+                count = redis_client.sadd(key, argv[3], &which_node);
+            }
+            else
+            {
+                for (i=3; i<argc; ++i)
+                    values.push_back(argv[i]);
+                count = redis_client.sadd(key, argv[3], &which_node);
+            }
+            fprintf(stdout, "%d\n", count);
+        }
+        else if (0 == strcasecmp(cmd, "scard"))
+        {
+            // SCARD command
+            if (argc != 3)
+            {
+                fprintf(stderr, "Usage: r3c_cmd scard key\n");
+                exit(1);
+            }
+
+            count = redis_client.scard(key, &which_node);
+            fprintf(stdout, "%d\n", count);
+        }
+        else if (0 == strcasecmp(cmd, "sismember"))
+        {
+            // SISMEMBER command
+            if (argc != 4)
+            {
+                fprintf(stderr, "Usage: r3c_cmd sismember key member\n");
+                exit(1);
+            }
+
+            if (redis_client.sismember(key, argv[3], &which_node))
+                fprintf(stdout, "YES\n");
+            else
+                fprintf(stdout, "NO\n");
+        }
+        else if (0 == strcasecmp(cmd, "smembers"))
+        {
+            // SMEMBERS command
+            if (argc != 3)
+            {
+                fprintf(stderr, "Usage: r3c_cmd smembers key\n");
+                exit(1);
+            }
+
+            count = redis_client.smembers(key, &values, &which_node);
+            for (i=0; i<count; ++i)
+                fprintf(stdout, "%s\n", values[i].c_str());
+        }
+        else if (0 == strcasecmp(cmd, "spop"))
+        {
+            // SPOP command
+            if (argc != 3)
+            {
+                fprintf(stderr, "Usage: r3c_cmd spop key\n");
+                exit(1);
+            }
+
+            if (redis_client.spop(key, &value, &which_node))
+                fprintf(stdout, "%s\n", value.c_str());
+            else
+                fprintf(stdout, "empty\n");
+        }
+        else if (0 == strcasecmp(cmd, "srandmember"))
+        {
+            // SRANDMEMBER command
+            if (argc != 4)
+            {
+                fprintf(stderr, "Usage: r3c_cmd srandmember key count\n");
+                exit(1);
+            }
+
+            count = redis_client.srandmember(key, atoi(argv[3]), &values, &which_node);
+            for (i=0; i<count; ++i)
+                fprintf(stdout, "%s\n", values[i].c_str());
+        }
+        else if (0 == strcasecmp(cmd, "srem"))
+        {
+            // SREM command
+            if (argc < 4)
+            {
+                fprintf(stderr, "Usage: r3c_cmd srem key member1 member2 ...\n");
+                exit(1);
+            }
+
+            if (4 == argc)
+            {
+                count = redis_client.srem(key, argv[3], &which_node);
+            }
+            else
+            {
+                for (i=3; i<argc; ++i)
+                    values.push_back(argv[i]);
+                count = redis_client.srem(key, values, &which_node);
+            }
+            fprintf(stdout, "%d\n", count);
+        }
+        else if (0 == strcasecmp(cmd, "sscan"))
+        {
+            // SSCAN command
+            if (argc != 5)
+            {
+                fprintf(stderr, "Usage: r3c_cmd sscan key pattern count\n");
+                exit(1);
+            }
+
+            count = redis_client.sscan(key, argv[3], atoi(argv[4]), &values, &which_node);
+            for (i=0; i<count; ++i)
+                fprintf(stdout, "%s\n", values[i].c_str());
+        }
         ////////////////////////////////////////////////////////////////////////////
         // SORTED SET
         else if (0 == strcasecmp(cmd, "zadd"))

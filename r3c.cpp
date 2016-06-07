@@ -786,8 +786,171 @@ int CRedisClient::hvals(const std::string& key, std::vector<std::string>* vals, 
     return static_cast<int>(vals->size());
 }
 
+int CRedisClient::hscan(const std::string& key, int cursor, std::map<std::string, std::string>* map, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    const std::string str1 = any2string(cursor);
+
+    PREPARE_REDIS_COMMAND("HSCAN", sizeof("HSCAN")-1);
+    str1_ = &str1;
+    out_map_ = map;
+    return REDIS_COMMAND(REDIS_REPLY_ARRAY);
+}
+
+int CRedisClient::hscan(const std::string& key, int cursor, int count, std::map<std::string, std::string>* map, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    const std::string str1 = any2string(cursor);
+    const std::string str3 = format_string("COUNT %d", count);
+
+    PREPARE_REDIS_COMMAND("HSCAN", sizeof("HSCAN")-1);
+    str1_ = &str1;
+    str3_ = &str3;
+    out_map_ = map;
+    return REDIS_COMMAND(REDIS_REPLY_ARRAY);
+}
+
+int CRedisClient::hscan(const std::string& key, int cursor, const std::string& pattern, std::map<std::string, std::string>* map, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    const std::string str1 = any2string(cursor);
+    const std::string str2 = std::string("MATCH ") + pattern;
+
+    PREPARE_REDIS_COMMAND("HSCAN", sizeof("HSCAN")-1);
+    str1_ = &str1;
+    str2_ = &str2;
+    out_map_ = map;
+    return REDIS_COMMAND(REDIS_REPLY_ARRAY);
+}
+
+int CRedisClient::hscan(const std::string& key, int cursor, const std::string& pattern, int count, std::map<std::string, std::string>* map, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    const std::string str1 = any2string(cursor);
+    const std::string str2 = std::string("MATCH ") + pattern;
+    const std::string str3 = format_string("COUNT %d", count);
+
+    PREPARE_REDIS_COMMAND("HSCAN", sizeof("HSCAN")-1);
+    str1_ = &str1;
+    str2_ = &str2;
+    str3_ = &str3;
+    out_map_ = map;
+    return REDIS_COMMAND(REDIS_REPLY_ARRAY);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // SET
+int CRedisClient::sadd(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    PREPARE_REDIS_COMMAND("SADD", sizeof("SADD")-1);
+    str1_ = &value;
+    int64_t result = REDIS_COMMAND(REDIS_REPLY_INTEGER);
+    return static_cast<int>(result);
+}
+
+int CRedisClient::sadd(const std::string& key, const std::vector<std::string>& values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    PREPARE_REDIS_COMMAND("SADD", sizeof("SADD")-1);
+    array_ = &values;
+    int64_t result = REDIS_COMMAND(REDIS_REPLY_INTEGER);
+    return static_cast<int>(result);
+}
+
+int CRedisClient::scard(const std::string& key, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    PREPARE_REDIS_COMMAND("SCARD", sizeof("SCARD")-1);
+    int64_t result = REDIS_COMMAND(REDIS_REPLY_INTEGER);
+    return static_cast<int>(result);
+}
+
+bool CRedisClient::sismember(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    PREPARE_REDIS_COMMAND("SISMEMBER", sizeof("SISMEMBER")-1);
+    str1_ = &value;
+    int64_t result = REDIS_COMMAND(REDIS_REPLY_INTEGER);
+    return 1 == result;
+}
+
+int CRedisClient::smembers(const std::string& key, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    PREPARE_REDIS_COMMAND("SMEMBERS", sizeof("SMEMBERS")-1);
+    values_ = values;
+    (void)REDIS_COMMAND(REDIS_REPLY_ARRAY);
+    return static_cast<int>(values->size());
+}
+
+bool CRedisClient::spop(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    PREPARE_REDIS_COMMAND("SPOP", sizeof("SPOP")-1);
+    value_ = value;
+    int64_t result = REDIS_COMMAND(REDIS_REPLY_STRING);
+    return 1 == result;
+}
+
+int CRedisClient::srandmember(const std::string& key, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    std::string str1 = any2string(count);
+
+    PREPARE_REDIS_COMMAND("SRANDMEMBER", sizeof("SRANDMEMBER")-1);
+    str1_ = &str1;
+    values_ = values;
+    (void)REDIS_COMMAND(REDIS_REPLY_ARRAY);
+    return static_cast<int>(values->size());
+}
+
+int CRedisClient::srem(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    std::vector<std::string> values(1);
+    values[0] = value;
+    return srem(key, values, which);
+}
+
+int CRedisClient::srem(const std::string& key, const std::vector<std::string>& values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    PREPARE_REDIS_COMMAND("SREM", sizeof("SREM")-1);
+    array_ = &values;
+    int64_t result = REDIS_COMMAND(REDIS_REPLY_INTEGER);
+    return static_cast<int>(result);
+}
+
+int CRedisClient::sscan(const std::string& key, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    PREPARE_REDIS_COMMAND("SSCAN", sizeof("SSCAN")-1);
+    values_ = values;
+    (void)REDIS_COMMAND(REDIS_REPLY_ARRAY);
+    return static_cast<int>(values->size());
+}
+
+int CRedisClient::sscan(const std::string& key, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    const std::string str2 = format_string("COUNT %d", count);
+
+    PREPARE_REDIS_COMMAND("SSCAN", sizeof("SSCAN")-1);
+    str2_ = &str2;
+    values_ = values;
+    (void)REDIS_COMMAND(REDIS_REPLY_ARRAY);
+    return static_cast<int>(values->size());
+}
+
+int CRedisClient::sscan(const std::string& key, const std::string& pattern, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    const std::string str1 = std::string("MATCH ") + pattern;
+
+    PREPARE_REDIS_COMMAND("SSCAN", sizeof("SSCAN")-1);
+    str1_ = &str1;
+    values_ = values;
+    (void)REDIS_COMMAND(REDIS_REPLY_ARRAY);
+    return static_cast<int>(values->size());
+}
+
+int CRedisClient::sscan(const std::string& key, const std::string& pattern, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    const std::string str1 = std::string("MATCH ") + pattern;
+    const std::string str2 = format_string("COUNT %d", count);
+
+    PREPARE_REDIS_COMMAND("SSCAN", sizeof("SSCAN")-1);
+    str1_ = &str1;
+    str2_ = &str2;
+    values_ = values;
+    (void)REDIS_COMMAND(REDIS_REPLY_ARRAY);
+    return static_cast<int>(values->size());
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // SORTED SET
@@ -1188,12 +1351,26 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, const char* command
     		{
     		    if (NULL == keep_null) // hgetall
     		    {
-    		        result = static_cast<int64_t>(redis_reply->elements / 2);
+    		        size_t elements;
+    		        struct redisReply** element;
 
-                    for (size_t i=0; i<redis_reply->elements; i+=2)
+    		        if (strcasecmp(command, "hscan") != 0)
+    		        {
+    		            elements = redis_reply->elements;
+    		            element = redis_reply->element;
+    		            result = static_cast<int64_t>(elements / 2);
+    		        }
+    		        else
+    		        {
+    		            elements = redis_reply->element[1]->elements;
+    		            element = redis_reply->element[1]->element;
+    		            result = redis_reply->element[1]->integer; // cursor
+    		        }
+
+                    for (size_t i=0; i<elements; i+=2)
                     {
-                        const std::string k(redis_reply->element[i]->str, redis_reply->element[i]->len);
-                        const std::string v(redis_reply->element[i+1]->str, redis_reply->element[i+1]->len);
+                        const std::string k(element[i]->str, element[i]->len);
+                        const std::string v(element[i+1]->str, element[i+1]->len);
                         (*out_map)[k] = v;
                     }
     		    } // hgetall
