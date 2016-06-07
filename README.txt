@@ -19,6 +19,9 @@ make install PREFIX=/usr/local/r3c
 执行单元测试：
 make test
 
+指定单元测试连接的Redis Cluster（也可以直接修改Makefile中定义的变量值）：
+make test REDIS_CLUSTER_NODES=192.168.31.11:6379,192.168.31.11:6380,192.168.31.23:6380
+
 生成源代码间的依赖：
 make dep
 
