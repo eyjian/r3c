@@ -1571,39 +1571,43 @@ void CRedisClient::parse_nodes() throw (CRedisException)
 
 void CRedisClient::init() throw (CRedisException)
 {
-    std::string nodes_string;
-    std::vector<struct NodeInfo> nodes_info;
-    int num_nodes = list_nodes(&nodes_info);
-
     clear();
-    for (int i=0; i<num_nodes; ++i)
+
+    if (_cluster_mode)
     {
-        const struct NodeInfo& node_info = nodes_info[i];
+        std::string nodes_string;
+        std::vector<struct NodeInfo> nodes_info;
+        int num_nodes = list_nodes(&nodes_info);
 
-        for (std::vector<std::pair<int, int> >::size_type j=0; j<node_info.slots.size(); ++j)
+        for (int i=0; i<num_nodes; ++i)
         {
-            if (nodes_string.empty())
-                nodes_string = format_string("%s:%d", node_info.ip.c_str(), node_info.port);
-            else
-                nodes_string += format_string(",%s:%d", node_info.ip.c_str(), node_info.port);
+            const struct NodeInfo& node_info = nodes_info[i];
 
-            for (int slot=node_info.slots[j].first; slot<=node_info.slots[j].second; ++slot)
+            for (std::vector<std::pair<int, int> >::size_type j=0; j<node_info.slots.size(); ++j)
             {
-                struct SlotInfo* slot_info = new struct SlotInfo;
-                slot_info->slot = slot;
-                slot_info->redis_context = NULL;
-                slot_info->node.first = inet_addr(node_info.ip.c_str());
-                slot_info->node.second = node_info.port;
+                if (nodes_string.empty())
+                    nodes_string = format_string("%s:%d", node_info.ip.c_str(), node_info.port);
+                else
+                    nodes_string += format_string(",%s:%d", node_info.ip.c_str(), node_info.port);
 
-                _slots[slot] = slot_info;
+                for (int slot=node_info.slots[j].first; slot<=node_info.slots[j].second; ++slot)
+                {
+                    struct SlotInfo* slot_info = new struct SlotInfo;
+                    slot_info->slot = slot;
+                    slot_info->redis_context = NULL;
+                    slot_info->node.first = inet_addr(node_info.ip.c_str());
+                    slot_info->node.second = node_info.port;
+
+                    _slots[slot] = slot_info;
+                }
             }
         }
-    }
 
-    if (!nodes_string.empty())
-    {
-        _nodes_string = nodes_string;
-        parse_nodes();
+        if (!nodes_string.empty())
+        {
+            _nodes_string = nodes_string;
+            parse_nodes();
+        }
     }
 }
 
@@ -1719,8 +1723,16 @@ redisContext* CRedisClient::connect_node(int* errcode, std::string* errmsg, std:
 
 void CRedisClient::clear()
 {
-    clear_redis_contexts();
-    clear_slots();
+    if (_cluster_mode)
+    {
+        clear_redis_contexts();
+        clear_slots();
+    }
+    else if (_redis_context != NULL)
+    {
+        redisFree(_redis_context);
+        _redis_context = NULL;
+    }
 }
 
 void CRedisClient::clear_redis_contexts()
