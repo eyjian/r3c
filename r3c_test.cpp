@@ -30,10 +30,6 @@
 #include "r3c.h"
 #include <math.h>
 
-#define PRINT_COLOR_NONE   "\033[m"
-#define PRINT_COLOR_RED    "\033[0;32;31m"
-#define PRINT_COLOR_YELLOW "\033[1;33m"
-
 #define PRECISION 0.000001
 
 #define TIPS_PRINT() tips_print(__FUNCTION__)
@@ -43,6 +39,10 @@
 static void tips_print(const char* function);
 static void error_print(const char* file, int line, const char* function, const char* format, ...);
 static void success_print(const char* file, int line, const char* function, const char* format, ...);
+
+////////////////////////////////////////////////////////////////////////////
+// MISC
+static void test_slots(const std::string& redis_cluster_nodes);
 
 ////////////////////////////////////////////////////////////////////////////
 // KEY VALUE
@@ -112,6 +112,10 @@ int main(int argc, char* argv[])
     // SORTED SET
     test_sorted_set(redis_cluster_nodes);
 
+    ////////////////////////////////////////////////////////////////////////////
+    // MISC
+    test_slots(redis_cluster_nodes);
+
     return 0;
 }
 
@@ -175,6 +179,31 @@ void success_print(const char* file, int line, const char* function, const char*
     printf(PRINT_COLOR_NONE);
     printf("\n");
     va_end(ap);
+}
+
+////////////////////////////////////////////////////////////////////////////
+// MISC
+void test_slots(const std::string& redis_cluster_nodes)
+{
+    TIPS_PRINT();
+
+    for (unsigned int i=0; i<100000000; ++i)
+    {
+        const std::string key = r3c::any2string(i);
+        unsigned int slot = r3c::get_key_slot(key);
+
+        try
+        {
+            r3c::CRedisClient rc(redis_cluster_nodes);
+            rc.exists(key);
+            SUCCESS_PRINT("%s", "OK");
+        }
+        catch (r3c::CRedisException& ex)
+        {
+            ERROR_PRINT("[%u][%u][%s]ERROR: %s", i, slot, key.c_str(), ex.str().c_str());
+            break;
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////

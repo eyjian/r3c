@@ -304,22 +304,22 @@ private:
     size_t* _argv_len;
 };
 
-static void print_reply(const char* command, const char* key, redisReply* redis_reply, int excepted_reply_type, const std::pair<std::string, uint16_t>& node)
+static void print_reply(const char* command, const char* key, unsigned int slot, redisReply* redis_reply, int excepted_reply_type, const std::pair<std::string, uint16_t>& node)
 {
     if (REDIS_REPLY_STRING == redis_reply->type)
-        (*g_debug_log)("[STRING][%s][%s][%s:%d]reply: (%d/%d)%s\n", command, key, node.first.c_str(), node.second, redis_reply->type, excepted_reply_type, redis_reply->str);
+        (*g_debug_log)("[STRING][%s][SLOT:%u]["PRINT_COLOR_GREEN"KEY:%s"PRINT_COLOR_NONE"][%s:%d]reply: (%d/%d)%s\n", command, slot, key, node.first.c_str(), node.second, redis_reply->type, excepted_reply_type, redis_reply->str);
     else if (REDIS_REPLY_INTEGER == redis_reply->type)
-        (*g_debug_log)("[INTEGER][%s][%s][%s:%d]reply: (%d/%d)%lld\n", command, key, node.first.c_str(), node.second, redis_reply->type, excepted_reply_type, redis_reply->integer);
+        (*g_debug_log)("[INTEGER][%s][SLOT:%u]["PRINT_COLOR_GREEN"KEY:%s"PRINT_COLOR_NONE"][%s:%d]reply: (%d/%d)%lld\n", command, slot, key, node.first.c_str(), node.second, redis_reply->type, excepted_reply_type, redis_reply->integer);
     else if (REDIS_REPLY_ARRAY == redis_reply->type)
-        (*g_debug_log)("[ARRAY][%s][%s][%s:%d]reply: (%d/%d)%zd\n", command, key, node.first.c_str(), node.second, redis_reply->type, excepted_reply_type, redis_reply->elements);
+        (*g_debug_log)("[ARRAY][%s][SLOT:%u]["PRINT_COLOR_GREEN"KEY:%s"PRINT_COLOR_NONE"][%s:%d]reply: (%d/%d)%zd\n", command, slot, key, node.first.c_str(), node.second, redis_reply->type, excepted_reply_type, redis_reply->elements);
     else if (REDIS_REPLY_NIL == redis_reply->type)
-        (*g_debug_log)("[NIL][%s][%s][%s:%d]reply: (%d/%d)%s\n", command, key, node.first.c_str(), node.second, redis_reply->type, excepted_reply_type, redis_reply->str);
+        (*g_debug_log)("[NIL][%s][SLOT:%u]["PRINT_COLOR_GREEN"KEY:%s"PRINT_COLOR_NONE"][%s:%d]reply: (%d/%d)%s\n", command, slot, key, node.first.c_str(), node.second, redis_reply->type, excepted_reply_type, redis_reply->str);
     else if (REDIS_REPLY_ERROR == redis_reply->type)
-        (*g_debug_log)("[ERROR][%s][%s][%s:%d]reply: (%d/%d)%s\n", command, key, node.first.c_str(), node.second, redis_reply->type, excepted_reply_type, redis_reply->str);
+        (*g_debug_log)("[ERROR][%s][SLOT:%u]["PRINT_COLOR_GREEN"KEY:%s"PRINT_COLOR_NONE"][%s:%d]reply: (%d/%d)%s\n", command, slot, key, node.first.c_str(), node.second, redis_reply->type, excepted_reply_type, redis_reply->str);
     else if (REDIS_REPLY_STATUS == redis_reply->type)
-        (*g_debug_log)("[STATUS][%s][%s][%s:%d]reply: (%d/%d)%s\n", command, key, node.first.c_str(), node.second, redis_reply->type, excepted_reply_type, redis_reply->str);
+        (*g_debug_log)("[STATUS][%s][SLOT:%u]["PRINT_COLOR_GREEN"KEY:%s"PRINT_COLOR_NONE"][%s:%d]reply: (%d/%d)%s\n", command, slot, key, node.first.c_str(), node.second, redis_reply->type, excepted_reply_type, redis_reply->str);
     else
-        (*g_debug_log)("[->%d][%s][%s][%s:%d]reply: (%d/%d)%s\n", redis_reply->type, command, key, node.first.c_str(), node.second, redis_reply->type, excepted_reply_type, redis_reply->str);
+        (*g_debug_log)("[->%d][%s][SLOT:%u]["PRINT_COLOR_GREEN"KEY:%s"PRINT_COLOR_NONE"][%s:%d]reply: (%d/%d)%s\n", redis_reply->type, command, slot, key, node.first.c_str(), node.second, redis_reply->type, excepted_reply_type, redis_reply->str);
 }
 
 std::ostream& operator <<(std::ostream& os, const struct NodeInfo& node_info)
@@ -1220,7 +1220,7 @@ const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair
         }
         else
         {
-            print_reply(command, key.c_str(), redis_reply, excepted_reply_type, node);
+            print_reply(command, key.c_str(), slot, redis_reply, excepted_reply_type, node);
 
             if (REDIS_REPLY_NIL == redis_reply->type)
             {

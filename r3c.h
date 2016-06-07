@@ -42,6 +42,23 @@
 #include <stdint.h> // uint16_t
 #include <string>
 #include <vector>
+
+#define PRINT_COLOR_NONE         "\033[m"
+#define PRINT_COLOR_RED          "\033[0;32;31m"
+#define PRINT_COLOR_YELLOW       "\033[1;33m"
+#define PRINT_COLOR_BLUE         "\033[0;32;34m"
+#define PRINT_COLOR_GREEN        "\033[0;32;32m"
+#define PRINT_COLOR_WHITE        "\033[1;37m"
+#define PRINT_COLOR_CYAN         "\033[0;36m"      // 蓝绿色, 青色
+#define PRINT_COLOR_PURPLE       "\033[0;35m"      // 紫色
+#define PRINT_COLOR_BROWN        "\033[0;33m"      // 褐色, 棕色
+#define PRINT_COLOR_DARY_GRAY    "\033[1;30m"      // 卡里灰色
+#define PRINT_COLOR_LIGHT_RED    "\033[1;31m"
+#define PRINT_COLOR_LIGHT_GREEN  "\033[1;32m"
+#define PRINT_COLOR_LIGHT_BLUE   "\033[1;34m"
+#define PRINT_COLOR_LIGHT_CYAN   "\033[1;36m"
+#define PRINT_COLOR_LIGHT_PURPLE "\033[1;35m"
+#define PRINT_COLOR_LIGHT_GRAY   "\033[0;37m"      // 亮灰色
 namespace r3c {
 
 enum ZADDFLAG
