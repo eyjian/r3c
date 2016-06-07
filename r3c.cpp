@@ -1184,12 +1184,16 @@ const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair
     {
         errcode = 0;
         redisContext* redis_context = get_redis_context(slot, &node);
+        if (NULL == redis_context)
+        {
+            THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(ERR_INIT_REDIS_CONN, "connect redis cluster failed", node.first, node.second, command, key.c_str());
+        }
+
         if (which != NULL)
         {
             which->first = node.first;
             which->second = node.second;
         }
-
         if (redis_context->err != 0)
         {
             errcode = redis_context->err;
