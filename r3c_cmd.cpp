@@ -622,16 +622,29 @@ int main(int argc, char* argv[])
         else if (0 == strcasecmp(cmd, "spop"))
         {
             // SPOP command
-            if (argc != 3)
+            if ((argc != 3) && (argc != 4))
             {
-                fprintf(stderr, "Usage: r3c_cmd spop key\n");
+                fprintf(stderr, "Usage1: r3c_cmd spop key\n");
+                fprintf(stderr, "Usage2: r3c_cmd spop key count\n");
                 exit(1);
             }
 
-            if (redis_client.spop(key, &value, &which_node))
-                fprintf(stdout, "%s\n", value.c_str());
+            if (3 == argc)
+            {
+                if (redis_client.spop(key, &value, &which_node))
+                    fprintf(stdout, "%s\n", value.c_str());
+                else
+                    fprintf(stdout, "empty\n");
+            }
             else
-                fprintf(stdout, "empty\n");
+            {
+                count = redis_client.spop(key, atoi(argv[3]), &values, &which_node);
+                fprintf(stdout, "%d\n", count);
+                for (i=0; i<count; ++i)
+                {
+                    fprintf(stdout, "%s\n", values[i].c_str());
+                }
+            }
         }
         else if (0 == strcasecmp(cmd, "srandmember"))
         {

@@ -643,6 +643,119 @@ void test_set(const std::string& redis_cluster_nodes)
     try
     {
         r3c::CRedisClient rc(redis_cluster_nodes);
+        const std::string key = "r3c_kk";
+        std::vector<std::string> members;
+        std::string member = "member";
+        int count;
+
+        {
+            if (rc.sismember(key, member))
+            {
+                ERROR_PRINT("%s", "is member");
+                return;
+            }
+
+            count = rc.sadd(key, member);
+            printf("sadd count: %d\n", count);
+            if (!rc.sismember(key, member))
+            {
+                ERROR_PRINT("%s", "is not member");
+                return;
+            }
+        }
+
+        {
+            if (rc.sismember(key, "tom"))
+            {
+                ERROR_PRINT("%s", "is member");
+                return;
+            }
+
+            members.push_back("mike");
+            members.push_back("tom");
+            members.push_back("marry");
+            count = rc.sadd(key, members);
+            printf("sadd count: %d\n", count);
+
+            if (!rc.sismember(key, "mike") ||
+                !rc.sismember(key, "tom") ||
+                !rc.sismember(key, "marry") ||
+                !rc.sismember(key, "member"))
+            {
+                ERROR_PRINT("%s", "is not member");
+                return;
+            }
+
+            count = rc.smembers(key, &members);
+            printf("smembers count: %d\n", count);
+            if (members.size() != 4)
+            {
+                ERROR_PRINT("count error: %d\n", static_cast<int>(members.size()));
+                return;
+            }
+
+            count = rc.scard(key);
+            if (count != 4)
+            {
+                ERROR_PRINT("count error: %d\n", count);
+                return;
+            }
+
+            count = rc.srandmember(key, 2, &members);
+            if (count != 2)
+            {
+                ERROR_PRINT("count error: %d\n", count);
+                return;
+            }
+            if (members.size() != 2)
+            {
+                ERROR_PRINT("count error: %d\n", static_cast<int>(members.size()));
+                return;
+            }
+
+            if ((members[0] != "mike") &&
+                (members[0] != "tom") &&
+                (members[0] != "marry") &&
+                (members[0] != "member") &&
+                (members[1] != "mike") &&
+                (members[1] != "tom") &&
+                (members[1] != "marry") &&
+                (members[1] != "member"))
+            {
+                ERROR_PRINT("member error: %s, %s", members[0].c_str(), members[1].c_str());
+                return;
+            }
+        }
+
+        {
+            count = rc.spop(key, 2, &members);
+            if ((count != 2) || (count != static_cast<int>(members.size())))
+            {
+                ERROR_PRINT("count error: %d, %d", count, static_cast<int>(members.size()));
+                return;
+            }
+
+            if ((members[0] != "mike") &&
+                (members[0] != "tom") &&
+                (members[0] != "marry") &&
+                (members[0] != "member") &&
+                (members[1] != "mike") &&
+                (members[1] != "tom") &&
+                (members[1] != "marry") &&
+                (members[1] != "member"))
+            {
+                ERROR_PRINT("member error: %s, %s", members[0].c_str(), members[1].c_str());
+                return;
+            }
+
+            if (rc.sismember(key, members[1]) || rc.sismember(key, members[0]))
+            {
+                ERROR_PRINT("ismember error: %s, %s", members[0].c_str(), members[1].c_str());
+                return;
+            }
+        }
+
+        rc.del(key);
         SUCCESS_PRINT("%s", "OK");
     }
     catch (r3c::CRedisException& ex)
@@ -665,6 +778,7 @@ void test_sorted_set(const std::string& redis_cluster_nodes)
         int64_t score = 0;
         int count = 0;
 
+        rc.del(key);
         rc.zadd(key, field, 3);
         printf("zadd %s ok\n", field.c_str());
         score = rc.zscore(key, field);

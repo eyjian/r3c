@@ -908,6 +908,17 @@ bool CRedisClient::spop(const std::string& key, std::string* value, std::pair<st
     return 1 == result;
 }
 
+int CRedisClient::spop(const std::string& key, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    const std::string str1 = any2string(count);
+
+    PREPARE_REDIS_COMMAND("SPOP", sizeof("SPOP")-1);
+    str1_ = &str1;
+    values_ = values;
+    int64_t result = REDIS_COMMAND(REDIS_REPLY_ARRAY);
+    return static_cast<int>(result);
+}
+
 int CRedisClient::srandmember(const std::string& key, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     std::string str1 = any2string(count);

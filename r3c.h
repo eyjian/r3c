@@ -196,6 +196,7 @@ public:
     bool sismember(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     int smembers(const std::string& key, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     bool spop(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    int spop(const std::string& key, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     int srandmember(const std::string& key, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     int srem(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     int srem(const std::string& key, const std::vector<std::string>& values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
