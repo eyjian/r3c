@@ -196,14 +196,15 @@ void test_slots(const std::string& redis_cluster_nodes)
         {
             r3c::CRedisClient rc(redis_cluster_nodes);
             rc.exists(key);
-            SUCCESS_PRINT("%s", "OK");
         }
         catch (r3c::CRedisException& ex)
         {
             ERROR_PRINT("[%u][%u][%s]ERROR: %s", i, slot, key.c_str(), ex.str().c_str());
-            break;
+            return;
         }
     }
+
+    SUCCESS_PRINT("%s", "OK");
 }
 
 ////////////////////////////////////////////////////////////////////////////
