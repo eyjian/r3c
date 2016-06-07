@@ -69,6 +69,7 @@ int main(int argc, char* argv[])
 
         int i = 0;
         int count = 0;
+        int cursor = 0;
         int end = 0;
         int start = 0;
         int64_t min;
@@ -574,7 +575,7 @@ int main(int argc, char* argv[])
             {
                 for (i=3; i<argc; ++i)
                     values.push_back(argv[i]);
-                count = redis_client.sadd(key, argv[3], &which_node);
+                count = redis_client.sadd(key, values, &which_node);
             }
             fprintf(stdout, "%d\n", count);
         }
@@ -668,13 +669,33 @@ int main(int argc, char* argv[])
         else if (0 == strcasecmp(cmd, "sscan"))
         {
             // SSCAN command
-            if (argc != 5)
+            if ((argc < 4) || (argc > 6))
             {
-                fprintf(stderr, "Usage: r3c_cmd sscan key pattern count\n");
+                fprintf(stderr, "Usage1: r3c_cmd sscan key cursor\n");
+                fprintf(stderr, "Usage2: r3c_cmd sscan key cursor count\n");
+                fprintf(stderr, "Usage3: r3c_cmd sscan key cursor pattern\n");
+                fprintf(stderr, "Usage4: r3c_cmd sscan key cursor pattern count\n");
                 exit(1);
             }
 
-            count = redis_client.sscan(key, argv[3], atoi(argv[4]), &values, &which_node);
+            cursor = atoi(argv[3]);
+            if (4 == argc)
+            {
+                count = redis_client.sscan(key, cursor, &values, &which_node);
+            }
+            if (5 == argc)
+            {
+                count = atoi(argv[4]);
+                if (count > 0)
+                    count = redis_client.sscan(key, cursor, count, &values, &which_node);
+                else
+                    count = redis_client.sscan(key, cursor, argv[4], &values, &which_node);
+            }
+            if (6 == argc)
+            {
+                count = redis_client.sscan(key, cursor, argv[3], atoi(argv[4]), &values, &which_node);
+            }
+
             for (i=0; i<count; ++i)
                 fprintf(stdout, "%s\n", values[i].c_str());
         }

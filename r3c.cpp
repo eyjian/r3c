@@ -909,28 +909,9 @@ int CRedisClient::srem(const std::string& key, const std::vector<std::string>& v
     return static_cast<int>(result);
 }
 
-int CRedisClient::sscan(const std::string& key, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+int CRedisClient::sscan(const std::string& key, int cursor, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-    PREPARE_REDIS_COMMAND("SSCAN", sizeof("SSCAN")-1);
-    values_ = values;
-    (void)REDIS_COMMAND(REDIS_REPLY_ARRAY);
-    return static_cast<int>(values->size());
-}
-
-int CRedisClient::sscan(const std::string& key, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
-{
-    const std::string str2 = format_string("COUNT %d", count);
-
-    PREPARE_REDIS_COMMAND("SSCAN", sizeof("SSCAN")-1);
-    str2_ = &str2;
-    values_ = values;
-    (void)REDIS_COMMAND(REDIS_REPLY_ARRAY);
-    return static_cast<int>(values->size());
-}
-
-int CRedisClient::sscan(const std::string& key, const std::string& pattern, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
-{
-    const std::string str1 = std::string("MATCH ") + pattern;
+    const std::string str1 = any2string(cursor);
 
     PREPARE_REDIS_COMMAND("SSCAN", sizeof("SSCAN")-1);
     str1_ = &str1;
@@ -939,14 +920,42 @@ int CRedisClient::sscan(const std::string& key, const std::string& pattern, std:
     return static_cast<int>(values->size());
 }
 
-int CRedisClient::sscan(const std::string& key, const std::string& pattern, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+int CRedisClient::sscan(const std::string& key, int cursor, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-    const std::string str1 = std::string("MATCH ") + pattern;
+    const std::string str1 = any2string(cursor);
     const std::string str2 = format_string("COUNT %d", count);
 
     PREPARE_REDIS_COMMAND("SSCAN", sizeof("SSCAN")-1);
     str1_ = &str1;
     str2_ = &str2;
+    values_ = values;
+    (void)REDIS_COMMAND(REDIS_REPLY_ARRAY);
+    return static_cast<int>(values->size());
+}
+
+int CRedisClient::sscan(const std::string& key, int cursor, const std::string& pattern, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    const std::string str1 = any2string(cursor);
+    const std::string str2 = std::string("MATCH ") + pattern;
+
+    PREPARE_REDIS_COMMAND("SSCAN", sizeof("SSCAN")-1);
+    str1_ = &str1;
+    str2_ = &str2;
+    values_ = values;
+    (void)REDIS_COMMAND(REDIS_REPLY_ARRAY);
+    return static_cast<int>(values->size());
+}
+
+int CRedisClient::sscan(const std::string& key, int cursor, const std::string& pattern, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    const std::string str1 = any2string(cursor);
+    const std::string str2 = std::string("MATCH ") + pattern;
+    const std::string str3 = format_string("COUNT %d", count);
+
+    PREPARE_REDIS_COMMAND("SSCAN", sizeof("SSCAN")-1);
+    str1_ = &str1;
+    str2_ = &str2;
+    str3_ = &str3;
     values_ = values;
     (void)REDIS_COMMAND(REDIS_REPLY_ARRAY);
     return static_cast<int>(values->size());
@@ -1158,6 +1167,8 @@ const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair
 int64_t CRedisClient::redis_command(int excepted_reply_type, const char* command, size_t command_length, const std::string* key, const std::string* str1, const std::string* str2, const std::string* str3, const std::vector<std::string>* array, const std::map<std::string, std::string>* in_map1, const std::map<std::string, int64_t>* in_map2, const std::string* str6, const std::string* str7, const char* tag, size_t tag_length, std::string* value, std::vector<std::string>* values, std::map<std::string, std::string>* out_map, std::vector<std::pair<std::string, int64_t> >* out_vec, const bool* keep_null, const bool* withscores, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
 	int64_t result = 0;
+	size_t elements;
+    struct redisReply** element;
 
 	int i = 0;
 	int index = 0;
@@ -1318,12 +1329,26 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, const char* command
     		if (values != NULL)
     		{
     		    R3C_ASSERT(NULL == out_map);
-    			result = static_cast<int64_t>(redis_reply->elements);
 
-    			values->resize(redis_reply->elements);
-    	        for (size_t i=0; i<redis_reply->elements; ++i)
+    		    if (strcasecmp(command, "sscan") != 0)
+    		    {
+    		        elements = redis_reply->elements;
+    		        element = redis_reply->element;
+    		        result = static_cast<int64_t>(elements);
+    		    }
+    		    else
+    		    {
+    		        R3C_ASSERT(2 == redis_reply->elements);
+
+    		        elements = redis_reply->element[1]->elements;
+    		        element = redis_reply->element[1]->element;
+    		        result = redis_reply->element[0]->integer; // cursor
+    		    }
+
+    			values->resize(elements);
+    	        for (size_t i=0; i<elements; ++i)
     	        {
-    	            const std::string v(redis_reply->element[i]->str, redis_reply->element[i]->len);
+    	            const std::string v(element[i]->str, element[i]->len);
     	            (*values)[i] = v;
     	        }
     		}
@@ -1351,9 +1376,6 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, const char* command
     		{
     		    if (NULL == keep_null) // hgetall
     		    {
-    		        size_t elements;
-    		        struct redisReply** element;
-
     		        if (strcasecmp(command, "hscan") != 0)
     		        {
     		            elements = redis_reply->elements;
