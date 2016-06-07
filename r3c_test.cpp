@@ -185,6 +185,7 @@ void success_print(const char* file, int line, const char* function, const char*
 // MISC
 void test_slots(const std::string& redis_cluster_nodes)
 {
+    // test all slots attached with a node
     TIPS_PRINT();
 
     for (unsigned int i=0; i<100000000; ++i)
