@@ -373,7 +373,7 @@ struct SlotInfo
 
 CRedisClient::CRedisClient(const std::string& nodes, int timeout_milliseconds) throw (CRedisException)
     : _cluster_mode(false), _nodes_string(nodes),
-      _timeout_milliseconds(timeout_milliseconds), _retry_times(10), _retry_sleep_milliseconds(10),
+      _timeout_milliseconds(timeout_milliseconds), _retry_times(RETRY_TIMES), _retry_sleep_milliseconds(RETRY_SLEEP_MILLISECONDS),
       _redis_context(NULL), _slots(CLUSTER_SLOTS, NULL)
 {
     parse_nodes();

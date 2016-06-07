@@ -63,6 +63,13 @@ enum
     ERROR_NOT_SUPPORT = -6    // Not support
 };
 
+// Consts
+enum
+{
+    RETRY_TIMES = 50,             // Default value
+    RETRY_SLEEP_MILLISECONDS = 20 // Default value
+};
+
 // Cluster node info
 struct NodeInfo
 {
@@ -137,6 +144,7 @@ public:
     void set_retry(int retry_times, int retry_sleep_milliseconds);
 
 public:
+    // available only in the cluster mode, standalone mode unavailable
     int list_nodes(std::vector<struct NodeInfo>* nodes_info, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
 
     // key value
