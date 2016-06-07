@@ -88,7 +88,18 @@ int main(int argc, char* argv[])
         std::pair<std::string, uint16_t> which_node;
         r3c::CRedisClient redis_client(nodes);
 
-        if (0 == strcasecmp(cmd, "list"))
+        if (0 == strcasecmp(cmd, "slot"))
+        {
+            if (argc != 3)
+            {
+                fprintf(stderr, "Usage: r3c_cmd slot key\n");
+                exit(1);
+            }
+
+            unsigned int slot = r3c::get_key_slot(key);
+            fprintf(stdout, "[%s] => %u\n", key, slot);
+        }
+        else if (0 == strcasecmp(cmd, "list"))
         {
             std::vector<struct r3c::NodeInfo> nodes_info;
             int num_nodes = redis_client.list_nodes(&nodes_info, &which_node);
@@ -101,6 +112,13 @@ int main(int argc, char* argv[])
         // KEY VALUE
         else if (0 == strcasecmp(cmd, "del"))
         {
+            // DEL
+            if (argc != 3)
+            {
+                fprintf(stderr, "Usage: r3c_cmd del key\n");
+                exit(1);
+            }
+
             if (!redis_client.del(key, &which_node))
                 fprintf(stderr, "[%s] not exist\n", key);
             else

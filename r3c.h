@@ -55,12 +55,13 @@ enum ZADDFLAG
 // Error code
 enum
 {
-    ERR_PARAMETER = -1,       // Parameter error
-    ERR_INIT_REDIS_CONN = -2, // Initialize redis connection error
-    ERROR_COMMAND = -3,       // Command error
-    ERROR_CONNECT_REDIS = -4, // Can not connect any cluster node
-    ERROR_FORMAT = -5,        // Format error
-    ERROR_NOT_SUPPORT = -6    // Not support
+    ERR_PARAMETER = -1,        // Parameter error
+    ERR_INIT_REDIS_CONN = -2,  // Initialize redis connection error
+    ERROR_COMMAND = -3,        // Command error
+    ERROR_CONNECT_REDIS = -4,  // Can not connect any cluster node
+    ERROR_FORMAT = -5,         // Format error
+    ERROR_NOT_SUPPORT = -6,    // Not support
+    ERROR_SLOT_NOT_EXIST = -7  // Slot not exists
 };
 
 // Consts
@@ -233,7 +234,7 @@ private:
 private:
     void parse_nodes() throw (CRedisException);
     void init() throw (CRedisException);
-    redisContext* get_redis_context(unsigned int slot, std::pair<std::string, uint16_t>* node);
+    redisContext* get_redis_context(unsigned int slot, std::pair<std::string, uint16_t>* node) throw (CRedisException);
     void choose_node(int seed_factor, std::pair<std::string, uint16_t>* node) const;
     redisContext* connect_node(int* errcode, std::string* errmsg, std::pair<std::string, uint16_t>* node) const;
 

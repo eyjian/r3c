@@ -1626,7 +1626,7 @@ void CRedisClient::init() throw (CRedisException)
     }
 }
 
-redisContext* CRedisClient::get_redis_context(unsigned int slot, std::pair<std::string, uint16_t>* node)
+redisContext* CRedisClient::get_redis_context(unsigned int slot, std::pair<std::string, uint16_t>* node) throw (CRedisException)
 {
     redisContext* redis_context = NULL;
 
@@ -1664,6 +1664,12 @@ redisContext* CRedisClient::get_redis_context(unsigned int slot, std::pair<std::
         {
             struct in_addr in;
             struct SlotInfo* slot_info = _slots[slot];
+            if (NULL == slot_info)
+            {
+                const std::string errmsg = format_string("slot[%u] not exists", slot);
+                THROW_REDIS_EXCEPTION(ERROR_SLOT_NOT_EXIST, errmsg.c_str());
+            }
+
             in.s_addr = slot_info->node.first;
             node->first = inet_ntoa(in);
             node->second = slot_info->node.second;
