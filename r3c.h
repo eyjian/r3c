@@ -27,6 +27,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+// Redis Cluster Principle
+// http://blog.chinaunix.net/uid-20682147-id-5727861.html
 #ifndef REDIS_CLUSTER_CLIENT_H
 #define REDIS_CLUSTER_CLIENT_H
 #include <assert.h>

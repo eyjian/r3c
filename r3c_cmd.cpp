@@ -529,16 +529,27 @@ int main(int argc, char* argv[])
         else if (0 == strcasecmp(cmd, "hscan"))
         {
             // HSCAN command
-            if (argc < 4)
+            if ((argc < 4) || (argc > 6))
             {
-                fprintf(stderr, "Usage: r3c_cmd hscan key cursor [pattern] [count]\n");
+                fprintf(stderr, "Usage1: r3c_cmd hscan key cursor\n");
+                fprintf(stderr, "Usage2: r3c_cmd hscan key cursor count\n");
+                fprintf(stderr, "Usage3: r3c_cmd hscan key cursor pattern\n");
+                fprintf(stderr, "Usage4: r3c_cmd hscan key cursor pattern count\n");
                 exit(1);
             }
 
             if (4 == argc)
                 count = redis_client.hscan(key, atoi(argv[3]), &map, &which_node);
-            else
+            else if (6 == argc)
                 count = redis_client.hscan(key, atoi(argv[3]), argv[4], atoi(argv[5]), &map, &which_node);
+            else if (5 == argc)
+            {
+                count = atoi(argv[4]);
+                if (count > 0)
+                    count = redis_client.hscan(key, atoi(argv[3]), count, &map, &which_node);
+                else
+                    count = redis_client.hscan(key, atoi(argv[3]), argv[4], &map, &which_node);
+            }
 
             fprintf(stdout, "count: %d\n", count);
             for (iter=map.begin(); iter!=map.end(); ++iter)

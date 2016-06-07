@@ -9,3 +9,15 @@ r3c基于redis官方的c库hiredis实现，全称是redis cluster C++ client，支持redis clus
 
 r3c_cmd.cpp是r3c的非交互式命令行工具，具备redis-cli的一些功能，但用法不尽相同，将逐步将覆盖redis-cli的所有功能。
 r3c_test.cpp是r3c的单元测试程序，试行make test即可。
+
+编译r3c：
+make
+
+安装（PREFIX指定安装目录，如果不指定则为/usr/local）：
+make install PREFIX=/usr/local/r3c
+
+执行单元测试：
+make test
+
+生成源代码间的依赖：
+make dep
