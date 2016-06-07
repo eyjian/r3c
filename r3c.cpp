@@ -372,15 +372,31 @@ struct SlotInfo
 };
 
 CRedisClient::CRedisClient(const std::string& nodes, int timeout_milliseconds) throw (CRedisException)
-    : _nodes_string(nodes), _timeout_milliseconds(timeout_milliseconds), _retry_times(10), _retry_sleep_milliseconds(10), _slots(CLUSTER_SLOTS, NULL)
+    : _cluster_mode(false), _nodes_string(nodes),
+      _timeout_milliseconds(timeout_milliseconds), _retry_times(10), _retry_sleep_milliseconds(10),
+      _redis_context(NULL), _slots(CLUSTER_SLOTS, NULL)
 {
     parse_nodes();
-    init();
+
+    if (_nodes.empty())
+    {
+        THROW_REDIS_EXCEPTION(ERR_PARAMETER, "invalid nodes or not set");
+    }
+    else if (_nodes.size() > 1)
+    {
+        _cluster_mode = true;
+        init();
+    }
 }
 
 CRedisClient::~CRedisClient()
 {
     clear();
+}
+
+bool CRedisClient::cluster_mode() const
+{
+    return _cluster_mode;
 }
 
 void CRedisClient::set_retry(int retry_times, int retry_sleep_milliseconds)
@@ -397,103 +413,112 @@ void CRedisClient::set_retry(int retry_times, int retry_sleep_milliseconds)
 ////////////////////////////////////////////////////////////////////////////////
 int CRedisClient::list_nodes(std::vector<struct NodeInfo>* nodes_info, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-    int errcode = 0;
-    std::string errmsg;
-    std::pair<std::string, uint16_t> node;
-
-    for (int i=0; i<static_cast<int>(_nodes.size()); ++i)
+    if (!_cluster_mode)
     {
-        redisContext* redis_context = connect_node(&errcode, &errmsg, &node);
-        if (NULL == redis_context)
-            THROW_REDIS_EXCEPTION_WITH_NODE(errcode, errmsg.c_str(), node.first, node.second);
+        return 0;
+    }
+    else
+    {
+        int errcode = 0;
+        std::string errmsg;
+        std::pair<std::string, uint16_t> node;
 
-        if (which != NULL)
+        for (int i=0; i<static_cast<int>(_nodes.size()); ++i)
         {
-            which->first = node.first;
-            which->second = node.second;
-        }
+            redisReply* redis_reply = NULL;
+            redisContext* redis_context = connect_node(&errcode, &errmsg, &node);
+            if (NULL == redis_context)
+            {
+                THROW_REDIS_EXCEPTION_WITH_NODE(errcode, errmsg.c_str(), node.first, node.second);
+            }
+            else if (which != NULL)
+            {
+                which->first = node.first;
+                which->second = node.second;
+            }
 
-        redisReply* redis_reply = (redisReply*)redisCommand(redis_context, "CLUSTER NODES");
-        if (NULL == redis_reply)
-        {
-            errcode = ERROR_COMMAND;
-            errmsg = "redis `CLUSTER NODES` error";
-            redisFree(redis_context);
-            (*g_debug_log)("[%d](%d)%s", i, errcode, errmsg.c_str());
-            continue;
-        }
-        else if (redis_reply->type != REDIS_REPLY_STRING)
-        {
-            errcode = redis_reply->type;
-            errmsg = redis_reply->str;
+            redis_reply = (redisReply*)redisCommand(redis_context, "CLUSTER NODES");
+            if (NULL == redis_reply)
+            {
+                errcode = ERROR_COMMAND;
+                errmsg = "redis `CLUSTER NODES` error";
+                redisFree(redis_context);
+                (*g_debug_log)("[%d](%d)%s", i, errcode, errmsg.c_str());
+                continue;
+            }
+            else if (redis_reply->type != REDIS_REPLY_STRING)
+            {
+                errcode = redis_reply->type;
+                errmsg = redis_reply->str;
+                freeReplyObject(redis_reply);
+                redisFree(redis_context);
+                redis_reply = NULL;
+                redis_context = NULL;
+                THROW_REDIS_EXCEPTION_WITH_NODE(errcode, errmsg.c_str(), node.first, node.second);
+            }
+
+            /*
+             * <id> <ip:port> <flags> <master> <ping-sent> <pong-recv> <config-epoch> <link-state> <slot> <slot> ... <slot>
+             * flags: A list of comma separated flags: myself, master, slave, fail?, fail, handshake, noaddr, noflags
+             * ping-sent: Milliseconds unix time at which the currently active ping was sent, or zero if there are no pending pings
+             * pong-recv: Milliseconds unix time the last pong was received
+             * link-state: The state of the link used for the node-to-node cluster bus. We use this link to communicate with the node. Can be connected or disconnected
+             *
+             * `redis_reply->str` example:
+             * 56686c7baad565d4370b8f1f6518a67b6cedb210 10.225.168.52:6381 slave 150f77d1000003811fb3c38c3768526a0b25ec31 0 1464662426768 22 connected
+             * 150f77d1000003811fb3c38c3768526a0b25ec31 10.225.168.51:6379 myself,master - 0 0 22 connected 3278-5687 11092-11958
+             * 6a7709bc680f7b224d0d20bdf7dd14db1f013baf 10.212.2.71:6381 master - 0 1464662429775 24 connected 8795-10922 11959-13107
+             */
+            std::vector<std::string> lines;
+            int num_lines = split(&lines, redis_reply->str, "\n");
             freeReplyObject(redis_reply);
             redisFree(redis_context);
             redis_reply = NULL;
             redis_context = NULL;
-            THROW_REDIS_EXCEPTION_WITH_NODE(errcode, errmsg.c_str(), node.first, node.second);
+
+            for (int row=0; row<num_lines; ++row)
+            {
+                std::vector<std::string> tokens;
+                const std::string& line = lines[row];
+                int num_tokens = split(&tokens, line, " ");
+                if (num_tokens >= 8)
+                {
+                    NodeInfo node_info;
+                    node_info.id = tokens[0];
+                    if (!parse_node_string(tokens[1], &node_info.ip, &node_info.port))
+                    {
+                        (*g_debug_log)("invalid node_string: %s\n", tokens[1].c_str());
+                    }
+                    else
+                    {
+                        std::string::size_type pos = tokens[2].find("master");
+
+                        node_info.flags = tokens[2];
+                        node_info.is_master = (pos != std::string::npos);
+                        node_info.master_id = tokens[3];
+                        node_info.ping_sent = atoi(tokens[4].c_str());
+                        node_info.pong_recv = atoi(tokens[5].c_str());
+                        node_info.epoch = atoi(tokens[6].c_str());
+                        node_info.connected = (tokens[7] == "connected");
+
+                        for (int col=8; col<num_tokens; ++col)
+                        {
+                            std::pair<int, int> slot;
+                            parse_slot_string(tokens[col], &slot.first, &slot.second);
+                            node_info.slots.push_back(slot);
+                        }
+
+                        nodes_info->push_back(node_info);
+                    } // if (parse_node_string
+                } // if (num_tokens >= 8)
+            } // for (int row=0; row<num_lines; ++row)
+            break;
         }
 
-        /*
-         * <id> <ip:port> <flags> <master> <ping-sent> <pong-recv> <config-epoch> <link-state> <slot> <slot> ... <slot>
-         * flags: A list of comma separated flags: myself, master, slave, fail?, fail, handshake, noaddr, noflags
-         * ping-sent: Milliseconds unix time at which the currently active ping was sent, or zero if there are no pending pings
-         * pong-recv: Milliseconds unix time the last pong was received
-         * link-state: The state of the link used for the node-to-node cluster bus. We use this link to communicate with the node. Can be connected or disconnected
-         *
-         * `redis_reply->str` example:
-         * 56686c7baad565d4370b8f1f6518a67b6cedb210 10.225.168.52:6381 slave 150f77d1000003811fb3c38c3768526a0b25ec31 0 1464662426768 22 connected
-         * 150f77d1000003811fb3c38c3768526a0b25ec31 10.225.168.51:6379 myself,master - 0 0 22 connected 3278-5687 11092-11958
-         * 6a7709bc680f7b224d0d20bdf7dd14db1f013baf 10.212.2.71:6381 master - 0 1464662429775 24 connected 8795-10922 11959-13107
-         */
-        std::vector<std::string> lines;
-        int num_lines = split(&lines, redis_reply->str, "\n");
-        freeReplyObject(redis_reply);
-        redisFree(redis_context);
-        redis_reply = NULL;
-        redis_context = NULL;
-
-        for (int row=0; row<num_lines; ++row)
-        {
-            std::vector<std::string> tokens;
-            const std::string& line = lines[row];
-            int num_tokens = split(&tokens, line, " ");
-            if (num_tokens >= 8)
-            {
-                NodeInfo node_info;
-                node_info.id = tokens[0];
-                if (!parse_node_string(tokens[1], &node_info.ip, &node_info.port))
-                {
-                    (*g_debug_log)("invalid node_string: %s\n", tokens[1].c_str());
-                }
-                else
-                {
-                    std::string::size_type pos = tokens[2].find("master");
-
-                    node_info.flags = tokens[2];
-                    node_info.is_master = (pos != std::string::npos);
-                    node_info.master_id = tokens[3];
-                    node_info.ping_sent = atoi(tokens[4].c_str());
-                    node_info.pong_recv = atoi(tokens[5].c_str());
-                    node_info.epoch = atoi(tokens[6].c_str());
-                    node_info.connected = (tokens[7] == "connected");
-
-                    for (int col=8; col<num_tokens; ++col)
-                    {
-                        std::pair<int, int> slot;
-                        parse_slot_string(tokens[col], &slot.first, &slot.second);
-                        node_info.slots.push_back(slot);
-                    }
-
-                    nodes_info->push_back(node_info);
-                } // if (parse_node_string
-            } // if (num_tokens >= 8)
-        } // for (int row=0; row<num_lines; ++row)
-        break;
+        if (errcode != 0)
+            THROW_REDIS_EXCEPTION_WITH_NODE(errcode, errmsg.c_str(), node.first, node.second);
+        return static_cast<int>(nodes_info->size());
     }
-
-    if (errcode != 0)
-        THROW_REDIS_EXCEPTION_WITH_NODE(errcode, errmsg.c_str(), node.first, node.second);
-    return static_cast<int>(nodes_info->size());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1142,7 +1167,7 @@ const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair
     int errcode = 0;
     std::string errmsg;
     std::pair<std::string, uint16_t> node;
-    unsigned int slot = keyHashSlot(key.c_str(), key.size());
+    unsigned int slot = _cluster_mode? keyHashSlot(key.c_str(), key.size()): 0;
 
     for (int i=0; i<_retry_times; ++i)
     {
@@ -1584,48 +1609,78 @@ void CRedisClient::init() throw (CRedisException)
 
 redisContext* CRedisClient::get_redis_context(unsigned int slot, std::pair<std::string, uint16_t>* node)
 {
-    R3C_ASSERT(slot < CLUSTER_SLOTS);
     redisContext* redis_context = NULL;
 
-    if (slot < CLUSTER_SLOTS)
+    if (!_cluster_mode)
     {
-        struct in_addr in;
-        struct SlotInfo* slot_info = _slots[slot];
-        in.s_addr = slot_info->node.first;
-        node->first = inet_ntoa(in);
-        node->second = slot_info->node.second;
+        node->first = _nodes[0].first;
+        node->second = _nodes[0].second;
 
-        if (slot_info->redis_context != NULL)
+        if (_redis_context != NULL)
         {
-            redis_context = slot_info->redis_context;
+            redis_context = _redis_context;
         }
         else
         {
-            std::map<std::pair<uint32_t, uint16_t>, redisContext*>::const_iterator iter = _redis_contexts.find(slot_info->node);
-            if (iter != _redis_contexts.end())
+            if (_timeout_milliseconds < 0)
             {
-                redis_context = iter->second;
-                slot_info->redis_context = redis_context;
+                redis_context = redisConnect(node->first.c_str(), node->second);
             }
             else
             {
-                if (_timeout_milliseconds < 0)
+                struct timeval tv;
+                tv.tv_sec = _timeout_milliseconds / 1000;
+                tv.tv_usec = (_timeout_milliseconds % 1000) * 1000;
+                redis_context = redisConnectWithTimeout(node->first.c_str(), node->second, tv);
+            }
+
+            _redis_context = redis_context;
+        }
+    }
+    else
+    {
+        R3C_ASSERT(slot < CLUSTER_SLOTS);
+
+        if (slot < CLUSTER_SLOTS)
+        {
+            struct in_addr in;
+            struct SlotInfo* slot_info = _slots[slot];
+            in.s_addr = slot_info->node.first;
+            node->first = inet_ntoa(in);
+            node->second = slot_info->node.second;
+
+            if (slot_info->redis_context != NULL)
+            {
+                redis_context = slot_info->redis_context;
+            }
+            else
+            {
+                std::map<std::pair<uint32_t, uint16_t>, redisContext*>::const_iterator iter = _redis_contexts.find(slot_info->node);
+                if (iter != _redis_contexts.end())
                 {
-                    redis_context = redisConnect(node->first.c_str(), node->second);
+                    redis_context = iter->second;
+                    slot_info->redis_context = redis_context;
                 }
                 else
                 {
-                    struct timeval tv;
-                    tv.tv_sec = _timeout_milliseconds / 1000;
-                    tv.tv_usec = (_timeout_milliseconds % 1000) * 1000;
-                    redis_context = redisConnectWithTimeout(node->first.c_str(), node->second, tv);
-                }
+                    if (_timeout_milliseconds < 0)
+                    {
+                        redis_context = redisConnect(node->first.c_str(), node->second);
+                    }
+                    else
+                    {
+                        struct timeval tv;
+                        tv.tv_sec = _timeout_milliseconds / 1000;
+                        tv.tv_usec = (_timeout_milliseconds % 1000) * 1000;
+                        redis_context = redisConnectWithTimeout(node->first.c_str(), node->second, tv);
+                    }
 
-                slot_info->redis_context = redis_context;
-                _redis_contexts.insert(std::make_pair(slot_info->node, redis_context));
-            }
-        }
-    }
+                    slot_info->redis_context = redis_context;
+                    _redis_contexts.insert(std::make_pair(slot_info->node, redis_context));
+                }
+            } // if (slot_info->redis_context != NULL)
+        } // if (slot < CLUSTER_SLOTS)
+    } // cluster_mode
 
     return redis_context;
 }

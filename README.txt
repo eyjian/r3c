@@ -21,3 +21,6 @@ make test
 
 生成源代码间的依赖：
 make dep
+
+关于接口：
+如果传给CRedisClient的nodes参数为单个节点字符串，如192.168.0.1:6379则为单机模式，为多节点字符串时则为Redis Cluster模式。

@@ -59,7 +59,8 @@ enum
     ERR_INIT_REDIS_CONN = -2, // Initialize redis connection error
     ERROR_COMMAND = -3,       // Command error
     ERROR_CONNECT_REDIS = -4, // Can not connect any cluster node
-    ERROR_FORMAT = -5         // Format error
+    ERROR_FORMAT = -5,        // Format error
+    ERROR_NOT_SUPPORT = -6    // Not support
 };
 
 // Cluster node info
@@ -132,6 +133,7 @@ class CRedisClient
 public:
     CRedisClient(const std::string& nodes, int timeout_milliseconds=1000) throw (CRedisException);
     ~CRedisClient();
+    bool cluster_mode() const;
     void set_retry(int retry_times, int retry_sleep_milliseconds);
 
 public:
@@ -233,10 +235,14 @@ private:
     void retry_sleep() const;
 
 private:
+    bool _cluster_mode;
     std::string _nodes_string;
     int _timeout_milliseconds;
     int _retry_times;
     int _retry_sleep_milliseconds;
+    redisContext* _redis_context; // Standalone mode
+
+private: // Cluster mode
     std::map<std::pair<uint32_t, uint16_t>, redisContext*> _redis_contexts;
     std::vector<std::pair<std::string, uint16_t> > _nodes;
     std::vector<struct SlotInfo*> _slots;
