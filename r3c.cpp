@@ -555,7 +555,7 @@ int CRedisClient::list_nodes(std::vector<struct NodeInfo>* nodes_info, std::pair
             break;
         } // for
 
-        (*g_debug_log)("[%d/%d][%s:%d][%s:%d][%d]errcode=(%d)%s\n", i, num_nodes, __FILE__, __LINE__, node.first.c_str(), node.second, static_cast<int>(nodes_info->size()), errcode, errmsg.c_str());
+        //(*g_debug_log)("[%d/%d][%s:%d][%s:%d][%d]errcode=(%d)%s\n", i, num_nodes, __FILE__, __LINE__, node.first.c_str(), node.second, static_cast<int>(nodes_info->size()), errcode, errmsg.c_str());
         if (errcode != 0)
             THROW_REDIS_EXCEPTION_WITH_NODE(errcode, errmsg.c_str(), node.first, node.second);
         return static_cast<int>(nodes_info->size());
@@ -1246,7 +1246,7 @@ const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair
         {
             errcode = redis_context->err;
             errmsg = redis_context->errstr;
-            (*g_debug_log)("[%s:%d][%d/%d][%s][%s:%d](%d)%s\n", __FILE__, __LINE__, i, _retry_times, command, node.first.c_str(), node.second, errcode, errmsg.c_str());
+            (*g_error_log)("[%s:%d][%d/%d][%s][%s:%d](%d)%s\n", __FILE__, __LINE__, i, _retry_times, command, node.first.c_str(), node.second, errcode, errmsg.c_str());
 
             init();
             retry_sleep();
@@ -1262,6 +1262,7 @@ const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair
             // disconnnected
             errcode = ERROR_COMMAND;
             errmsg = format_string("redis `%s` error", command);
+            (*g_error_log)("[%s:%d][%d/%d][%s][%s:%d](%d)%s\n", __FILE__, __LINE__, i, _retry_times, command, node.first.c_str(), node.second, errcode, errmsg.c_str());
 
             init();
             retry_sleep();
@@ -1289,6 +1290,8 @@ const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair
 #if 0
                 THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(errcode, errmsg.c_str(), redis_context->tcp.host, redis_context->tcp.port, command, key.c_str());
 #else
+                (*g_error_log)("[%s:%d][%d/%d][%s][%s:%d](%d)%s\n", __FILE__, __LINE__, i, _retry_times, command, node.first.c_str(), node.second, errcode, errmsg.c_str());
+
                 init();
                 retry_sleep();
                 continue;
@@ -1713,6 +1716,10 @@ redisContext* CRedisClient::get_redis_context(unsigned int slot, std::pair<std::
             }
 
             _redis_context = redis_context;
+            if (NULL == redis_context)
+            {
+                (*g_error_log)("[%s:%d][standalone]redisConnect failed\n", __FILE__, __LINE__, slot);
+            }
         }
     }
     else
@@ -1726,7 +1733,7 @@ redisContext* CRedisClient::get_redis_context(unsigned int slot, std::pair<std::
             if (NULL == slot_info)
             {
                 // Maybe master fail
-                (*g_debug_log)("[%s:%d]slot[%u] not exists\n", __FILE__, __LINE__, slot);
+                (*g_error_log)("[%s:%d]slot[%u] not exists\n", __FILE__, __LINE__, slot);
                 //const std::string errmsg = format_string("slot[%u] not exists", slot);
                 //THROW_REDIS_EXCEPTION(ERROR_SLOT_NOT_EXIST, errmsg.c_str());
             }
@@ -1762,8 +1769,15 @@ redisContext* CRedisClient::get_redis_context(unsigned int slot, std::pair<std::
                             redis_context = redisConnectWithTimeout(node->first.c_str(), node->second, tv);
                         }
 
-                        slot_info->redis_context = redis_context;
-                        _redis_contexts.insert(std::make_pair(slot_info->node, redis_context));
+                        if (NULL == redis_context)
+                        {
+                            (*g_error_log)("[%s:%d]slot[%u] redisConnect failed\n", __FILE__, __LINE__, slot);
+                        }
+                        else
+                        {
+                            slot_info->redis_context = redis_context;
+                            _redis_contexts.insert(std::make_pair(slot_info->node, redis_context));
+                        }
                     }
                 } // if (slot_info->redis_context != NULL)
             } // if (NULL == slot_info)
@@ -1783,7 +1797,7 @@ void CRedisClient::choose_node(int seed_factor, std::pair<std::string, uint16_t>
     node->first = _nodes[index].first;
     node->second = _nodes[index].second;
 
-    (*g_debug_log)("[%d][%s:%d]%s:%d chosen\n", seed_factor, __FILE__, __LINE__, node->first.c_str(), node->second);
+    //(*g_debug_log)("[%d][%s:%d]%s:%d chosen\n", seed_factor, __FILE__, __LINE__, node->first.c_str(), node->second);
 }
 
 redisContext* CRedisClient::connect_node(int* errcode, std::string* errmsg, std::pair<std::string, uint16_t>* node) const
