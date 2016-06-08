@@ -1228,6 +1228,9 @@ const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair
         redisContext* redis_context = get_redis_context(slot, &node);
         if (NULL == redis_context)
         {
+            errcode = ERR_INIT_REDIS_CONN;
+            errmsg = "connect redis cluster failed";
+
             //THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(ERR_INIT_REDIS_CONN, "connect redis cluster failed", node.first, node.second, command, key.c_str());
             init();
             retry_sleep();
@@ -1259,6 +1262,7 @@ const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair
             // disconnnected
             errcode = ERROR_COMMAND;
             errmsg = format_string("redis `%s` error", command);
+
             init();
             retry_sleep();
             continue;
@@ -1303,7 +1307,7 @@ const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair
             redis_reply = NULL;
         }
 
-        (*g_debug_log)("[%s:%d][%d/%d][%s][%s:%d](%d)%s\n", __FILE__, __LINE__, i, _retry_times, command, node.first.c_str(), node.second, errcode, errmsg.c_str());
+        //(*g_debug_log)("[%s:%d][%d/%d][%s][%s:%d](%d)%s\n", __FILE__, __LINE__, i, _retry_times, command, node.first.c_str(), node.second, errcode, errmsg.c_str());
         THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(errcode, errmsg, node.first, node.second, command, key.c_str());
     }
     return redis_reply;
