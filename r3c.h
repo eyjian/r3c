@@ -84,9 +84,13 @@ enum
 // Consts
 enum
 {
-    RETRY_TIMES = 50,             // Default value
-    RETRY_SLEEP_MILLISECONDS = 20 // Default value
+    RETRY_TIMES = 10 ,             // Default value
+    RETRY_SLEEP_MILLISECONDS = 200 // Default value
 };
+
+void millisleep(uint32_t millisecond);
+std::string format_string(const char* format, ...) __attribute__((format(printf, 1, 2)));
+int split(std::vector<std::string>* tokens, const std::string& source, const std::string& sep, bool skip_sep=false);
 
 // Cluster node info
 struct NodeInfo
@@ -95,24 +99,28 @@ struct NodeInfo
     std::string ip;         // The node IP
     uint16_t port;          // The node port
     std::string flags;      // A list of comma separated flags: myself, master, slave, fail?, fail, handshake, noaddr, noflags
+    bool is_fail;
     bool is_master;         // true if node is master, false if node is salve
+    bool is_slave;
     std::string master_id;  // The replication master
     int ping_sent;          // Milliseconds unix time at which the currently active ping was sent, or zero if there are no pending pings
     int pong_recv;          // Milliseconds unix time the last pong was received
     int epoch;              // The configuration epoch (or version) of the current node (or of the current master if the node is a slave). Each time there is a failover, a new, unique, monotonically increasing configuration epoch is created. If multiple nodes claim to serve the same hash slots, the one with higher configuration epoch wins
     bool connected;         // The state of the link used for the node-to-node cluster bus
     std::vector<std::pair<int, int> > slots; // A hash slot number or range
+
+    std::string str() const
+    {
+        return format_string("node://%s/%s:%d/%s", id.c_str(), ip.c_str(), port, flags.c_str());
+    }
 };
 
 // Set NULL to discard log
 typedef void (*LOG_WRITE)(const char* format, ...);
+void set_error_log_write(LOG_WRITE info_log);
 void set_info_log_write(LOG_WRITE info_log);
 void set_debug_log_write(LOG_WRITE debug_log);
-
-int split(std::vector<std::string>* tokens, const std::string& source, const std::string& sep, bool skip_sep=false);
-void millisleep(uint32_t millisecond);
 unsigned int get_key_slot(const std::string& key);
-std::string format_string(const char* format, ...) __attribute__((format(printf, 1, 2)));
 std::ostream& operator <<(std::ostream& os, const struct NodeInfo& node_info);
 
 template <typename T>

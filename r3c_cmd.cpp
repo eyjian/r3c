@@ -891,7 +891,7 @@ int main(int argc, char* argv[])
     }
     catch (r3c::CRedisException& ex)
     {
-        fprintf(stderr, "\033[0;32;31m%s\033[m\n", ex.str().c_str());
+        fprintf(stderr, PRINT_COLOR_RED"%s"PRINT_COLOR_NONE"\n", ex.str().c_str());
         exit(1);
     }
 
