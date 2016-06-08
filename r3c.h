@@ -85,7 +85,7 @@ enum
 enum
 {
     RETRY_TIMES = 10 ,             // Default value
-    RETRY_SLEEP_MILLISECONDS = 200 // Default value
+    RETRY_SLEEP_MILLISECONDS = 500 // Default value
 };
 
 void millisleep(uint32_t millisecond);
@@ -161,6 +161,7 @@ private:
 ////////////////////////////////////////////////////////////////////////////////
 struct SlotInfo; // Forward declare
 
+// NOTICE: not thread safe
 class CRedisClient
 {
 public:
