@@ -1,4 +1,4 @@
-Redis Cluster C++ Client, based on hiredis and support standalone, it's easy to make and use.
+Redis Cluster C++ Client, based on hiredis and support standalone, it's easy to make and use, not depends on C++11 or later.
 
 r3c基于redis官方的c库hiredis实现，全称是redis cluster C++ client，支持redis cluster。
 
@@ -10,7 +10,7 @@ r3c基于redis官方的c库hiredis实现，全称是redis cluster C++ client，支持redis clus
 也可以直接将r3c.h和r3c.cpp两个文件加入到自己项目代码中一起编译，而不独立编译r3c。
 
 r3c_cmd.cpp是r3c的非交互式命令行工具（command line tool），具备redis-cli的一些功能，但用法不尽相同，将逐步将覆盖redis-cli的所有功能。
-r3c_test.cpp是r3c的单元测试程序（unit test），试行make test即可。
+r3c_test.cpp是r3c的单元测试程序（unit test），执行make test即可。
 
 编译r3c（Compile r3c）：
 make
