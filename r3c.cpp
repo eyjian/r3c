@@ -1369,7 +1369,7 @@ const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair
             // disconnnected
             errcode = ERROR_COMMAND;
             errmsg = format_string("redis `%s` error", command);
-            (*g_error_log)("[%s:%d][%d/%d][%s][%s:%d](%d)%s\n", __FILE__, __LINE__, i, _retry_times, command, node.first.c_str(), node.second, errcode, errmsg.c_str());
+            (*g_error_log)("[%s:%d][%d/%d][%s][%s:%d](%d)%s|(%d)%s\n", __FILE__, __LINE__, i, _retry_times, command, node.first.c_str(), node.second, errcode, errmsg.c_str(), redis_context->err, redis_context->errstr);
 
             init();
             retry_sleep();
@@ -1390,13 +1390,14 @@ const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair
             else if (redis_reply->type != excepted_reply_type)
             {
                 //#define REDIS_REPLY_ERROR 6
-                errcode = errno;
+                errcode = redis_reply->type;
                 if (redis_reply->str != NULL)
                     errmsg = redis_reply->str;
                 freeReplyObject(redis_reply);
                 redis_reply = NULL;
 
                 // CLUSTERDOWN The cluster is down (while master is down)
+                // (115)WRONGTYPE Operation against a key holding the wrong kind of value
 #if 0
                 THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(errcode, errmsg.c_str(), redis_context->tcp.host, redis_context->tcp.port, command, key.c_str());
 #else
@@ -1965,8 +1966,14 @@ redisContext* CRedisClient::connect_node(int* errcode, std::string* errmsg, std:
             }
             else
             {
+                // REDIS_ERR_IO should use the "errno" variable to find out what is wrong
+                // For other values, the "errstr" field will hold a description.
+
                 *errcode = redis_context->err;
-                *errmsg = redis_context->errstr;
+                if (REDIS_ERR_IO == *errcode)
+                    *errmsg = strerror(errno);
+                else
+                    *errmsg = redis_context->errstr;
                 redisFree(redis_context);
                 redis_context = NULL;
                 continue;
