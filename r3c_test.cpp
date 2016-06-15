@@ -27,6 +27,11 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
+// Usage1: r3c_test redis_cluster_nodes, example: r3c_test 127.0.0.1:6379,127.0.0.1:6380
+// Usage2: set enviroment variable REDIS_CLUSTER_NODES, example: export REDIS_CLUSTER_NODES=127.0.0.1:6379,127.0.0.1:6380,
+//         and run without any parameter.
+// To test slots, please set environment varialbe TEST_SLOSTS to 1.
 #include "r3c.h"
 #include <math.h>
 
@@ -69,7 +74,6 @@ static void test_set(const std::string& redis_cluster_nodes);
 // SORTED SET
 static void test_sorted_set(const std::string& redis_cluster_nodes);
 
-// usage: r3c_test redis_cluster_nodes, example: r3c_test 127.0.0.1:6379,127.0.0.1:6380
 int main(int argc, char* argv[])
 {
     std::string redis_cluster_nodes;
@@ -114,7 +118,9 @@ int main(int argc, char* argv[])
 
     ////////////////////////////////////////////////////////////////////////////
     // MISC
-    test_slots(redis_cluster_nodes);
+    const char* test_slots_env = getenv("TEST_SLOSTS");
+    if ((test_slots_env != NULL) && (0 == strcmp(test_slots_env, "1")))
+        test_slots(redis_cluster_nodes);
 
     return 0;
 }
@@ -807,6 +813,7 @@ void test_sorted_set(const std::string& redis_cluster_nodes)
         const std::string key = "r3c_kk";
         std::string field = "f 1";
         int64_t score = 0;
+        int rank = 0;
         int count = 0;
 
         rc.del(key);
@@ -826,6 +833,90 @@ void test_sorted_set(const std::string& redis_cluster_nodes)
         if (count != 2)
         {
             ERROR_PRINT("count error: %d", count);
+            return;
+        }
+        score = rc.zscore(key, "f 3");
+        if (score != 7)
+        {
+            ERROR_PRINT("score error: %"PRId64, score);
+            return;
+        }
+
+        // zrank
+        rank = rc.zrank(key, "f 3");
+        if (rank != 2)
+        {
+            ERROR_PRINT("rank error: %d", rank);
+            return;
+        }
+        rank = rc.zrank(key, "f 2");
+        if (rank != 1)
+        {
+            ERROR_PRINT("rank error: %d", rank);
+            return;
+        }
+        rank = rc.zrank(key, "f 1");
+        if (rank != 0)
+        {
+            ERROR_PRINT("rank error: %d", rank);
+            return;
+        }
+        rank = rc.zrank(key, "f X");
+        if (rank != -1)
+        {
+            ERROR_PRINT("rank error: %d", rank);
+            return;
+        }
+
+        // zrevrank
+        rank = rc.zrevrank(key, "f 3");
+        if (rank != 0)
+        {
+            ERROR_PRINT("rank error: %d", rank);
+            return;
+        }
+        rank = rc.zrevrank(key, "f 2");
+        if (rank != 1)
+        {
+            ERROR_PRINT("rank error: %d", rank);
+            return;
+        }
+        rank = rc.zrevrank(key, "f 1");
+        if (rank != 2)
+        {
+            ERROR_PRINT("rank error: %d", rank);
+            return;
+        }
+        rank = rc.zrevrank(key, "f X");
+        if (rank != -1)
+        {
+            ERROR_PRINT("rank error: %d", rank);
+            return;
+        }
+
+        // zincrby
+        score = rc.zincrby(key, "f 1", 7);
+        if (score != 10)
+        {
+            ERROR_PRINT("score error: %"PRId64, score);
+            return;
+        }
+        score = rc.zincrby(key, "f X", 6);
+        if (score != 6)
+        {
+            ERROR_PRINT("score error: %"PRId64, score);
+            return;
+        }
+        rank = rc.zrank(key, "f X");
+        if (rank != 1)
+        {
+            ERROR_PRINT("rank error: %d", rank);
+            return;
+        }
+        rank = rc.zrevrank(key, "f X");
+        if (rank != 2)
+        {
+            ERROR_PRINT("rank error: %d", rank);
             return;
         }
 
