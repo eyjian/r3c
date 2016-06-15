@@ -188,6 +188,7 @@ void test_slots(const std::string& redis_cluster_nodes)
     // test all slots attached with a node
     TIPS_PRINT();
 
+    r3c::CRedisClient rc(redis_cluster_nodes);
     for (unsigned int i=0; i<100000000; ++i)
     {
         const std::string key = r3c::any2string(i);
@@ -195,7 +196,6 @@ void test_slots(const std::string& redis_cluster_nodes)
 
         try
         {
-            r3c::CRedisClient rc(redis_cluster_nodes);
             rc.exists(key);
         }
         catch (r3c::CRedisException& ex)
