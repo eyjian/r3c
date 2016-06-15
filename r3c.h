@@ -253,9 +253,9 @@ public:
     int zscan(const std::string& key, int cursor, const std::string& pattern, int count, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
 
     // raw command, binary unsafe
-    const redisReply* redis_command(int excepted_reply_type, std::pair<std::string, uint16_t>* which, const std::string& key, const char* command, const std::string& command_string) throw (CRedisException);
+    const redisReply* redis_command(int excepted_reply_type, std::pair<std::string, uint16_t>* which, const std::string* key, const char* command, const std::string& command_string) throw (CRedisException);
     // raw command, binary safe
-    const redisReply* redis_command(int excepted_reply_type, std::pair<std::string, uint16_t>* which, const std::string& key, const char* command, int argc, const char* argv[], const size_t* argv_len) throw (CRedisException);
+    const redisReply* redis_command(int excepted_reply_type, std::pair<std::string, uint16_t>* which, const std::string* key, const char* command, int argc, const char* argv[], const size_t* argv_len) throw (CRedisException);
 
 private:
     const redisReply* redis_command(int excepted_reply_type, std::pair<std::string, uint16_t>* which, const std::string* key, const char* command, const std::string& command_string, int argc, const char* argv[], const size_t* argv_len) throw (CRedisException);

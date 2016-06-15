@@ -138,7 +138,7 @@ struct X
 
     std::string str() const
     {
-        return r3c::format_string("X://%d-%d-%d-%ld", a, b, c, d);
+        return r3c::format_string("X://%d-%d-%d-%ld", a, (int)b, (int)c, d);
     }
 
     bool operator ==(const struct X& oth) const

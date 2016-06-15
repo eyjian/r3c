@@ -1309,15 +1309,15 @@ int CRedisClient::zscan(const std::string& key, int cursor, const std::string& p
 
 ////////////////////////////////////////////////////////////////////////////////
 // RAW COMMAND
-const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair<std::string, uint16_t>* which, const std::string& key, const char* command, const std::string& command_string) throw (CRedisException)
+const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair<std::string, uint16_t>* which, const std::string* key, const char* command, const std::string& command_string) throw (CRedisException)
 {
-    return redis_command(excepted_reply_type, which, &key, command, command_string, 0, NULL, NULL);
+    return redis_command(excepted_reply_type, which, key, command, command_string, 0, NULL, NULL);
 }
 
-const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair<std::string, uint16_t>* which, const std::string& key, const char* command, int argc, const char* argv[], const size_t* argv_len) throw (CRedisException)
+const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair<std::string, uint16_t>* which, const std::string* key, const char* command, int argc, const char* argv[], const size_t* argv_len) throw (CRedisException)
 {
     const std::string command_string;
-    return redis_command(excepted_reply_type, which, &key, command, command_string, argc, argv, argv_len);
+    return redis_command(excepted_reply_type, which, key, command, command_string, argc, argv, argv_len);
 }
 
 const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair<std::string, uint16_t>* which, const std::string* key, const char* command, const std::string& command_string, int argc, const char* argv[], const size_t* argv_len) throw (CRedisException)
@@ -1591,7 +1591,7 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
     // ERR unknown command 'SSCA'
 
     const FreeArgvHelper fah(argc, argv, argv_len);
-    const redisReply* redis_reply = redis_command(excepted_reply_type, param_info->which, *param_info->key, param_info->command, argc, (const char**)argv, argv_len);
+    const redisReply* redis_reply = redis_command(excepted_reply_type, param_info->which, param_info->key, param_info->command, argc, (const char**)argv, argv_len);
     if (redis_reply != NULL)
     {
         if (REDIS_REPLY_STATUS == redis_reply->type)
