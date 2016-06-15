@@ -1616,20 +1616,18 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
             {
                 R3C_ASSERT(NULL == param_info->out_map);
 
-                if ((strcasecmp(param_info->command, "scan") != 0) &&
-                    (strcasecmp(param_info->command, "sscan") != 0))
+                if ((2 == redis_reply->elements) && (redis_reply->element[1]->elements > 0))
+                {
+                    // scan, sscan
+                    elements = redis_reply->element[1]->elements;
+                    element = redis_reply->element[1]->element;
+                    result = redis_reply->element[0]->integer; // cursor
+                }
+                else
                 {
                     elements = redis_reply->elements;
                     element = redis_reply->element;
                     result = static_cast<int64_t>(elements);
-                }
-                else
-                {
-                    R3C_ASSERT(2 == redis_reply->elements);
-
-                    elements = redis_reply->element[1]->elements;
-                    element = redis_reply->element[1]->element;
-                    result = redis_reply->element[0]->integer; // cursor
                 }
 
                 param_info->values->resize(elements);
@@ -1641,7 +1639,19 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
             }
             else if (param_info->out_vec != NULL) // zrange
             {
-                if (strcasecmp(param_info->command, "zscan") != 0)
+                if ((2 == redis_reply->elements) && (redis_reply->element[1]->elements > 0))
+                {
+                    // zscan
+                    result = redis_reply->element[0]->integer; // cursor
+
+                    for (i=0; i<redis_reply->element[1]->elements; i+=2)
+                    {
+                        const std::string k(redis_reply->element[1]->element[i]->str, redis_reply->element[1]->element[i]->len);
+                        const std::string v(redis_reply->element[1]->element[i+1]->str, redis_reply->element[1]->element[i+1]->len);
+                        param_info->out_vec->push_back(std::make_pair(k, atoll(v.c_str())));
+                    }
+                }
+                else
                 {
                     for (i=0; i<redis_reply->elements;)
                     {
@@ -1661,33 +1671,23 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
                         }
                     }
                 }
-                else
-                {
-                    result = redis_reply->element[0]->integer; // cursor
-
-                    for (i=0; i<redis_reply->element[1]->elements; i+=2)
-                    {
-                        const std::string k(redis_reply->element[1]->element[i]->str, redis_reply->element[1]->element[i]->len);
-                        const std::string v(redis_reply->element[1]->element[i+1]->str, redis_reply->element[1]->element[i+1]->len);
-                        param_info->out_vec->push_back(std::make_pair(k, atoll(v.c_str())));
-                    }
-                }
             } // zrange
             else if (param_info->out_map != NULL) // hmget & hgetall
             {
                 if (NULL == param_info->keep_null) // hgetall
                 {
-                    if (strcasecmp(param_info->command, "hscan") != 0)
+                    if ((2 == redis_reply->elements) && (redis_reply->element[1]->elements > 0))
+                    {
+                        // hscan
+                        elements = redis_reply->element[1]->elements;
+                        element = redis_reply->element[1]->element;
+                        result = redis_reply->element[1]->integer; // cursor
+                    }
+                    else
                     {
                         elements = redis_reply->elements;
                         element = redis_reply->element;
                         result = static_cast<int64_t>(elements / 2);
-                    }
-                    else
-                    {
-                        elements = redis_reply->element[1]->elements;
-                        element = redis_reply->element[1]->element;
-                        result = redis_reply->element[1]->integer; // cursor
                     }
 
                     for (i=0; i<elements; i+=2)
