@@ -78,6 +78,7 @@ int main(int argc, char* argv[])
         int64_t new_value_int64;
         int64_t result_int64;
         uint32_t seconds;
+        std::string str;
         std::string value;
         std::vector<std::string> fields;
         std::vector<std::string> values;
@@ -96,7 +97,8 @@ int main(int argc, char* argv[])
                 exit(1);
             }
 
-            unsigned int slot = r3c::get_key_slot(key);
+            str =  key;
+            unsigned int slot = r3c::get_key_slot(&str);
             fprintf(stdout, "[%s] => %u\n", key, slot);
         }
         else if (0 == strcasecmp(cmd, "list"))
@@ -221,6 +223,39 @@ int main(int argc, char* argv[])
             increment = atoll(argv[3]);
             new_value_int64 = redis_client.incrby(key, increment, &which_node);
             fprintf(stdout, "%"PRId64"\n", new_value_int64);
+        }
+        else if (0 == strcasecmp(cmd, "scan"))
+        {
+            // SCAN command
+            if ((argc < 3) || (argc > 5))
+            {
+                fprintf(stderr, "Usage1: r3c_cmd scan cursor\n");
+                fprintf(stderr, "Usage2: r3c_cmd scan cursor count\n");
+                fprintf(stderr, "Usage3: r3c_cmd scan cursor pattern\n");
+                fprintf(stderr, "Usage4: r3c_cmd scan cursor pattern count\n");
+                exit(1);
+            }
+
+            cursor = atoi(argv[2]);
+            if (3 == argc)
+            {
+                count = redis_client.scan(cursor, &values, &which_node);
+            }
+            if (4 == argc)
+            {
+                count = atoi(argv[3]);
+                if (count > 0)
+                    count = redis_client.scan(cursor, count, &values, &which_node);
+                else
+                    count = redis_client.scan(cursor, argv[3], &values, &which_node);
+            }
+            if (5 == argc)
+            {
+                count = redis_client.scan(cursor, argv[2], atoi(argv[3]), &values, &which_node);
+            }
+
+            for (i=0; i<count; ++i)
+                fprintf(stdout, "%s\n", values[i].c_str());
         }
         ////////////////////////////////////////////////////////////////////////////
         // LIST

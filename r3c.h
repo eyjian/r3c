@@ -120,7 +120,7 @@ typedef void (*LOG_WRITE)(const char* format, ...);
 void set_error_log_write(LOG_WRITE info_log);
 void set_info_log_write(LOG_WRITE info_log);
 void set_debug_log_write(LOG_WRITE debug_log);
-unsigned int get_key_slot(const std::string& key);
+unsigned int get_key_slot(const std::string* key);
 std::ostream& operator <<(std::ostream& os, const struct NodeInfo& node_info);
 
 template <typename T>
@@ -184,6 +184,10 @@ public:
     bool get(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     bool del(const std::string& key, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     int64_t incrby(const std::string& key, int64_t increment, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    int scan(int cursor, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    int scan(int cursor, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    int scan(int cursor, const std::string& pattern, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    int scan(int cursor, const std::string& pattern, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
 
     // list
     int llen(const std::string& key, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
@@ -254,7 +258,7 @@ public:
     const redisReply* redis_command(int excepted_reply_type, std::pair<std::string, uint16_t>* which, const std::string& key, const char* command, int argc, const char* argv[], const size_t* argv_len) throw (CRedisException);
 
 private:
-    const redisReply* redis_command(int excepted_reply_type, std::pair<std::string, uint16_t>* which, const std::string& key, const char* command, const std::string& command_string, int argc, const char* argv[], const size_t* argv_len) throw (CRedisException);
+    const redisReply* redis_command(int excepted_reply_type, std::pair<std::string, uint16_t>* which, const std::string* key, const char* command, const std::string& command_string, int argc, const char* argv[], const size_t* argv_len) throw (CRedisException);
     int64_t redis_command(int excepted_reply_type, struct ParamInfo* param_info) throw (CRedisException);
     int calc_argc(const struct ParamInfo* param_info) const;
 

@@ -191,7 +191,7 @@ void test_slots(const std::string& redis_cluster_nodes)
     for (unsigned int i=0; i<100000000; ++i)
     {
         const std::string key = r3c::any2string(i);
-        unsigned int slot = r3c::get_key_slot(key);
+        unsigned int slot = r3c::get_key_slot(&key);
 
         try
         {
