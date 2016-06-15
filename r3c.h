@@ -160,6 +160,7 @@ private:
 
 ////////////////////////////////////////////////////////////////////////////////
 struct SlotInfo; // Forward declare
+struct ParamInfo;
 
 // NOTICE: not thread safe
 class CRedisClient
@@ -254,8 +255,8 @@ public:
 
 private:
     const redisReply* redis_command(int excepted_reply_type, std::pair<std::string, uint16_t>* which, const std::string& key, const char* command, const std::string& command_string, int argc, const char* argv[], const size_t* argv_len) throw (CRedisException);
-    int64_t redis_command(int excepted_reply_type, const char* command, size_t command_length, const std::string* key, const std::string* str1, const std::string* str2, const std::string* str3, const std::vector<std::string>* array, const std::map<std::string, std::string>* in_map1, const std::map<std::string, int64_t>* in_map2, const std::string* str6, const std::string* str7, const char* tag, size_t tag_length, std::string* value, std::vector<std::string>* values, std::map<std::string, std::string>* out_map, std::vector<std::pair<std::string, int64_t> >* out_vec, const bool* keep_null, const bool* withscores, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int calc_argc(const std::string* key, const std::string* str1, const std::string* str2, const std::string* str3, const std::vector<std::string>* array, const std::map<std::string, std::string>* in_map1, const std::map<std::string, int64_t>* in_map2, const std::string* str6, const std::string* str7, const char* tag) const;
+    int64_t redis_command(int excepted_reply_type, struct ParamInfo* param_info) throw (CRedisException);
+    int calc_argc(const struct ParamInfo* param_info) const;
 
 private:
     void parse_nodes() throw (CRedisException);
