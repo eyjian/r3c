@@ -592,6 +592,14 @@ int CRedisClient::list_nodes(std::vector<struct NodeInfo>* nodes_info, std::pair
 
 ////////////////////////////////////////////////////////////////////////////////
 // KEY VALUE
+bool CRedisClient::key_type(const std::string& key, std::string* key_type, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    struct ParamInfo param_info("TYPE", sizeof("TYPE")-1, &key, which);
+    param_info.value = key_type;
+    redis_command(REDIS_REPLY_STATUS, &param_info);
+    return !key_type->empty();
+}
+
 #if 0
 // binary unsafe, key and value can not contain space & LF etc.
 bool CRedisClient::exists(const std::string& key, std::pair<std::string, uint16_t>* which) throw (CRedisException)
@@ -1613,6 +1621,9 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
         {
             if (0 == strcmp(redis_reply->str, "OK"))
                 result = 1;
+
+            if (param_info->value != NULL)
+                param_info->value->assign(redis_reply->str, redis_reply->len);
         }
         else if (REDIS_REPLY_INTEGER == redis_reply->type)
         {

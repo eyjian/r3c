@@ -176,6 +176,7 @@ public:
     int list_nodes(std::vector<struct NodeInfo>* nodes_info, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
 
     // key value
+    bool key_type(const std::string& key, std::string* key_type, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     bool exists(const std::string& key, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     bool expire(const std::string& key, uint32_t seconds, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     void set(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);

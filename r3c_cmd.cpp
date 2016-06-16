@@ -112,6 +112,21 @@ int main(int argc, char* argv[])
         }
         ////////////////////////////////////////////////////////////////////////////
         // KEY VALUE
+        else if (0 == strcasecmp(cmd, "type"))
+        {
+            // TYPE
+            if (argc != 3)
+            {
+                fprintf(stderr, "Usage: r3c_cmd type key\n");
+                exit(1);
+            }
+
+            std::string key_type;
+            if (!redis_client.key_type(key, &key_type, &which_node))
+                fprintf(stderr, "key[%s] not exists\n", key);
+            else
+                fprintf(stdout, "key[%s]: %s\n", key, key_type.c_str());
+        }
         else if (0 == strcasecmp(cmd, "del"))
         {
             // DEL
