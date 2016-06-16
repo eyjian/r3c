@@ -65,6 +65,7 @@ static void test_hget_and_hset1(const std::string& redis_cluster_nodes);
 static void test_hget_and_hset2(const std::string& redis_cluster_nodes);
 static void test_hmget_and_hmset1(const std::string& redis_cluster_nodes);
 static void test_hmget_and_hmset2(const std::string& redis_cluster_nodes);
+static void test_hscan(const std::string& redis_cluster_nodes);
 
 ////////////////////////////////////////////////////////////////////////////
 // SET
@@ -107,6 +108,7 @@ int main(int argc, char* argv[])
     test_hget_and_hset2(redis_cluster_nodes);
     test_hmget_and_hmset1(redis_cluster_nodes);
     test_hmget_and_hmset2(redis_cluster_nodes);
+    test_hscan(redis_cluster_nodes);
 
     ////////////////////////////////////////////////////////////////////////////
     // SET
@@ -671,6 +673,73 @@ void test_hmget_and_hmset2(const std::string& redis_cluster_nodes)
     }
 }
 
+void test_hscan(const std::string& redis_cluster_nodes)
+{
+    TIPS_PRINT();
+
+    try
+    {
+        r3c::CRedisClient rc(redis_cluster_nodes);
+        std::map<std::string, std::string> map, results;
+        std::map<std::string, std::string>::iterator iter;
+        std::string key = "r3c_kk";
+        int cursor = -1;
+
+        map["name"] = "jack";
+        map["age"] = "33";
+        map["city"] = "shenzhen";
+        map["company"] = "tencent";
+        map["hobby"] = "astronomy";
+        map["car"] = "bmw";
+        map["nationality"] = "China";
+
+        rc.del(key);
+        rc.hmset(key, map);
+        cursor = rc.hscan(key, 0, &results);
+        if (cursor != 0)
+        {
+            ERROR_PRINT("cursor error: %d\n", cursor);
+            return;
+        }
+        if (results.size() != map.size())
+        {
+            ERROR_PRINT("cursor error: %zd/%zd\n", results.size(), map.size());
+            return;
+        }
+        if (results != map)
+        {
+            ERROR_PRINT("%s", "not equal\n");
+            return;
+        }
+
+        cursor = rc.hscan(key, 0, "na*", &results);
+        if (results.size() != 2)
+        {
+            ERROR_PRINT("cursor error: %zd\n", results.size());
+            return;
+        }
+        iter = results.begin();
+        if ((iter->first != "name") || (iter->second != "jack"))
+        {
+            ERROR_PRINT("%s", iter->first.c_str(), iter->second.c_str());
+            return;
+        }
+        ++iter;
+        if ((iter->first != "nationality") || (iter->second != "China"))
+        {
+            ERROR_PRINT("%s", iter->first.c_str(), iter->second.c_str());
+            return;
+        }
+
+        rc.del(key);
+        SUCCESS_PRINT("%s", "OK");
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        ERROR_PRINT("ERROR: %s", ex.str().c_str());
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////
 // SET
 void test_set(const std::string& redis_cluster_nodes)
@@ -685,6 +754,7 @@ void test_set(const std::string& redis_cluster_nodes)
         std::string member = "member";
         int count;
 
+        rc.del(key);
         {
             if (rc.sismember(key, member))
             {

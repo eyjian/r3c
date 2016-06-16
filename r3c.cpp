@@ -1410,15 +1410,17 @@ const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair
                 // CLUSTERDOWN The cluster is down (while master is down)
                 // WRONGTYPE Operation against a key holding the wrong kind of value
                 // LOADING Redis is loading the dataset in memory
-#if 0
-                THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(errcode, errmsg.c_str(), redis_context->tcp.host, redis_context->tcp.port, command, key.c_str());
-#else
                 (*g_error_log)("[%s:%d][%d/%d][%s][%s:%d](%d)%s|(%d)%s\n", __FILE__, __LINE__, i, _retry_times, command, node.first.c_str(), node.second, errcode, errmsg.c_str(), redis_context->err, redis_context->errstr);
-
-                init();
-                retry_sleep();
-                continue;
-#endif
+                if (0 == strncmp(errmsg.c_str(), "WRONGTYPE", sizeof("WRONGTYPE")-1))
+                {
+                    break;
+                }
+                else
+                {
+                    init();
+                    retry_sleep();
+                    continue;
+                }
             }
 
             break;
