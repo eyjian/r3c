@@ -84,8 +84,10 @@ enum
 // Consts
 enum
 {
-    RETRY_TIMES = 10 ,             // Default value
-    RETRY_SLEEP_MILLISECONDS = 500 // Default value
+    RETRY_TIMES = 10 ,                   // Default value
+    RETRY_SLEEP_MILLISECONDS = 500,      // Default value
+    CONNECT_TIMEOUT_MILLISECONDS = 1000, // Connect timeout milliseconds
+    DATA_TIMEOUT_MILLISECONDS = 2000     // Read and write socket timeout milliseconds
 };
 
 void millisleep(uint32_t millisecond);
@@ -169,7 +171,7 @@ public:
     // nodes - Redis cluster nodes separated by comma,
     //         e.g., 127.0.0.1:6379,127.0.0.1:6380,127.0.0.2:6379,127.0.0.3:6379,
     //         standalone mode if only one node, else cluster mode.
-    CRedisClient(const std::string& nodes, int timeout_milliseconds=1000) throw (CRedisException);
+    CRedisClient(const std::string& nodes, int connect_timeout_milliseconds=CONNECT_TIMEOUT_MILLISECONDS, int data_timeout_milliseconds=DATA_TIMEOUT_MILLISECONDS) throw (CRedisException);
     ~CRedisClient();
 
     bool cluster_mode() const;
@@ -285,7 +287,8 @@ private:
 private:
     bool _cluster_mode;
     std::string _nodes_string;
-    int _timeout_milliseconds;
+    int _connect_timeout_milliseconds;
+    int _data_timeout_milliseconds; // read & write timeout
     int _retry_times;
     int _retry_sleep_milliseconds;
     redisContext* _redis_context; // Standalone mode

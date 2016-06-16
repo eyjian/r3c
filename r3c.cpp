@@ -407,9 +407,10 @@ struct ParamInfo
     }
 };
 
-CRedisClient::CRedisClient(const std::string& nodes, int timeout_milliseconds) throw (CRedisException)
+CRedisClient::CRedisClient(const std::string& nodes, int connect_timeout_milliseconds, int data_timeout_milliseconds) throw (CRedisException)
     : _cluster_mode(false), _nodes_string(nodes),
-      _timeout_milliseconds(timeout_milliseconds), _retry_times(RETRY_TIMES), _retry_sleep_milliseconds(RETRY_SLEEP_MILLISECONDS),
+      _connect_timeout_milliseconds(connect_timeout_milliseconds), _data_timeout_milliseconds(data_timeout_milliseconds),
+      _retry_times(RETRY_TIMES), _retry_sleep_milliseconds(RETRY_SLEEP_MILLISECONDS),
       _redis_context(NULL), _slots(CLUSTER_SLOTS, NULL)
 {
     parse_nodes();
@@ -479,7 +480,9 @@ int CRedisClient::list_nodes(std::vector<struct NodeInfo>* nodes_info, std::pair
                 (*g_error_log)("[%d][%s:%d](%d)%s\n", i, __FILE__, __LINE__, errcode, errmsg.c_str());
                 continue;
             }
-            else if (which != NULL)
+
+            (*g_debug_log)("[%d][%s:%d]connected %s:%d\n", i, __FILE__, __LINE__, node.first.c_str(), (int)node.second);
+            if (which != NULL)
             {
                 which->first = node.first;
                 which->second = node.second;
@@ -490,7 +493,7 @@ int CRedisClient::list_nodes(std::vector<struct NodeInfo>* nodes_info, std::pair
             {
                 errcode = ERROR_COMMAND;
                 errmsg = "redis `CLUSTER NODES` error";
-                (*g_error_log)("[%d][%s:%d][%s:%d](%d)%s|(%d)%s\n", i, __FILE__, __LINE__, node.first.c_str(), node.second, errcode, errmsg.c_str(), redis_context->err, redis_context->errstr);
+                (*g_error_log)("[%d][%s:%d][%s:%d](%d)%s|(%d)%s\n", i, __FILE__, __LINE__, node.first.c_str(), (int)node.second, errcode, errmsg.c_str(), redis_context->err, redis_context->errstr);
 
                 redisFree(redis_context);
                 redis_context = NULL;
@@ -501,7 +504,7 @@ int CRedisClient::list_nodes(std::vector<struct NodeInfo>* nodes_info, std::pair
                 // LOADING Redis is loading the dataset in memory
                 errcode = redis_reply->type;
                 errmsg = redis_reply->str;
-                (*g_error_log)("[%d/%d][%s:%d][%s:%d](%d)%s|(%d)%s\n", i, num_nodes, __FILE__, __LINE__, node.first.c_str(), node.second, errcode, errmsg.c_str(), redis_context->err, redis_context->errstr);
+                (*g_error_log)("[%d/%d][%s:%d][%s:%d](%d)%s|(%d)%s\n", i, num_nodes, __FILE__, __LINE__, node.first.c_str(), (int)node.second, errcode, errmsg.c_str(), redis_context->err, redis_context->errstr);
 
                 freeReplyObject(redis_reply);
                 redisFree(redis_context);
@@ -544,7 +547,7 @@ int CRedisClient::list_nodes(std::vector<struct NodeInfo>* nodes_info, std::pair
                     node_info.id = tokens[0];
                     if (!parse_node_string(tokens[1], &node_info.ip, &node_info.port))
                     {
-                        (*g_debug_log)("[%s:%d][%s:%d]invalid node_string: %s\n", __FILE__, __LINE__, node.first.c_str(), node.second, tokens[1].c_str());
+                        (*g_debug_log)("[%s:%d][%s:%d]invalid node_string: %s\n", __FILE__, __LINE__, node.first.c_str(), (int)node.second, tokens[1].c_str());
                     }
                     else
                     {
@@ -583,7 +586,7 @@ int CRedisClient::list_nodes(std::vector<struct NodeInfo>* nodes_info, std::pair
             break;
         } // for
 
-        //(*g_debug_log)("[%d/%d][%s:%d][%s:%d][%d]errcode=(%d)%s\n", i, num_nodes, __FILE__, __LINE__, node.first.c_str(), node.second, static_cast<int>(nodes_info->size()), errcode, errmsg.c_str());
+        //(*g_debug_log)("[%d/%d][%s:%d][%s:%d][%d]errcode=(%d)%s\n", i, num_nodes, __FILE__, __LINE__, node.first.c_str(), (int)node.second, static_cast<int>(nodes_info->size()), errcode, errmsg.c_str());
         if (errcode != 0)
             THROW_REDIS_EXCEPTION_WITH_NODE(errcode, errmsg.c_str(), node.first, node.second);
         return static_cast<int>(nodes_info->size());
@@ -1866,22 +1869,29 @@ redisContext* CRedisClient::get_redis_context(unsigned int slot, std::pair<std::
         }
         else
         {
-            if (_timeout_milliseconds < 0)
+            if (_connect_timeout_milliseconds <= 0)
             {
                 redis_context = redisConnect(node->first.c_str(), node->second);
             }
             else
             {
-                struct timeval tv;
-                tv.tv_sec = _timeout_milliseconds / 1000;
-                tv.tv_usec = (_timeout_milliseconds % 1000) * 1000;
-                redis_context = redisConnectWithTimeout(node->first.c_str(), node->second, tv);
+                struct timeval connect_timeout;
+                connect_timeout.tv_sec = _connect_timeout_milliseconds / 1000;
+                connect_timeout.tv_usec = (_connect_timeout_milliseconds % 1000) * 1000;
+                redis_context = redisConnectWithTimeout(node->first.c_str(), node->second, connect_timeout);
             }
 
             _redis_context = redis_context;
             if (NULL == redis_context)
             {
                 (*g_error_log)("[%s:%d][standalone]redisConnect failed\n", __FILE__, __LINE__, slot);
+            }
+            else if (_data_timeout_milliseconds > 0)
+            {
+                struct timeval data_timeout;
+                data_timeout.tv_sec = _data_timeout_milliseconds / 1000;
+                data_timeout.tv_usec = (_data_timeout_milliseconds % 1000) * 1000;
+                redisSetTimeout(redis_context, data_timeout);
             }
         }
     }
@@ -1920,16 +1930,16 @@ redisContext* CRedisClient::get_redis_context(unsigned int slot, std::pair<std::
                     }
                     else
                     {
-                        if (_timeout_milliseconds < 0)
+                        if (_connect_timeout_milliseconds <= 0)
                         {
                             redis_context = redisConnect(node->first.c_str(), node->second);
                         }
                         else
                         {
-                            struct timeval tv;
-                            tv.tv_sec = _timeout_milliseconds / 1000;
-                            tv.tv_usec = (_timeout_milliseconds % 1000) * 1000;
-                            redis_context = redisConnectWithTimeout(node->first.c_str(), node->second, tv);
+                            struct timeval connect_timeout;
+                            connect_timeout.tv_sec = _connect_timeout_milliseconds / 1000;
+                            connect_timeout.tv_usec = (_connect_timeout_milliseconds % 1000) * 1000;
+                            redis_context = redisConnectWithTimeout(node->first.c_str(), node->second, connect_timeout);
                         }
 
                         if (NULL == redis_context)
@@ -1940,6 +1950,14 @@ redisContext* CRedisClient::get_redis_context(unsigned int slot, std::pair<std::
                         {
                             slot_info->redis_context = redis_context;
                             _redis_contexts.insert(std::make_pair(slot_info->node, redis_context));
+
+                            if (_data_timeout_milliseconds > 0)
+                            {
+                                struct timeval data_timeout;
+                                data_timeout.tv_sec = _data_timeout_milliseconds / 1000;
+                                data_timeout.tv_usec = (_data_timeout_milliseconds % 1000) * 1000;
+                                redisSetTimeout(redis_context, data_timeout);
+                            }
                         }
                     }
                 } // if (slot_info->redis_context != NULL)
@@ -1976,17 +1994,18 @@ redisContext* CRedisClient::connect_node(int* errcode, std::string* errmsg, std:
 
         old_node.first = node->first;
         old_node.second = node->second;
-        if (_timeout_milliseconds < 0)
+        if (_connect_timeout_milliseconds <= 0)
         {
             redis_context = redisConnect(node->first.c_str(), node->second);
         }
         else
         {
-            struct timeval tv;
-            tv.tv_sec = _timeout_milliseconds / 1000;
-            tv.tv_usec = (_timeout_milliseconds % 1000) * 1000;
-            redis_context = redisConnectWithTimeout(node->first.c_str(), node->second, tv);
+            struct timeval connect_timeout;
+            connect_timeout.tv_sec = _connect_timeout_milliseconds / 1000;
+            connect_timeout.tv_usec = (_connect_timeout_milliseconds % 1000) * 1000;
+            redis_context = redisConnectWithTimeout(node->first.c_str(), node->second, connect_timeout);
         }
+
         if (NULL == redis_context)
         {
             *errcode = errno;
@@ -1996,6 +2015,14 @@ redisContext* CRedisClient::connect_node(int* errcode, std::string* errmsg, std:
         }
         else
         {
+            if (_data_timeout_milliseconds > 0)
+            {
+                struct timeval data_timeout;
+                data_timeout.tv_sec = _data_timeout_milliseconds / 1000;
+                data_timeout.tv_usec = (_data_timeout_milliseconds % 1000) * 1000;
+                redisSetTimeout(redis_context, data_timeout);
+            }
+
             if (0 == redis_context->err)
             {
                 return redis_context;
