@@ -254,6 +254,7 @@ int main(int argc, char* argv[])
                 count = redis_client.scan(cursor, argv[2], atoi(argv[3]), &values, &which_node);
             }
 
+            fprintf(stdout, "cursor: %d, count: %d\n", count, static_cast<int>(values.size()));
             for (i=0; i<count; ++i)
                 fprintf(stdout, "%s\n", values[i].c_str());
         }
@@ -606,7 +607,7 @@ int main(int argc, char* argv[])
                     count = redis_client.hscan(key, atoi(argv[3]), argv[4], &map, &which_node);
             }
 
-            fprintf(stdout, "count: %d\n", count);
+            fprintf(stdout, "cursor: %d, count: %d\n", count, static_cast<int>(map.size()));
             for (iter=map.begin(); iter!=map.end(); ++iter)
                 fprintf(stdout, "%s => %s\n", iter->first.c_str(), iter->second.c_str());
         }
@@ -763,6 +764,7 @@ int main(int argc, char* argv[])
                 count = redis_client.sscan(key, cursor, argv[3], atoi(argv[4]), &values, &which_node);
             }
 
+            fprintf(stdout, "cursor: %d, count: %d\n", count, static_cast<int>(values.size()));
             for (i=0; i<count; ++i)
                 fprintf(stdout, "%s\n", values[i].c_str());
         }
@@ -915,6 +917,7 @@ int main(int argc, char* argv[])
                 count = redis_client.zscan(key, cursor, argv[3], atoi(argv[4]), &values2, &which_node);
             }
 
+            fprintf(stdout, "cursor: %d, count: %d\n", count, static_cast<int>(values2.size()));
             for (i=0; i<static_cast<int>(values2.size()); ++i)
                 fprintf(stdout, "%s => %"PRId64"\n", values2[i].first.c_str(), values2[i].second);
         }

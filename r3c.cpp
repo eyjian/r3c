@@ -1629,7 +1629,7 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
             {
                 R3C_ASSERT(NULL == param_info->out_map);
 
-                if ((2 == redis_reply->elements) && (redis_reply->element[1]->elements > 0))
+                if ((2 == redis_reply->elements) && (REDIS_REPLY_ARRAY == redis_reply->element[1]->type))
                 {
                     // scan, sscan
                     elements = redis_reply->element[1]->elements;
@@ -1652,7 +1652,7 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
             }
             else if (param_info->out_vec != NULL) // zrange
             {
-                if ((2 == redis_reply->elements) && (redis_reply->element[1]->elements > 0))
+                if ((2 == redis_reply->elements) && (REDIS_REPLY_ARRAY == redis_reply->element[1]->type))
                 {
                     // zscan
                     result = redis_reply->element[0]->integer; // cursor
@@ -1689,7 +1689,7 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
             {
                 if (NULL == param_info->keep_null) // hgetall
                 {
-                    if ((2 == redis_reply->elements) && (redis_reply->element[1]->elements > 0))
+                    if ((2 == redis_reply->elements) && (REDIS_REPLY_ARRAY == redis_reply->element[1]->type))
                     {
                         // hscan
                         elements = redis_reply->element[1]->elements;

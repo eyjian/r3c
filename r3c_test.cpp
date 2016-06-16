@@ -919,6 +919,104 @@ void test_sorted_set(const std::string& redis_cluster_nodes)
             ERROR_PRINT("rank error: %d", rank);
             return;
         }
+        score = rc.zscore(key, "f X");
+        if (score != 6)
+        {
+            ERROR_PRINT("score error: %"PRId64, score);
+            return;
+        }
+        score = rc.zscore(key, "f 1");
+        if (score != 3+7)
+        {
+            ERROR_PRINT("score error: %"PRId64, score);
+            return;
+        }
+
+        // zadd
+        rc.del(key);
+        count = rc.zadd(key, "f1", 9);
+        if (count != 1)
+        {
+            ERROR_PRINT("zadd error: %d", count);
+            return;
+        }
+        count = rc.zadd(key, "f2", 2);
+        if (count != 1)
+        {
+            ERROR_PRINT("zadd error: %d", count);
+            return;
+        }
+        map.clear();
+        map["f3\n"] = 7;
+        map["f4"] = 3;
+        map["f5 "] = 5;
+        count = rc.zadd(key, map);
+        if (count != 3)
+        {
+            ERROR_PRINT("zadd error: %d", count);
+            return;
+        }
+        map["f5 "] = 6; // exists
+        map["f6 "] = 2; // not exists
+        count = rc.zadd(key, map);
+        if (count != 1)
+        {
+            ERROR_PRINT("zadd error: %d", count);
+            return;
+        }
+
+        // zcount
+        count = rc.zcount(key, 0, 1);
+        if (count != 0)
+        {
+            ERROR_PRINT("zcount error: %d", count);
+            return;
+        }
+        count = rc.zcount(key, 0, 3);
+        if (count != 3)
+        {
+            ERROR_PRINT("zcount error: %d", count);
+            return;
+        }
+        count = rc.zcount(key, 0, 7);
+        if (count != 5)
+        {
+            ERROR_PRINT("zcount error: %d", count);
+            return;
+        }
+
+        // zscan
+        std::vector<std::pair<std::string, int64_t> > values;
+        count = rc.zscan(key, 0, &values);
+        if ((count != 0) || static_cast<int>(values.size()) != 6)
+        {
+            ERROR_PRINT("zscan error: %d/%d", count, static_cast<int>(values.size()));
+            return;
+        }
+        count = rc.zscan(key, 0, 3, &values);
+        if ((count != 0) || static_cast<int>(values.size()) != 6)
+        {
+            ERROR_PRINT("zscan error: %d/%d", count, static_cast<int>(values.size()));
+            return;
+        }
+        count = rc.zscan(key, 0, "f3", &values);
+        if ((count != 0) || static_cast<int>(values.size()) != 0)
+        {
+            ERROR_PRINT("zscan error: %d/%d", count, static_cast<int>(values.size()));
+            return;
+        }
+        count = rc.zscan(key, 0, "f2", &values);
+        if ((count != 0) || static_cast<int>(values.size()) != 1)
+        {
+            ERROR_PRINT("zscan error: %d/%d", count, static_cast<int>(values.size()));
+            return;
+        }
+        count = rc.zscan(key, 0, "f2", 1, &values);
+        if ((count != 0) || static_cast<int>(values.size()) != 1)
+        {
+            ERROR_PRINT("zscan error: %d/%d", count, static_cast<int>(values.size()));
+            return;
+        }
 
         rc.del(key);
         SUCCESS_PRINT("%s", "OK");
