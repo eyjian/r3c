@@ -490,10 +490,10 @@ int CRedisClient::list_nodes(std::vector<struct NodeInfo>* nodes_info, std::pair
             {
                 errcode = ERROR_COMMAND;
                 errmsg = "redis `CLUSTER NODES` error";
+                (*g_error_log)("[%d][%s:%d][%s:%d](%d)%s|(%d)%s\n", i, __FILE__, __LINE__, node.first.c_str(), node.second, errcode, errmsg.c_str(), redis_context->err, redis_context->errstr);
+
                 redisFree(redis_context);
                 redis_context = NULL;
-
-                (*g_error_log)("[%d][%s:%d][%s:%d](%d)%s|(%d)%s\n", i, __FILE__, __LINE__, node.first.c_str(), node.second, errcode, errmsg.c_str(), redis_context->err, redis_context->errstr);
                 continue;
             }
             else if (redis_reply->type != REDIS_REPLY_STRING)
@@ -1965,6 +1965,7 @@ void CRedisClient::choose_node(int seed_factor, std::pair<std::string, uint16_t>
 
 redisContext* CRedisClient::connect_node(int* errcode, std::string* errmsg, std::pair<std::string, uint16_t>* node) const
 {
+    redisContext* redis_context = NULL;
     std::pair<std::string, uint16_t> old_node;
 
     for (int i=0; i<static_cast<int>(_nodes.size())+2; ++i)
@@ -1973,7 +1974,19 @@ redisContext* CRedisClient::connect_node(int* errcode, std::string* errmsg, std:
         if ((node->first == old_node.first) && (node->second == old_node.second))
             continue;
 
-        redisContext* redis_context = redisConnect(node->first.c_str(), node->second);
+        old_node.first = node->first;
+        old_node.second = node->second;
+        if (_timeout_milliseconds < 0)
+        {
+            redis_context = redisConnect(node->first.c_str(), node->second);
+        }
+        else
+        {
+            struct timeval tv;
+            tv.tv_sec = _timeout_milliseconds / 1000;
+            tv.tv_usec = (_timeout_milliseconds % 1000) * 1000;
+            redis_context = redisConnectWithTimeout(node->first.c_str(), node->second, tv);
+        }
         if (NULL == redis_context)
         {
             *errcode = errno;
