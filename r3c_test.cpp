@@ -66,6 +66,7 @@ static void test_hget_and_hset2(const std::string& redis_cluster_nodes);
 static void test_hmget_and_hmset1(const std::string& redis_cluster_nodes);
 static void test_hmget_and_hmset2(const std::string& redis_cluster_nodes);
 static void test_hscan(const std::string& redis_cluster_nodes);
+static void test_hincrby_and_hlen(const std::string& redis_cluster_nodes);
 
 ////////////////////////////////////////////////////////////////////////////
 // SET
@@ -109,6 +110,7 @@ int main(int argc, char* argv[])
     test_hmget_and_hmset1(redis_cluster_nodes);
     test_hmget_and_hmset2(redis_cluster_nodes);
     test_hscan(redis_cluster_nodes);
+    test_hincrby_and_hlen(redis_cluster_nodes);
 
     ////////////////////////////////////////////////////////////////////////////
     // SET
@@ -728,6 +730,78 @@ void test_hscan(const std::string& redis_cluster_nodes)
         if ((iter->first != "nationality") || (iter->second != "China"))
         {
             ERROR_PRINT("%s", iter->first.c_str(), iter->second.c_str());
+            return;
+        }
+
+        rc.del(key);
+        SUCCESS_PRINT("%s", "OK");
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        ERROR_PRINT("ERROR: %s", ex.str().c_str());
+    }
+}
+
+void test_hincrby_and_hlen(const std::string& redis_cluster_nodes)
+{
+    TIPS_PRINT();
+
+    try
+    {
+        r3c::CRedisClient rc(redis_cluster_nodes);
+        const std::string key = "r3c_kk";
+        std::string str_value;
+        int64_t int_value = -1;
+        int count = -1;
+
+        // hlen
+        count = rc.hlen(key);
+        if (count != 0)
+        {
+            ERROR_PRINT("hlen error: %d", count);
+            return;
+        }
+
+        rc.hset(key, "f1", "2");
+        rc.hset(key, "f2", "7");
+        count = rc.hlen(key);
+        if (count != 2)
+        {
+            ERROR_PRINT("hlen error: %d", count);
+            return;
+        }
+
+        // field exists
+        int_value = rc.hincrby(key, "f2", 3);
+        if (int_value != 10)
+        {
+            ERROR_PRINT("hincrby error: %"PRId64, int_value);
+            return;
+        }
+        rc.hget(key, "f2", &str_value);
+        if (str_value != "10")
+        {
+            ERROR_PRINT("hincrby error: %s", str_value.c_str());
+            return;
+        }
+
+        // field not exists
+        int_value = rc.hincrby(key, "f3", 3);
+        if (int_value != 3)
+        {
+            ERROR_PRINT("hincrby error: %"PRId64, int_value);
+            return;
+        }
+        rc.hget(key, "f3", &str_value);
+        if (str_value != "3")
+        {
+            ERROR_PRINT("hincrby error: %s", str_value.c_str());
+            return;
+        }
+        count = rc.hlen(key);
+        if (count != 3)
+        {
+            ERROR_PRINT("hlen error: %d", count);
             return;
         }
 
