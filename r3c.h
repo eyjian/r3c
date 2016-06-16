@@ -166,13 +166,19 @@ struct ParamInfo;
 class CRedisClient
 {
 public:
+    // nodes - Redis cluster nodes separated by comma,
+    //         e.g., 127.0.0.1:6379,127.0.0.1:6380,127.0.0.2:6379,127.0.0.3:6379,
+    //         standalone mode if only one node, else cluster mode.
     CRedisClient(const std::string& nodes, int timeout_milliseconds=1000) throw (CRedisException);
     ~CRedisClient();
+
     bool cluster_mode() const;
     void set_retry(int retry_times, int retry_sleep_milliseconds);
 
 public:
+    // Get all nodes information of redis cluster,
     // available only in the cluster mode, standalone mode unavailable
+    // which - The node IP and node port which returns nodes information
     int list_nodes(std::vector<struct NodeInfo>* nodes_info, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
 
     // key value
