@@ -1418,9 +1418,10 @@ const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair
                 freeReplyObject(redis_reply);
                 redis_reply = NULL;
 
-                // CLUSTERDOWN The cluster is down (while master is down)
-                // WRONGTYPE Operation against a key holding the wrong kind of value
-                // LOADING Redis is loading the dataset in memory
+                // CLUSTERDOWN The cluster is down (while master is down) （需重试错误）
+                // WRONGTYPE Operation against a key holding the wrong kind of value （此种错误时不需重试）
+                // LOADING Redis is loading the dataset in memory （需重试错误）
+                // MOVED 6474 127.0.0.1:6380 （需重试错误）
                 (*g_error_log)("[%s:%d][%d/%d][%s][%s:%d](%d)%s|(%d)%s\n", __FILE__, __LINE__, i, _retry_times, command, node.first.c_str(), node.second, errcode, errmsg.c_str(), redis_context->err, redis_context->errstr);
                 if (0 == strncmp(errmsg.c_str(), "WRONGTYPE", sizeof("WRONGTYPE")-1))
                 {
@@ -1907,8 +1908,6 @@ redisContext* CRedisClient::get_redis_context(unsigned int slot, std::pair<std::
             {
                 // Maybe master fail
                 (*g_error_log)("[%s:%d]slot[%u] not exists\n", __FILE__, __LINE__, slot);
-                //const std::string errmsg = format_string("slot[%u] not exists", slot);
-                //THROW_REDIS_EXCEPTION(ERROR_SLOT_NOT_EXIST, errmsg.c_str());
             }
             else
             {

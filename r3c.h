@@ -84,8 +84,8 @@ enum
 // Consts
 enum
 {
-    RETRY_TIMES = 10 ,                   // Default value
-    RETRY_SLEEP_MILLISECONDS = 500,      // Default value
+    RETRY_TIMES = 10,                    // Default value
+    RETRY_SLEEP_MILLISECONDS = 1000,     // Default value
     CONNECT_TIMEOUT_MILLISECONDS = 1000, // Connect timeout milliseconds
     DATA_TIMEOUT_MILLISECONDS = 2000     // Read and write socket timeout milliseconds
 };
