@@ -34,6 +34,7 @@
 // To test slots, please set environment varialbe TEST_SLOSTS to 1.
 #include "r3c.h"
 #include <math.h>
+#include <time.h>
 
 #define PRECISION 0.000001
 
@@ -76,6 +77,18 @@ static void test_set(const std::string& redis_cluster_nodes);
 // SORTED SET
 static void test_sorted_set(const std::string& redis_cluster_nodes);
 
+static void my_log_write(const char* format, ...)
+{
+    time_t seconds = time(NULL);
+    struct tm* now = localtime(&seconds);
+    printf("[%02d:%02d:%02d]", now->tm_hour, now->tm_min, now->tm_sec);
+
+    va_list ap;
+    va_start(ap, format);
+    vprintf(format, ap);
+    va_end(ap);
+}
+
 int main(int argc, char* argv[])
 {
     std::string redis_cluster_nodes;
@@ -92,6 +105,9 @@ int main(int argc, char* argv[])
         else
             redis_cluster_nodes = "127.0.0.1:6379,127.0.0.1:6380";
     }
+
+    r3c::set_info_log_write(my_log_write);
+    r3c::set_debug_log_write(my_log_write);
 
     ////////////////////////////////////////////////////////////////////////////
     // KEY VALUE
