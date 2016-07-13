@@ -1819,7 +1819,6 @@ void CRedisClient::init() throw (CRedisException)
 
     if (_cluster_mode)
     {
-        std::string nodes_string;
         std::vector<struct NodeInfo> nodes_info;
         int num_nodes = list_nodes(&nodes_info);
 
@@ -1829,11 +1828,6 @@ void CRedisClient::init() throw (CRedisException)
 
             for (std::vector<std::pair<int, int> >::size_type j=0; j<node_info.slots.size(); ++j)
             {
-                if (nodes_string.empty())
-                    nodes_string = format_string("%s:%d", node_info.ip.c_str(), node_info.port);
-                else
-                    nodes_string += format_string(",%s:%d", node_info.ip.c_str(), node_info.port);
-
                 for (int slot=node_info.slots[j].first; slot<=node_info.slots[j].second; ++slot)
                 {
                     struct SlotInfo* slot_info = new struct SlotInfo;
@@ -1845,12 +1839,6 @@ void CRedisClient::init() throw (CRedisException)
                     _slots[slot] = slot_info;
                 }
             }
-        }
-
-        if (!nodes_string.empty())
-        {
-            _nodes_string = nodes_string;
-            parse_nodes();
         }
     }
 }
