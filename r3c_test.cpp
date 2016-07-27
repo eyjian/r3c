@@ -34,6 +34,8 @@
 // To test slots, please set environment varialbe TEST_SLOSTS to 1.
 #include "r3c.h"
 #include <math.h>
+#include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 #define PRECISION 0.000001
