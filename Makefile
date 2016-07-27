@@ -58,6 +58,7 @@ clean:
 	rm -f $(STLIBNAME) $(CMD) $(TEST) *.o core core.*
 
 install:
+	mkdir -p $(INSTALL_BIN)
 	mkdir -p $(INSTALL_INCLUDE_PATH) $(INSTALL_LIBRARY_PATH)
 	$(INSTALL) r3c.h $(INSTALL_INCLUDE_PATH)
 	$(INSTALL) $(STLIBNAME) $(INSTALL_LIBRARY_PATH)
