@@ -170,6 +170,25 @@ int main(int argc, char* argv[])
             else
                 fprintf(stderr, "[%s] not exist\n", key);
         }
+        else if (0 == strcasecmp(cmd, "ttl"))
+        {
+            // TTL command
+            if (argc != 3)
+            {
+                fprintf(stderr, "Usage: r3c_cmd ttl key\n");
+                exit(1);
+            }
+
+            int ttl = redis_client.ttl(key, &which_node);
+            if (ttl >= 0)
+                fprintf(stdout, "[%s] %d\n", key, ttl);
+            else if (-1 == ttl)
+                fprintf(stderr, "[%s] no associated expire\n", key);
+            else if (-2 == ttl)
+                fprintf(stderr, "[%s] not exist\n", key);
+            else
+                fprintf(stderr, "unknown error\n");
+        }
         else if (0 == strcasecmp(cmd, "set"))
         {
             // SET command

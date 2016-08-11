@@ -262,17 +262,22 @@ void test_expire(const std::string& redis_cluster_nodes)
             return;
         }
 
-        if (!rc.expire(key, 1u))
+        if (!rc.expire(key, 3u))
         {
             ERROR_PRINT("%s", "NOT EXIST");
             return;
         }
 
-        r3c::millisleep(2000u);
+        r3c::millisleep(1000u);
+        int ttl = rc.ttl(key);
+        if ((ttl > 2) || (ttl < -2))
+            ERROR_PRINT("%s: %d", "TTL", ttl);
+
+        r3c::millisleep(3000u);
         if (rc.exists(key))
             ERROR_PRINT("%s", "EXIST");
         else
-            SUCCESS_PRINT("%s", "OK");
+            SUCCESS_PRINT("%s: %d", "OK", ttl);
     }
     catch (r3c::CRedisException& ex)
     {

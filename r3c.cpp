@@ -640,6 +640,13 @@ bool CRedisClient::expire(const std::string& key, uint32_t seconds, std::pair<st
     return result > 0;
 }
 
+int CRedisClient::ttl(const std::string& key, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    struct ParamInfo param_info("TTL", sizeof("TTL")-1, &key, which);
+    int64_t result = redis_command(REDIS_REPLY_INTEGER, &param_info);
+    return static_cast<int>(result);
+}
+
 void CRedisClient::set(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     struct ParamInfo param_info("SET", sizeof("SET")-1, &key, which);
