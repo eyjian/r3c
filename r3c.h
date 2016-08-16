@@ -165,6 +165,20 @@ struct SlotInfo; // Forward declare
 struct ParamInfo;
 
 // NOTICE: not thread safe
+//
+// Recommended multithread solution:
+// Use `__thread` to the global instance of CRedisClient for thread level.
+//
+// EXAMPLE:
+// static __thread r3c::CRedisClient* sg_redis_client = NULL;
+// r3c::CRedisClient* get_redis_client()
+// {
+//     if (NULL == sg_redis_client)
+//         sg_redis_client = new r3c::CRedisClient(REDIS_CLUSTER_NODES);
+//     return sg_redis_client;
+// }
+//
+// By calling pthread_cleanup_push() to registger a callback to release sg_redis_client when thread exits.
 class CRedisClient
 {
 public:
