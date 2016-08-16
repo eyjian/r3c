@@ -143,6 +143,13 @@ static void parse_slot_string(const std::string slot_string, int* start_slot, in
     }
 }
 
+std::string ip2string(uint32_t ip)
+{
+    struct in_addr in;
+    in.s_addr = ip;
+    return inet_ntoa(in);
+}
+
 int split(std::vector<std::string>* tokens, const std::string& source, const std::string& sep, bool skip_sep)
 {
     if (sep.empty())
@@ -590,6 +597,64 @@ int CRedisClient::list_nodes(std::vector<struct NodeInfo>* nodes_info, std::pair
         if (errcode != 0)
             THROW_REDIS_EXCEPTION_WITH_NODE(errcode, errmsg.c_str(), node.first, node.second);
         return static_cast<int>(nodes_info->size());
+    }
+}
+
+void CRedisClient::flushall(std::vector<std::pair<std::string, std::string> >* results) throw (CRedisException)
+{
+    std::vector<struct NodeInfo> nodes_info;
+    list_nodes(&nodes_info);
+
+    for (std::vector<struct NodeInfo>::size_type i=0; i<nodes_info.size(); ++i)
+    {
+        const struct NodeInfo& node_info = nodes_info[i];
+        std::pair<std::string, std::string> pair;
+        pair.first = node_info.ip + std::string(":") + any2string(node_info.port);
+
+        if (!node_info.is_master)
+        {
+            pair.second = "IS NOT MASTER";
+        }
+        else
+        {
+            redisContext* redis_context = NULL;
+            if (_connect_timeout_milliseconds <= 0)
+            {
+                redis_context = redisConnect(node_info.ip.c_str(), node_info.port);
+            }
+            else
+            {
+                struct timeval timeout;
+                timeout.tv_sec = _connect_timeout_milliseconds / 1000;
+                timeout.tv_usec = (_connect_timeout_milliseconds % 1000) * 1000;
+                redis_context = redisConnectWithTimeout(node_info.ip.c_str(), node_info.port, timeout);
+            }
+
+            if (NULL == redis_context)
+            {
+                pair.second = "INVALID CONTEXT";
+            }
+            else
+            {
+                redisReply* redis_reply = (redisReply*)redisCommand(redis_context, "FLUSHALL");
+                if (NULL == redis_reply)
+                {
+                    pair.second = "FLUSHALL ERROR";
+                }
+                else
+                {
+                    pair.second = redis_reply->str;
+                    freeReplyObject(redis_reply);
+                }
+
+                redisFree(redis_context);
+            }
+        }
+
+        if (results != NULL)
+        {
+            results->push_back(pair);
+        }
     }
 }
 

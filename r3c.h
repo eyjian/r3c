@@ -92,6 +92,7 @@ enum
 
 void millisleep(uint32_t millisecond);
 std::string format_string(const char* format, ...) __attribute__((format(printf, 1, 2)));
+std::string ip2string(uint32_t ip);
 int split(std::vector<std::string>* tokens, const std::string& source, const std::string& sep, bool skip_sep=false);
 
 // Cluster node info
@@ -206,6 +207,10 @@ public:
     // available only in the cluster mode, standalone mode unavailable
     // which - The node IP and node port which returns nodes information
     int list_nodes(std::vector<struct NodeInfo>* nodes_info, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+
+    // Try to clear all data in cluster
+    // To clear only a node, set ctor's parameter `nodes` to a single node for standalone mode
+    void flushall(std::vector<std::pair<std::string, std::string> >* results) throw (CRedisException);
 
     // key value
     bool key_type(const std::string& key, std::string* key_type, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
@@ -323,7 +328,7 @@ private:
     redisContext* _redis_context; // Standalone mode
 
 private: // Cluster mode
-    std::map<std::pair<uint32_t, uint16_t>, redisContext*> _redis_contexts;
+    std::map<std::pair<uint32_t, uint16_t>, redisContext*> _redis_contexts; // Key is node (IP&port)
     std::vector<std::pair<std::string, uint16_t> > _nodes;
     std::vector<struct SlotInfo*> _slots;
 };

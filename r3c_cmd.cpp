@@ -110,6 +110,15 @@ int main(int argc, char* argv[])
             for (std::vector<struct r3c::NodeInfo>::size_type i=0; i<nodes_info.size(); ++i)
                 std::cout << "[" << i << "] " << nodes_info[i] << std::endl;
         }
+        else if (0 == strcasecmp(cmd, "flushall"))
+        {
+            fprintf(stdout, "["PRINT_COLOR_YELLOW"NOTICE"PRINT_COLOR_NONE"] To clear only a node, set `HOSTS` to a single node\n\n");
+
+            std::vector<std::pair<std::string, std::string> > results;
+            redis_client.flushall(&results);
+            for (std::vector<std::pair<std::string, std::string> >::size_type i=0; i<results.size(); ++i)
+                fprintf(stdout, "[%s] %s\n", results[i].first.c_str(), results[i].second.c_str());
+        }
         ////////////////////////////////////////////////////////////////////////////
         // KEY VALUE
         else if (0 == strcasecmp(cmd, "type"))
