@@ -165,12 +165,13 @@ struct SlotInfo; // Forward declare
 struct ParamInfo;
 
 // NOTICE: not thread safe
+// A redis client than support redis cluster
 //
 // Recommended multithread solution:
 // Use `__thread` to the global instance of CRedisClient for thread level.
 //
 // EXAMPLE:
-// static __thread r3c::CRedisClient* sg_redis_client = NULL;
+// static __thread r3c::CRedisClient* sg_redis_client = NULL; // thread level gobal variable
 // r3c::CRedisClient* get_redis_client()
 // {
 //     if (NULL == sg_redis_client)
