@@ -174,11 +174,20 @@ struct ParamInfo;
 // r3c::CRedisClient* get_redis_client()
 // {
 //     if (NULL == sg_redis_client)
+//     {
 //         sg_redis_client = new r3c::CRedisClient(REDIS_CLUSTER_NODES);
+//         //pthread_cleanup_push(release_redis_client, NULL);
+//     }
 //     return sg_redis_client;
 // }
 //
 // By calling pthread_cleanup_push() to registger a callback to release sg_redis_client when thread exits.
+// EXAMPLE:
+// void release_redis_client(void*)
+// {
+//     delete sg_redis_client;
+//     sg_redis_client = NULL;
+// }
 class CRedisClient
 {
 public:
