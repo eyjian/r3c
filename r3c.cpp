@@ -844,7 +844,7 @@ int CRedisClient::lpush(const std::string& key, const std::vector<std::string>& 
     return static_cast<int>(result);
 }
 
-int CRedisClient::lrange(const std::string& key, int start, int end, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+int CRedisClient::lrange(const std::string& key, int64_t start, int64_t end, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     const std::string str6 = any2string(start);
     const std::string str7 = any2string(end);
@@ -857,7 +857,7 @@ int CRedisClient::lrange(const std::string& key, int start, int end, std::vector
     return static_cast<int>(values->size());
 }
 
-bool CRedisClient::ltrim(const std::string& key, int start, int end, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+bool CRedisClient::ltrim(const std::string& key, int64_t start, int64_t end, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     const std::string str6 = any2string(start);
     const std::string str7 = any2string(end);
@@ -1271,7 +1271,7 @@ int64_t CRedisClient::zincrby(const std::string& key, const std::string& field, 
     return atoll(value.c_str());
 }
 
-int CRedisClient::zrange(const std::string& key, int start, int end, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+int CRedisClient::zrange(const std::string& key, int64_t start, int64_t end, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     const std::string str6 = any2string(start);
     const std::string str7 = any2string(end);
@@ -1287,7 +1287,7 @@ int CRedisClient::zrange(const std::string& key, int start, int end, bool withsc
     return static_cast<int>(result);
 }
 
-int CRedisClient::zrevrange(const std::string& key, int start, int end, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+int CRedisClient::zrevrange(const std::string& key, int64_t start, int64_t end, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     const std::string str6 = any2string(start);
     const std::string str7 = any2string(end);
