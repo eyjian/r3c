@@ -1604,7 +1604,7 @@ const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair
 
 int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* param_info) throw (CRedisException)
 {
-    int64_t result = 0;
+    int64_t result = -1;
     size_t elements;
     size_t i;
     struct redisReply** element;
