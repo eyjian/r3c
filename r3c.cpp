@@ -1303,6 +1303,38 @@ int CRedisClient::zrevrange(const std::string& key, int64_t start, int64_t end, 
     return static_cast<int>(result);
 }
 
+int CRedisClient::zrangebyscore(const std::string& key, int64_t min, int64_t max, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    const std::string str6 = any2string(min);
+    const std::string str7 = any2string(max);
+    struct ParamInfo param_info("ZRANGEBYSCORE", sizeof("ZRANGEBYSCORE")-1, &key, which);
+
+    param_info.str6 = &str6;
+    param_info.str7 = &str7;
+    param_info.tag = "withscores";
+    param_info.tag_length = sizeof("withscores") - 1 ;
+    param_info.withscores = &withscores;
+    param_info.out_vec = vec;
+    int64_t result = redis_command(REDIS_REPLY_ARRAY, &param_info);
+    return static_cast<int>(result);
+}
+
+int CRedisClient::zrevrangebyscore(const std::string& key, int64_t min, int64_t max, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    const std::string str6 = any2string(min);
+    const std::string str7 = any2string(max);
+    struct ParamInfo param_info("ZREVRANGEBYSCORE", sizeof("ZREVRANGEBYSCORE")-1, &key, which);
+
+    param_info.str6 = &str6;
+    param_info.str7 = &str7;
+    param_info.tag = "withscores";
+    param_info.tag_length = sizeof("withscores") - 1 ;
+    param_info.withscores = &withscores;
+    param_info.out_vec = vec;
+    int64_t result = redis_command(REDIS_REPLY_ARRAY, &param_info);
+    return static_cast<int>(result);
+}
+
 int CRedisClient::zrank(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     struct ParamInfo param_info("ZRANK", sizeof("ZRANK")-1, &key, which);

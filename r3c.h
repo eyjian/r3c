@@ -285,8 +285,17 @@ public:
     int zadd(const std::string& key, const std::map<std::string, int64_t>& map, ZADDFLAG flag=Z_NS, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     int zcount(const std::string& key, int64_t min, int64_t max , std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     int64_t zincrby(const std::string& key, const std::string& field, int64_t increment, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+
+    // Both start and stop are zero-based indexes, where 0 is the first element, 1 is the next element and so on.
+    // They can also be negative numbers indicating offsets from the end of the sorted set,
+    // with -1 being the last element of the sorted set, -2 the penultimate element and so on.
     int zrange(const std::string& key, int64_t start, int64_t end, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     int zrevrange(const std::string& key, int64_t start, int64_t end, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+
+    // Returns all the elements in the sorted set at key with a score between min and max (including elements with score equal to min or max).
+    int zrangebyscore(const std::string& key, int64_t min, int64_t max, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    int zrevrangebyscore(const std::string& key, int64_t min, int64_t max, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+
     int zrank(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     int zrevrank(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     int64_t zscore(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
