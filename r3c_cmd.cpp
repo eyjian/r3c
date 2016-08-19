@@ -68,9 +68,12 @@ int main(int argc, char* argv[])
         }
 
         int i = 0;
+        int ret = 0;
+        int offset = 0;
         int count = 0;
         int end = 0;
         int start = 0;
+        //int64_t ret64 = 0;
         int64_t cursor = 0;
         int64_t min;
         int64_t max;
@@ -897,32 +900,56 @@ int main(int argc, char* argv[])
         else if (0 == strcasecmp(cmd, "zrangebyscore"))
         {
             // ZRANGEBYSCORE command
-            if (argc != 5)
+            if ((argc != 5) && (argc != 7))
             {
-                fprintf(stderr, "Usage: r3c_cmd zrangebyscore key min max\n");
+                fprintf(stderr, "Usage1: r3c_cmd zrangebyscore key min max\n");
+                fprintf(stderr, "Usage2: r3c_cmd zrangebyscore key min max offset count\n");
                 exit(1);
             }
 
             min = atol(argv[3]);
             max = atol(argv[4]);
             std::vector<std::pair<std::string, int64_t> > vec;
-            redis_client.zrangebyscore(key, min, max, true, &vec, &which_node);
+
+            if (5 == argc)
+            {
+                ret = redis_client.zrangebyscore(key, min, max, true, &vec, &which_node);
+            }
+            else
+            {
+                offset = atol(argv[5]);
+                count = atol(argv[6]);
+                ret = redis_client.zrangebyscore(key, min, max, offset, count, true, &vec, &which_node);
+            }
+            fprintf(stdout, "ZRANGEBYSCORE return: %d\n", ret);
             for (std::vector<std::pair<std::string, int64_t> >::iterator iter=vec.begin(); iter!=vec.end(); ++iter)
                 fprintf(stdout, "[%s] => %"PRId64"\n", iter->first.c_str(), iter->second);
         }
         else if (0 == strcasecmp(cmd, "zrevrangebyscore"))
         {
             // ZREVRANGEBYSCORE command
-            if (argc != 5)
+            if ((argc != 5) && (argc != 7))
             {
-                fprintf(stderr, "Usage: r3c_cmd zrevrangebyscore key min max\n");
+                fprintf(stderr, "Usage1: r3c_cmd zrevrangebyscore key min max\n");
+                fprintf(stderr, "Usage2: r3c_cmd zrangebyscore key min max offset count\n");
                 exit(1);
             }
 
             min = atol(argv[3]);
             max = atol(argv[4]);
             std::vector<std::pair<std::string, int64_t> > vec;
-            redis_client.zrevrangebyscore(key, min, max, true, &vec, &which_node);
+
+            if (5 == argc)
+            {
+                ret = redis_client.zrevrangebyscore(key, min, max, true, &vec, &which_node);
+            }
+            else
+            {
+                offset = atol(argv[5]);
+                count = atol(argv[6]);
+                ret = redis_client.zrevrangebyscore(key, min, max, offset, count, true, &vec, &which_node);
+            }
+            fprintf(stdout, "ZRANGEBYSCORE return: %d\n", ret);
             for (std::vector<std::pair<std::string, int64_t> >::iterator iter=vec.begin(); iter!=vec.end(); ++iter)
                 fprintf(stdout, "[%s] => %"PRId64"\n", iter->first.c_str(), iter->second);
         }

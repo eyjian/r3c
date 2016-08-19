@@ -1335,6 +1335,52 @@ int CRedisClient::zrevrangebyscore(const std::string& key, int64_t min, int64_t 
     return static_cast<int>(result);
 }
 
+// ZRANGE key start stop [WITHSCORES]
+// ZRANGEBYSCORE key min max [WITHSCORES] [LIMIT offset count]
+int CRedisClient::zrangebyscore(const std::string& key, int64_t min, int64_t max, int64_t offset, int64_t count, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    const std::string str1 = any2string(min);
+    const std::string str2 = any2string(max);
+    const std::string str3 = "WITHSCORES";
+    const std::string str4 = "LIMIT";
+    const std::string str5 = any2string(offset);
+    const std::string str6 = any2string(count);
+    struct ParamInfo param_info("ZRANGEBYSCORE", sizeof("ZRANGEBYSCORE")-1, &key, which);
+
+    param_info.str1 = &str1;
+    param_info.str2 = &str2;
+    param_info.str3 = &str3;
+    param_info.str4 = &str4;
+    param_info.str5 = &str5;
+    param_info.str6 = &str6;
+    param_info.withscores = &withscores;
+    param_info.out_vec = vec;
+    int64_t result = redis_command(REDIS_REPLY_ARRAY, &param_info);
+    return static_cast<int>(result);
+}
+
+int CRedisClient::zrevrangebyscore(const std::string& key, int64_t min, int64_t max, int64_t offset, int64_t count, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    const std::string str1 = any2string(min);
+    const std::string str2 = any2string(max);
+    const std::string str3 = "WITHSCORES";
+    const std::string str4 = "LIMIT";
+    const std::string str5 = any2string(offset);
+    const std::string str6 = any2string(count);
+    struct ParamInfo param_info("ZREVRANGEBYSCORE", sizeof("ZREVRANGEBYSCORE")-1, &key, which);
+
+    param_info.str1 = &str1;
+    param_info.str2 = &str2;
+    param_info.str3 = &str3;
+    param_info.str4 = &str4;
+    param_info.str5 = &str5;
+    param_info.str6 = &str6;
+    param_info.withscores = &withscores;
+    param_info.out_vec = vec;
+    int64_t result = redis_command(REDIS_REPLY_ARRAY, &param_info);
+    return static_cast<int>(result);
+}
+
 int CRedisClient::zrank(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     struct ParamInfo param_info("ZRANK", sizeof("ZRANK")-1, &key, which);
