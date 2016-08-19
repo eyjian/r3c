@@ -1564,10 +1564,10 @@ const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair
                 freeReplyObject(redis_reply);
                 redis_reply = NULL;
 
-                // CLUSTERDOWN The cluster is down (while master is down) £¨ĞèÖØÊÔ´íÎó£©
-                // WRONGTYPE Operation against a key holding the wrong kind of value £¨´ËÖÖ´íÎóÊ±²»ĞèÖØÊÔ£©
-                // LOADING Redis is loading the dataset in memory £¨ĞèÖØÊÔ´íÎó£©
-                // MOVED 6474 127.0.0.1:6380 £¨ĞèÖØÊÔ´íÎó£©
+                // CLUSTERDOWN The cluster is down (while master is down) ï¼ˆéœ€é‡è¯•é”™è¯¯ï¼‰
+                // WRONGTYPE Operation against a key holding the wrong kind of value ï¼ˆæ­¤ç§é”™è¯¯æ—¶ä¸éœ€é‡è¯•ï¼‰
+                // LOADING Redis is loading the dataset in memory ï¼ˆéœ€é‡è¯•é”™è¯¯ï¼‰
+                // MOVED 6474 127.0.0.1:6380 ï¼ˆéœ€é‡è¯•é”™è¯¯ï¼‰
                 (*g_error_log)("[%s:%d][%d/%d][%s][%s:%d](%d)%s|(%d)%s\n", __FILE__, __LINE__, i, _retry_times, command, node.first.c_str(), node.second, errcode, errmsg.c_str(), redis_context->err, redis_context->errstr);
                 if (0 == strncmp(errmsg.c_str(), "WRONGTYPE", sizeof("WRONGTYPE")-1))
                 {
@@ -1842,7 +1842,7 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
                         if (!*param_info->withscores)
                         {
                             param_info->out_vec->push_back(std::make_pair(k, 0));
-                            i += 1;
+                            i += 2;
                         }
                         else
                         {
