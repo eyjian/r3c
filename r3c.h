@@ -49,16 +49,16 @@
 #define PRINT_COLOR_BLUE         "\033[0;32;34m"
 #define PRINT_COLOR_GREEN        "\033[0;32;32m"
 #define PRINT_COLOR_WHITE        "\033[1;37m"
-#define PRINT_COLOR_CYAN         "\033[0;36m"      // À¶ÂÌÉ«, ÇàÉ«
-#define PRINT_COLOR_PURPLE       "\033[0;35m"      // ×ÏÉ«
-#define PRINT_COLOR_BROWN        "\033[0;33m"      // ºÖÉ«, ×ØÉ«
-#define PRINT_COLOR_DARY_GRAY    "\033[1;30m"      // ¿¨Àï»ÒÉ«
+#define PRINT_COLOR_CYAN         "\033[0;36m"      // ï¿½ï¿½ï¿½ï¿½É«, ï¿½ï¿½É«
+#define PRINT_COLOR_PURPLE       "\033[0;35m"      // ï¿½ï¿½É«
+#define PRINT_COLOR_BROWN        "\033[0;33m"      // ï¿½ï¿½É«, ï¿½ï¿½É«
+#define PRINT_COLOR_DARY_GRAY    "\033[1;30m"      // ï¿½ï¿½ï¿½ï¿½ï¿½É«
 #define PRINT_COLOR_LIGHT_RED    "\033[1;31m"
 #define PRINT_COLOR_LIGHT_GREEN  "\033[1;32m"
 #define PRINT_COLOR_LIGHT_BLUE   "\033[1;34m"
 #define PRINT_COLOR_LIGHT_CYAN   "\033[1;36m"
 #define PRINT_COLOR_LIGHT_PURPLE "\033[1;35m"
-#define PRINT_COLOR_LIGHT_GRAY   "\033[0;37m"      // ÁÁ»ÒÉ«
+#define PRINT_COLOR_LIGHT_GRAY   "\033[0;37m"      // ï¿½ï¿½ï¿½ï¿½É«
 namespace r3c {
 
 enum ZADDFLAG
@@ -289,7 +289,7 @@ public:
     // Both start and stop are zero-based indexes, where 0 is the first element, 1 is the next element and so on.
     // They can also be negative numbers indicating offsets from the end of the sorted set,
     // with -1 being the last element of the sorted set, -2 the penultimate element and so on.
-    // Return -1 if no elements
+    // Return number of elements
     int zrange(const std::string& key, int64_t start, int64_t end, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     int zrevrange(const std::string& key, int64_t start, int64_t end, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
 

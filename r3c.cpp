@@ -1818,7 +1818,7 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
                     (*param_info->values)[i] = v;
                 }
             }
-            else if (param_info->out_vec != NULL) // zrange
+            else if (param_info->out_vec != NULL) // zrange or zscan
             {
                 if ((2 == redis_reply->elements) && (REDIS_REPLY_ARRAY == redis_reply->element[1]->type))
                 {
@@ -1834,6 +1834,7 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
                 }
                 else
                 {
+                    result = 0;
                     for (i=0; i<redis_reply->elements;)
                     {
                         ++result;
@@ -1852,10 +1853,10 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
                         }
                     }
                 }
-            } // zrange
-            else if (param_info->out_map != NULL) // hmget & hgetall
+            } // zrange or zscan
+            else if (param_info->out_map != NULL) // hmget & hgetall & hscan
             {
-                if (NULL == param_info->keep_null) // hgetall
+                if (NULL == param_info->keep_null) // hgetall & hscan
                 {
                     if ((2 == redis_reply->elements) && (REDIS_REPLY_ARRAY == redis_reply->element[1]->type))
                     {
@@ -1877,11 +1878,12 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
                         const std::string v(element[i+1]->str, element[i+1]->len);
                         (*param_info->out_map)[k] = v;
                     }
-                } // hgetall
+                } // hgetall & hscan
                 else // hmget
                 {
                     R3C_ASSERT(param_info->array != NULL);
 
+                    result = 0;
                     for (i=0; i<redis_reply->elements; ++i)
                     {
                         if (REDIS_REPLY_STRING == redis_reply->element[i]->type)
