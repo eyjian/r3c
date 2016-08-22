@@ -1837,19 +1837,19 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
                     result = 0;
                     for (i=0; i<redis_reply->elements;)
                     {
-                        ++result;
-
                         const std::string k(redis_reply->element[i]->str, redis_reply->element[i]->len);
                         if (!*param_info->withscores)
                         {
                             param_info->out_vec->push_back(std::make_pair(k, 0));
                             i += 2;
+                            ++result;
                         }
                         else
                         {
                             const std::string v(redis_reply->element[i+1]->str, redis_reply->element[i+1]->len);
                             param_info->out_vec->push_back(std::make_pair(k, atoll(v.c_str())));
                             i += 2;
+                            ++result;
                         }
                     }
                 }
