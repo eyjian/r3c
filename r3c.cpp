@@ -1321,8 +1321,8 @@ int CRedisClient::zrangebyscore(const std::string& key, int64_t min, int64_t max
 
 int CRedisClient::zrevrangebyscore(const std::string& key, int64_t min, int64_t max, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-    const std::string str6 = any2string(min);
-    const std::string str7 = any2string(max);
+    const std::string str7 = any2string(min);
+    const std::string str6 = any2string(max);
     struct ParamInfo param_info("ZREVRANGEBYSCORE", sizeof("ZREVRANGEBYSCORE")-1, &key, which);
 
     param_info.str6 = &str6;
@@ -1339,8 +1339,8 @@ int CRedisClient::zrevrangebyscore(const std::string& key, int64_t min, int64_t 
 // ZRANGEBYSCORE key min max [WITHSCORES] [LIMIT offset count]
 int CRedisClient::zrangebyscore(const std::string& key, int64_t min, int64_t max, int64_t offset, int64_t count, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-    const std::string str1 = any2string(min);
-    const std::string str2 = any2string(max);
+    const std::string str2 = any2string(min);
+    const std::string str1 = any2string(max);
     const std::string str3 = "WITHSCORES";
     const std::string str4 = "LIMIT";
     const std::string str5 = any2string(offset);
@@ -1361,8 +1361,8 @@ int CRedisClient::zrangebyscore(const std::string& key, int64_t min, int64_t max
 
 int CRedisClient::zrevrangebyscore(const std::string& key, int64_t min, int64_t max, int64_t offset, int64_t count, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-    const std::string str1 = any2string(min);
-    const std::string str2 = any2string(max);
+    const std::string str2 = any2string(min);
+    const std::string str1 = any2string(max);
     const std::string str3 = "WITHSCORES";
     const std::string str4 = "LIMIT";
     const std::string str5 = any2string(offset);

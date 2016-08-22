@@ -78,6 +78,8 @@ static void test_set(const std::string& redis_cluster_nodes);
 ////////////////////////////////////////////////////////////////////////////
 // SORTED SET
 static void test_sorted_set(const std::string& redis_cluster_nodes);
+static void test_zrange(const std::string& redis_cluster_nodes);
+static void test_zrevrange(const std::string& redis_cluster_nodes);
 
 static void my_log_write(const char* format, ...)
 {
@@ -137,6 +139,8 @@ int main(int argc, char* argv[])
     ////////////////////////////////////////////////////////////////////////////
     // SORTED SET
     test_sorted_set(redis_cluster_nodes);
+    test_zrange(redis_cluster_nodes);
+    test_zrevrange(redis_cluster_nodes);
 
     ////////////////////////////////////////////////////////////////////////////
     // MISC
@@ -609,7 +613,7 @@ void test_hmget_and_hmset1(const std::string& redis_cluster_nodes)
         printf("count: %d/%zd\n", count, map.size());
         if (!map.empty())
         {
-            ERROR_PRINT("EXISTS£º %d", count);
+            ERROR_PRINT("EXISTSï¿½ï¿½ %d", count);
             return;
         }
 
@@ -1184,6 +1188,172 @@ void test_sorted_set(const std::string& redis_cluster_nodes)
             ERROR_PRINT("zscan error: %d/%d", count, static_cast<int>(values.size()));
             return;
         }
+
+        rc.del(key);
+        SUCCESS_PRINT("%s", "OK");
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        ERROR_PRINT("ERROR: %s", ex.str().c_str());
+    }
+}
+
+void test_zrange(const std::string& redis_cluster_nodes)
+{
+    TIPS_PRINT();
+
+    try
+    {
+        int count = -1;
+        std::vector<std::pair<std::string, int64_t> > values;
+        r3c::CRedisClient rc(redis_cluster_nodes);
+        const std::string key = "r3c_kk";
+
+        rc.del(key);
+        count = rc.zrange(key, 0, 100, false, &values);
+        if (count != 0)
+            ERROR_PRINT("zrange error: %d/%zd", count, values.size());
+        count = -1;
+        count = rc.zrange(key, 0, 100, true, &values);
+        if (count != 0)
+            ERROR_PRINT("zrange error: %d/%zd", count, values.size());
+
+        rc.zadd(key, "f1", 2);
+        rc.zadd(key, "f2", 1);
+        rc.zadd(key, "f3", 5);
+        rc.zadd(key, "f4", 6);
+        rc.zadd(key, "f5", 7);
+        rc.zadd(key, "f6", 4);
+        rc.zadd(key, "f7", 5);
+
+        // without score
+        count = rc.zrange(key, 0, 4, false, &values);
+        if ((count != 5) || (values.size() != 5))
+            ERROR_PRINT("zrange error: %d/%zd", count, values.size());
+        if ((values[0].first != "f2") || (values[0].second != 0) ||
+            (values[1].first != "f1") || (values[1].second != 0) ||
+            (values[2].first != "f6") || (values[2].second != 0) ||
+            (values[3].first != "f3") || (values[3].second != 0) ||
+            (values[4].first != "f7") || (values[4].second != 0))
+            ERROR_PRINT("zrange error: %s/%", values[0].first.c_str(), values[0].second);
+
+        // with score
+        values.clear();
+        count = rc.zrange(key, 0, 4, true, &values);
+        if ((count != 5) || (values.size() != 5))
+            ERROR_PRINT("zrange error: %d/%zd", count, values.size());
+        if ((values[0].first != "f2") || (values[0].second != 1) ||
+            (values[1].first != "f1") || (values[1].second != 2) ||
+            (values[2].first != "f6") || (values[2].second != 4) ||
+            (values[3].first != "f3") || (values[3].second != 5) ||
+            (values[4].first != "f7") || (values[4].second != 5))
+            ERROR_PRINT("zrange error: %s/%", values[0].first.c_str(), values[0].second);
+
+        // without score
+        values.clear();
+        count = rc.zrangebyscore(key, 2, 4, false, &values);
+        if ((count != 2) || (values.size() != 2))
+            ERROR_PRINT("zrangebyscore error: %d/%zd", count, values.size());
+        if ((values[0].first != "f1") || (values[0].second != 0) ||
+            (values[1].first != "f6") || (values[1].second != 0))
+            ERROR_PRINT("zrangebyscore error: %s/%", values[0].first.c_str(), values[0].second);
+
+        // with score
+        values.clear();
+        count = rc.zrangebyscore(key, 2, 4, true, &values);
+        if ((count != 2) || (values.size() != 2))
+            ERROR_PRINT("zrangebyscore error: %d/%zd", count, values.size());
+        if ((values[0].first != "f1") || (values[0].second != 2) ||
+            (values[1].first != "f6") || (values[1].second != 4))
+            ERROR_PRINT("zrangebyscore error: %s/%", values[0].first.c_str(), values[0].second);
+
+        rc.del(key);
+        SUCCESS_PRINT("%s", "OK");
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        ERROR_PRINT("ERROR: %s", ex.str().c_str());
+    }
+}
+
+void test_zrevrange(const std::string& redis_cluster_nodes)
+{
+    TIPS_PRINT();
+
+    try
+    {
+        int count = -1;
+        std::vector<std::pair<std::string, int64_t> > values;
+        r3c::CRedisClient rc(redis_cluster_nodes);
+        const std::string key = "r3c_kk";
+
+        rc.del(key);
+        count = rc.zrevrange(key, 0, 100, false, &values);
+        if (count != 0)
+            ERROR_PRINT("zrevrange error: %d/%zd", count, values.size());
+        count = -1;
+        count = rc.zrevrange(key, 0, 100, true, &values);
+        if (count != 0)
+            ERROR_PRINT("zrevrange error: %d/%zd", count, values.size());
+
+        rc.zadd(key, "f1", 2);
+        rc.zadd(key, "f2", 1);
+        rc.zadd(key, "f3", 5);
+        rc.zadd(key, "f4", 6);
+        rc.zadd(key, "f5", 7);
+        rc.zadd(key, "f6", 4);
+        rc.zadd(key, "f7", 5);
+
+        // without score
+        count = rc.zrevrange(key, 0, 4, false, &values);
+        if ((count != 5) || (values.size() != 5))
+            ERROR_PRINT("zrevrange error: %d/%zd", count, values.size());
+        if ((values[0].first != "f5") || (values[0].second != 0) ||
+            (values[1].first != "f4") || (values[1].second != 0) ||
+            ((values[2].first != "f3") && (values[2].first != "f7")) || (values[2].second != 0) ||
+            ((values[3].first != "f7") && (values[3].first != "f3")) || (values[3].second != 0) ||
+            (values[4].first != "f6") || (values[4].second != 0))
+            ERROR_PRINT("zrevrange error: %s/%"PRId64",%s/%"PRId64",%s/%"PRId64",%s/%"PRId64",%s/%"PRId64,
+                    values[0].first.c_str(), values[0].second,
+                    values[1].first.c_str(), values[1].second,
+                    values[2].first.c_str(), values[2].second,
+                    values[3].first.c_str(), values[3].second,
+                    values[4].first.c_str(), values[4].second);
+
+        // with score
+        values.clear();
+        count = rc.zrevrange(key, 0, 4, true, &values);
+        if ((count != 5) || (values.size() != 5))
+            ERROR_PRINT("zrevrange error: %d/%zd", count, values.size());
+        if ((values[0].first != "f5") || (values[0].second != 7) ||
+            (values[1].first != "f4") || (values[1].second != 6) ||
+            ((values[2].first != "f3") && (values[2].first != "f7")) || (values[2].second != 5) ||
+            ((values[3].first != "f7") && (values[3].first != "f3")) || (values[3].second != 5) ||
+            (values[4].first != "f6") || (values[4].second != 4))
+            ERROR_PRINT("zrevrange error: %s/%"PRId64",%s/%"PRId64",%s/%"PRId64",%s/%"PRId64",%s/%"PRId64,
+                    values[0].first.c_str(), values[0].second,
+                    values[1].first.c_str(), values[1].second,
+                    values[2].first.c_str(), values[2].second,
+                    values[3].first.c_str(), values[3].second,
+                    values[4].first.c_str(), values[4].second);
+
+        // without score
+        values.clear();
+        count = rc.zrevrangebyscore(key, 2, 4, false, &values);
+        if ((count != 2) || (values.size() != 2))
+            ERROR_PRINT("zrevrangebyscore error: %d/%zd", count, values.size());
+        if ((values[0].first != "f6") || (values[0].second != 0) ||
+            (values[1].first != "f1") || (values[1].second != 0))
+            ERROR_PRINT("zrevrangebyscore error: %s/%"PRId64, values[0].first.c_str(), values[0].second);
+
+        // with score
+        values.clear();
+        count = rc.zrevrangebyscore(key, 2, 4, true, &values);
+        if ((count != 2) || (values.size() != 2))
+            ERROR_PRINT("zrevrangebyscore error: %d/%zd", count, values.size());
+        if ((values[0].first != "f6") || (values[0].second != 4) ||
+            (values[1].first != "f1") || (values[1].second != 2))
+            ERROR_PRINT("zrevrangebyscore error: %s/%"PRId64",%s/%"PRId64, values[0].first.c_str(), values[0].second, values[1].first.c_str(), values[1].second);
 
         rc.del(key);
         SUCCESS_PRINT("%s", "OK");
