@@ -874,12 +874,14 @@ int main(int argc, char* argv[])
                 exit(1);
             }
 
+            i = 0;
             start = atoi(argv[3]);
             end = atoi(argv[4]);
             std::vector<std::pair<std::string, int64_t> > vec;
-            redis_client.zrange(key, start, end, true, &vec, &which_node);
-            for (std::vector<std::pair<std::string, int64_t> >::iterator iter=vec.begin(); iter!=vec.end(); ++iter)
-                fprintf(stdout, "[%s] => %"PRId64"\n", iter->first.c_str(), iter->second);
+            ret = redis_client.zrange(key, start, end, true, &vec, &which_node);
+            fprintf(stdout, "number: %d\n", ret);
+            for (std::vector<std::pair<std::string, int64_t> >::iterator iter=vec.begin(); iter!=vec.end(); ++iter,++i)
+                fprintf(stdout, "[%d]%s => %"PRId64"\n", i, iter->first.c_str(), iter->second);
         }
         else if (0 == strcasecmp(cmd, "zrevrange"))
         {
@@ -890,12 +892,14 @@ int main(int argc, char* argv[])
                 exit(1);
             }
 
+            i = 0;
             start = atoi(argv[3]);
             end = atoi(argv[4]);
             std::vector<std::pair<std::string, int64_t> > vec;
-            redis_client.zrevrange(key, start, end, true, &vec, &which_node);
-            for (std::vector<std::pair<std::string, int64_t> >::iterator iter=vec.begin(); iter!=vec.end(); ++iter)
-                fprintf(stdout, "[%s] => %"PRId64"\n", iter->first.c_str(), iter->second);
+            ret = redis_client.zrevrange(key, start, end, true, &vec, &which_node);
+            fprintf(stdout, "number: %d\n", ret);
+            for (std::vector<std::pair<std::string, int64_t> >::iterator iter=vec.begin(); iter!=vec.end(); ++iter,++i)
+                fprintf(stdout, "[%d]%s => %"PRId64"\n", i, iter->first.c_str(), iter->second);
         }
         else if (0 == strcasecmp(cmd, "zrangebyscore"))
         {
@@ -907,6 +911,7 @@ int main(int argc, char* argv[])
                 exit(1);
             }
 
+            i = 0;
             min = atol(argv[3]);
             max = atol(argv[4]);
             std::vector<std::pair<std::string, int64_t> > vec;
@@ -921,9 +926,9 @@ int main(int argc, char* argv[])
                 count = atol(argv[6]);
                 ret = redis_client.zrangebyscore(key, min, max, offset, count, true, &vec, &which_node);
             }
-            fprintf(stdout, "ZRANGEBYSCORE return: %d\n", ret);
-            for (std::vector<std::pair<std::string, int64_t> >::iterator iter=vec.begin(); iter!=vec.end(); ++iter)
-                fprintf(stdout, "[%s] => %"PRId64"\n", iter->first.c_str(), iter->second);
+            fprintf(stdout, "number: %d\n", ret);
+            for (std::vector<std::pair<std::string, int64_t> >::iterator iter=vec.begin(); iter!=vec.end(); ++iter,++i)
+                fprintf(stdout, "[%d]%s => %"PRId64"\n", i, iter->first.c_str(), iter->second);
         }
         else if (0 == strcasecmp(cmd, "zrevrangebyscore"))
         {
@@ -935,6 +940,7 @@ int main(int argc, char* argv[])
                 exit(1);
             }
 
+            i = 0;
             min = atol(argv[3]);
             max = atol(argv[4]);
             std::vector<std::pair<std::string, int64_t> > vec;
@@ -949,9 +955,9 @@ int main(int argc, char* argv[])
                 count = atol(argv[6]);
                 ret = redis_client.zrevrangebyscore(key, min, max, offset, count, true, &vec, &which_node);
             }
-            fprintf(stdout, "ZRANGEBYSCORE return: %d\n", ret);
-            for (std::vector<std::pair<std::string, int64_t> >::iterator iter=vec.begin(); iter!=vec.end(); ++iter)
-                fprintf(stdout, "[%s] => %"PRId64"\n", iter->first.c_str(), iter->second);
+            fprintf(stdout, "number: %d\n", ret);
+            for (std::vector<std::pair<std::string, int64_t> >::iterator iter=vec.begin(); iter!=vec.end(); ++iter,++i)
+                fprintf(stdout, "[%d]%s => %"PRId64"\n", i, iter->first.c_str(), iter->second);
         }
         else if (0 == strcasecmp(cmd, "zrank"))
         {
