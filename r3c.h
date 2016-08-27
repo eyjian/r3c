@@ -312,10 +312,12 @@ public:
     int zrank(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     int zrevrank(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     int64_t zscore(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int zscan(const std::string& key, int64_t cursor, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int zscan(const std::string& key, int64_t cursor, int count, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int zscan(const std::string& key, int64_t cursor, const std::string& pattern, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int zscan(const std::string& key, int64_t cursor, const std::string& pattern, int count, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+
+    // Returns the cursor
+    int64_t zscan(const std::string& key, int64_t cursor, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    int64_t zscan(const std::string& key, int64_t cursor, int count, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    int64_t zscan(const std::string& key, int64_t cursor, const std::string& pattern, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    int64_t zscan(const std::string& key, int64_t cursor, const std::string& pattern, int count, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
 
     // raw command, binary unsafe
     const redisReply* redis_command(int excepted_reply_type, std::pair<std::string, uint16_t>* which, const std::string* key, const char* command, const std::string& command_string) throw (CRedisException);

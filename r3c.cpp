@@ -1412,7 +1412,7 @@ int64_t CRedisClient::zscore(const std::string& key, const std::string& field, s
     return atoll(value.c_str());
 }
 
-int CRedisClient::zscan(const std::string& key, int64_t cursor, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+int64_t CRedisClient::zscan(const std::string& key, int64_t cursor, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     const std::string str1 = any2string(cursor);
     struct ParamInfo param_info("ZSCAN", sizeof("ZSCAN")-1, &key, which);
@@ -1422,7 +1422,7 @@ int CRedisClient::zscan(const std::string& key, int64_t cursor, std::vector<std:
     return redis_command(REDIS_REPLY_ARRAY, &param_info);
 }
 
-int CRedisClient::zscan(const std::string& key, int64_t cursor, int count, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+int64_t CRedisClient::zscan(const std::string& key, int64_t cursor, int count, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     const std::string str1 = any2string(cursor);
     const std::string str2 = "COUNT";
@@ -1436,7 +1436,7 @@ int CRedisClient::zscan(const std::string& key, int64_t cursor, int count, std::
     return redis_command(REDIS_REPLY_ARRAY, &param_info);
 }
 
-int CRedisClient::zscan(const std::string& key, int64_t cursor, const std::string& pattern, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+int64_t CRedisClient::zscan(const std::string& key, int64_t cursor, const std::string& pattern, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     const std::string str1 = any2string(cursor);
     const std::string str2 = "MATCH";
@@ -1450,7 +1450,7 @@ int CRedisClient::zscan(const std::string& key, int64_t cursor, const std::strin
     return redis_command(REDIS_REPLY_ARRAY, &param_info);
 }
 
-int CRedisClient::zscan(const std::string& key, int64_t cursor, const std::string& pattern, int count, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+int64_t CRedisClient::zscan(const std::string& key, int64_t cursor, const std::string& pattern, int count, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     const std::string str1 = any2string(cursor);
     const std::string str2 = "MATCH";
@@ -1802,11 +1802,19 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
                     elements = redis_reply->element[1]->elements;
                     element = redis_reply->element[1]->element;
                     if (REDIS_REPLY_INTEGER == redis_reply->element[0]->type)
+                    {
                         result = redis_reply->element[0]->integer; // cursor
+                    }
                     else if (REDIS_REPLY_STRING == redis_reply->element[0]->type)
-                        result = static_cast<int64_t>(atoll(redis_reply->element[0]->str)); // {type = 1, integer = 0, len = 3, str = 0x656600 "112", elements = 0, element = 0x0}
+                    {
+                        // sscan
+                        // {type = 1, integer = 0, len = 3, str = 0x656600 "112", elements = 0, element = 0x0}
+                        result = static_cast<int64_t>(atoll(redis_reply->element[0]->str)); // cursor
+                    }
                     else
+                    {
                         result = 0;
+                    }
                 }
                 else
                 {
@@ -1827,7 +1835,9 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
                 if ((2 == redis_reply->elements) && (REDIS_REPLY_ARRAY == redis_reply->element[1]->type))
                 {
                     // zscan
-                    result = redis_reply->element[0]->integer; // cursor
+                    //(gdb) p *redis_reply->element[0]
+                    //$1 = {type = 1, integer = 0, len = 5, str = 0x6584e0 "65536", elements = 0, element = 0x0}
+                    result = static_cast<int64_t>(atoll(redis_reply->element[0]->str)); // cursor
 
                     for (i=0; i<redis_reply->element[1]->elements; i+=2)
                     {
@@ -1867,7 +1877,7 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
                         // hscan
                         //(gdb) p *redis_reply->element[0]
                         //$47 = {type = 1, integer = 0, len = 1, str = 0x6585a0 "6", elements = 0, element = 0x0}
-                        result = static_cast<int64_t>(atoll(redis_reply->element[0]->str));
+                        result = static_cast<int64_t>(atoll(redis_reply->element[0]->str)); // cursor
                         elements = redis_reply->element[1]->elements;
                         element = redis_reply->element[1]->element;
                     }
