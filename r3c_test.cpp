@@ -352,6 +352,7 @@ void test_get_and_set2(const std::string& redis_cluster_nodes)
             return;
         }
 
+        rc.del(key);
         struct X v2;
         memcpy(&v2, value.c_str(), value.size());
 
@@ -802,7 +803,7 @@ void test_hincrby_and_hlen(const std::string& redis_cluster_nodes)
         int_value = rc.hincrby(key, "f2", 3);
         if (int_value != 10)
         {
-            ERROR_PRINT("hincrby error: %"PRId64, int_value);
+            ERROR_PRINT("hincrby error: %" PRId64, int_value);
             return;
         }
         rc.hget(key, "f2", &str_value);
@@ -816,7 +817,7 @@ void test_hincrby_and_hlen(const std::string& redis_cluster_nodes)
         int_value = rc.hincrby(key, "f3", 3);
         if (int_value != 3)
         {
-            ERROR_PRINT("hincrby error: %"PRId64, int_value);
+            ERROR_PRINT("hincrby error: %" PRId64, int_value);
             return;
         }
         rc.hget(key, "f3", &str_value);
@@ -993,7 +994,7 @@ void test_sorted_set(const std::string& redis_cluster_nodes)
         score = rc.zscore(key, field);
         if (score != 3)
         {
-            ERROR_PRINT("score error: %"PRId64, score);
+            ERROR_PRINT("score error: %" PRId64, score);
             return;
         }
 
@@ -1009,7 +1010,7 @@ void test_sorted_set(const std::string& redis_cluster_nodes)
         score = rc.zscore(key, "f 3");
         if (score != 7)
         {
-            ERROR_PRINT("score error: %"PRId64, score);
+            ERROR_PRINT("score error: %" PRId64, score);
             return;
         }
 
@@ -1069,13 +1070,13 @@ void test_sorted_set(const std::string& redis_cluster_nodes)
         score = rc.zincrby(key, "f 1", 7);
         if (score != 10)
         {
-            ERROR_PRINT("score error: %"PRId64, score);
+            ERROR_PRINT("score error: %" PRId64, score);
             return;
         }
         score = rc.zincrby(key, "f X", 6);
         if (score != 6)
         {
-            ERROR_PRINT("score error: %"PRId64, score);
+            ERROR_PRINT("score error: %" PRId64, score);
             return;
         }
         rank = rc.zrank(key, "f X");
@@ -1093,13 +1094,13 @@ void test_sorted_set(const std::string& redis_cluster_nodes)
         score = rc.zscore(key, "f X");
         if (score != 6)
         {
-            ERROR_PRINT("score error: %"PRId64, score);
+            ERROR_PRINT("score error: %" PRId64, score);
             return;
         }
         score = rc.zscore(key, "f 1");
         if (score != 3+7)
         {
-            ERROR_PRINT("score error: %"PRId64, score);
+            ERROR_PRINT("score error: %" PRId64, score);
             return;
         }
 
@@ -1205,11 +1206,16 @@ void test_zrange(const std::string& redis_cluster_nodes)
     try
     {
         int count = -1;
+        int64_t ret = 0;
         std::vector<std::pair<std::string, int64_t> > values;
         r3c::CRedisClient rc(redis_cluster_nodes);
         const std::string key = "r3c_kk";
 
         rc.del(key);
+        ret = rc.zcard(key);
+        if (ret != 0)
+            ERROR_PRINT("zcard error: %" PRId64, ret);
+
         count = rc.zrange(key, 0, 100, false, &values);
         if (count != 0)
             ERROR_PRINT("zrange error: %d/%zd", count, values.size());
@@ -1225,6 +1231,10 @@ void test_zrange(const std::string& redis_cluster_nodes)
         rc.zadd(key, "f5", 7);
         rc.zadd(key, "f6", 4);
         rc.zadd(key, "f7", 5);
+
+        ret = rc.zcard(key);
+        if (ret != 7)
+            ERROR_PRINT("zcard error: %" PRId64, ret);
 
         // without score
         count = rc.zrange(key, 0, 4, false, &values);
@@ -1313,7 +1323,7 @@ void test_zrevrange(const std::string& redis_cluster_nodes)
             ((values[2].first != "f3") && (values[2].first != "f7")) || (values[2].second != 0) ||
             ((values[3].first != "f7") && (values[3].first != "f3")) || (values[3].second != 0) ||
             (values[4].first != "f6") || (values[4].second != 0))
-            ERROR_PRINT("zrevrange error: %s/%"PRId64",%s/%"PRId64",%s/%"PRId64",%s/%"PRId64",%s/%"PRId64,
+            ERROR_PRINT("zrevrange error: %s/%" PRId64",%s/%" PRId64",%s/%" PRId64",%s/%" PRId64",%s/%" PRId64,
                     values[0].first.c_str(), values[0].second,
                     values[1].first.c_str(), values[1].second,
                     values[2].first.c_str(), values[2].second,
@@ -1330,7 +1340,7 @@ void test_zrevrange(const std::string& redis_cluster_nodes)
             ((values[2].first != "f3") && (values[2].first != "f7")) || (values[2].second != 5) ||
             ((values[3].first != "f7") && (values[3].first != "f3")) || (values[3].second != 5) ||
             (values[4].first != "f6") || (values[4].second != 4))
-            ERROR_PRINT("zrevrange error: %s/%"PRId64",%s/%"PRId64",%s/%"PRId64",%s/%"PRId64",%s/%"PRId64,
+            ERROR_PRINT("zrevrange error: %s/%" PRId64",%s/%" PRId64",%s/%" PRId64",%s/%" PRId64",%s/%" PRId64,
                     values[0].first.c_str(), values[0].second,
                     values[1].first.c_str(), values[1].second,
                     values[2].first.c_str(), values[2].second,
@@ -1344,7 +1354,7 @@ void test_zrevrange(const std::string& redis_cluster_nodes)
             ERROR_PRINT("zrevrangebyscore error: %d/%zd", count, values.size());
         if ((values[0].first != "f6") || (values[0].second != 0) ||
             (values[1].first != "f1") || (values[1].second != 0))
-            ERROR_PRINT("zrevrangebyscore error: %s/%"PRId64, values[0].first.c_str(), values[0].second);
+            ERROR_PRINT("zrevrangebyscore error: %s/%" PRId64, values[0].first.c_str(), values[0].second);
 
         // with score
         values.clear();
@@ -1353,7 +1363,7 @@ void test_zrevrange(const std::string& redis_cluster_nodes)
             ERROR_PRINT("zrevrangebyscore error: %d/%zd", count, values.size());
         if ((values[0].first != "f6") || (values[0].second != 4) ||
             (values[1].first != "f1") || (values[1].second != 2))
-            ERROR_PRINT("zrevrangebyscore error: %s/%"PRId64",%s/%"PRId64, values[0].first.c_str(), values[0].second, values[1].first.c_str(), values[1].second);
+            ERROR_PRINT("zrevrangebyscore error: %s/%" PRId64",%s/%" PRId64, values[0].first.c_str(), values[0].second, values[1].first.c_str(), values[1].second);
 
         rc.del(key);
         SUCCESS_PRINT("%s", "OK");

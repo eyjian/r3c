@@ -283,7 +283,8 @@ public:
     // sort set
     int zadd(const std::string& key, const std::string& field, int64_t score, ZADDFLAG flag=Z_NS, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     int zadd(const std::string& key, const std::map<std::string, int64_t>& map, ZADDFLAG flag=Z_NS, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int zcount(const std::string& key, int64_t min, int64_t max , std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    int64_t zcard(const std::string& key, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    int64_t zcount(const std::string& key, int64_t min, int64_t max , std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     int64_t zincrby(const std::string& key, const std::string& field, int64_t increment, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
 
     // Both start and stop are zero-based indexes, where 0 is the first element, 1 is the next element and so on.

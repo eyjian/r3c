@@ -1246,7 +1246,14 @@ int CRedisClient::zadd(const std::string& key, const std::map<std::string, int64
     return static_cast<int>(result);
 }
 
-int CRedisClient::zcount(const std::string& key, int64_t min, int64_t max , std::pair<std::string, uint16_t>* which) throw (CRedisException)
+int64_t CRedisClient::zcard(const std::string& key, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    struct ParamInfo param_info("ZCARD", sizeof("ZCARD")-1, &key, which);
+    int64_t result = redis_command(REDIS_REPLY_INTEGER, &param_info);
+    return result;
+}
+
+int64_t CRedisClient::zcount(const std::string& key, int64_t min, int64_t max , std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     const std::string str6 = any2string(min);
     const std::string str7 = any2string(max);
@@ -1255,8 +1262,9 @@ int CRedisClient::zcount(const std::string& key, int64_t min, int64_t max , std:
     param_info.str6 = &str6;
     param_info.str7 = &str7;
     int64_t result = redis_command(REDIS_REPLY_INTEGER, &param_info);
-    return static_cast<int>(result);
+    return result;
 }
+
 
 int64_t CRedisClient::zincrby(const std::string& key, const std::string& field, int64_t increment, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {

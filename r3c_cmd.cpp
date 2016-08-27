@@ -73,7 +73,7 @@ int main(int argc, char* argv[])
         int count = 0;
         int end = 0;
         int start = 0;
-        //int64_t ret64 = 0;
+        int64_t ret64 = 0;
         int64_t cursor = 0;
         int64_t min;
         int64_t max;
@@ -268,7 +268,7 @@ int main(int argc, char* argv[])
 
             increment = atoll(argv[3]);
             new_value_int64 = redis_client.incrby(key, increment, &which_node);
-            fprintf(stdout, "%"PRId64"\n", new_value_int64);
+            fprintf(stdout, "%" PRId64"\n", new_value_int64);
         }
         else if (0 == strcasecmp(cmd, "scan"))
         {
@@ -300,7 +300,7 @@ int main(int argc, char* argv[])
                 cursor = redis_client.scan(cursor, argv[2], atoi(argv[3]), &values, &which_node);
             }
 
-            fprintf(stdout, "cursor: %"PRId64", count: %d\n", cursor, static_cast<int>(values.size()));
+            fprintf(stdout, "cursor: %" PRId64", count: %d\n", cursor, static_cast<int>(values.size()));
             for (i=0; i<static_cast<int>(values.size()); ++i)
                 fprintf(stdout, "%s\n", values[i].c_str());
         }
@@ -316,7 +316,7 @@ int main(int argc, char* argv[])
             }
 
             result_int64 = redis_client.llen(key, &which_node);
-            fprintf(stdout, "[%s] => %"PRId64"\n", key, result_int64);
+            fprintf(stdout, "[%s] => %" PRId64"\n", key, result_int64);
         }
         else if (0 == strcasecmp(cmd, "lpop"))
         {
@@ -479,7 +479,7 @@ int main(int argc, char* argv[])
             }
 
             new_value_int64 = redis_client.hlen(key, &which_node);
-            fprintf(stdout, "[%s] fields count: %"PRId64"\n", key, new_value_int64);
+            fprintf(stdout, "[%s] fields count: %" PRId64"\n", key, new_value_int64);
         }
         else if (0 == strcasecmp(cmd, "hset"))
         {
@@ -535,7 +535,7 @@ int main(int argc, char* argv[])
 
             increment = atoll(argv[4]);
             new_value_int64 = redis_client.hincrby(key, argv[3], increment, &which_node);
-            fprintf(stdout, "%"PRId64"\n", new_value_int64);
+            fprintf(stdout, "%" PRId64"\n", new_value_int64);
         }
         else if (0 == strcasecmp(cmd, "hmset"))
         {
@@ -653,7 +653,7 @@ int main(int argc, char* argv[])
                     cursor = redis_client.hscan(key, atoll(argv[3]), argv[4], &map, &which_node);
             }
 
-            fprintf(stdout, "cursor: %"PRId64", count: %d\n", cursor, static_cast<int>(map.size()));
+            fprintf(stdout, "cursor: %" PRId64", count: %d\n", cursor, static_cast<int>(map.size()));
             for (iter=map.begin(); iter!=map.end(); ++iter)
                 fprintf(stdout, "%s => %s\n", iter->first.c_str(), iter->second.c_str());
         }
@@ -810,7 +810,7 @@ int main(int argc, char* argv[])
                 cursor = redis_client.sscan(key, cursor, argv[3], atoi(argv[4]), &values, &which_node);
             }
 
-            fprintf(stdout, "cursor: %"PRId64", count: %d\n", cursor, static_cast<int>(values.size()));
+            fprintf(stdout, "cursor: %" PRId64", count: %d\n", cursor, static_cast<int>(values.size()));
             for (i=0; i<static_cast<int>(values.size()); ++i)
                 fprintf(stdout, "%s\n", values[i].c_str());
         }
@@ -839,6 +839,18 @@ int main(int argc, char* argv[])
                 fprintf(stdout, "%d\n", count);
             }
         }
+        else if (0 == strcasecmp(cmd, "zcard"))
+        {
+            // ZCARD command
+            if (argc != 3)
+            {
+                fprintf(stderr, "Usage: r3c_cmd zcard key\n");
+                exit(1);
+            }
+
+            ret64 = redis_client.zcard(key, &which_node);
+            fprintf(stdout, "count: %" PRId64"\n", ret64);
+        }
         else if (0 == strcasecmp(cmd, "zcount"))
         {
             // ZCOUNT command
@@ -863,7 +875,7 @@ int main(int argc, char* argv[])
             }
 
             int64_t m = redis_client.zincrby(key, argv[4], atoll(argv[3]), &which_node);
-            fprintf(stdout, "%"PRId64"\n", m);
+            fprintf(stdout, "%" PRId64"\n", m);
         }
         else if (0 == strcasecmp(cmd, "zrange"))
         {
@@ -881,7 +893,7 @@ int main(int argc, char* argv[])
             ret = redis_client.zrange(key, start, end, true, &vec, &which_node);
             fprintf(stdout, "number: %d\n", ret);
             for (std::vector<std::pair<std::string, int64_t> >::iterator iter=vec.begin(); iter!=vec.end(); ++iter,++i)
-                fprintf(stdout, "[%d]%s => %"PRId64"\n", i, iter->first.c_str(), iter->second);
+                fprintf(stdout, "[%d]%s => %" PRId64"\n", i, iter->first.c_str(), iter->second);
         }
         else if (0 == strcasecmp(cmd, "zrevrange"))
         {
@@ -899,7 +911,7 @@ int main(int argc, char* argv[])
             ret = redis_client.zrevrange(key, start, end, true, &vec, &which_node);
             fprintf(stdout, "number: %d\n", ret);
             for (std::vector<std::pair<std::string, int64_t> >::iterator iter=vec.begin(); iter!=vec.end(); ++iter,++i)
-                fprintf(stdout, "[%d]%s => %"PRId64"\n", i, iter->first.c_str(), iter->second);
+                fprintf(stdout, "[%d]%s => %" PRId64"\n", i, iter->first.c_str(), iter->second);
         }
         else if (0 == strcasecmp(cmd, "zrangebyscore"))
         {
@@ -928,7 +940,7 @@ int main(int argc, char* argv[])
             }
             fprintf(stdout, "number: %d\n", ret);
             for (std::vector<std::pair<std::string, int64_t> >::iterator iter=vec.begin(); iter!=vec.end(); ++iter,++i)
-                fprintf(stdout, "[%d]%s => %"PRId64"\n", i, iter->first.c_str(), iter->second);
+                fprintf(stdout, "[%d]%s => %" PRId64"\n", i, iter->first.c_str(), iter->second);
         }
         else if (0 == strcasecmp(cmd, "zrevrangebyscore"))
         {
@@ -957,7 +969,7 @@ int main(int argc, char* argv[])
             }
             fprintf(stdout, "number: %d\n", ret);
             for (std::vector<std::pair<std::string, int64_t> >::iterator iter=vec.begin(); iter!=vec.end(); ++iter,++i)
-                fprintf(stdout, "[%d]%s => %"PRId64"\n", i, iter->first.c_str(), iter->second);
+                fprintf(stdout, "[%d]%s => %" PRId64"\n", i, iter->first.c_str(), iter->second);
         }
         else if (0 == strcasecmp(cmd, "zrank"))
         {
@@ -1025,9 +1037,9 @@ int main(int argc, char* argv[])
                 cursor = redis_client.zscan(key, cursor, argv[3], atoi(argv[4]), &values2, &which_node);
             }
 
-            fprintf(stdout, "cursor: %"PRId64", count: %d\n", cursor, static_cast<int>(values2.size()));
+            fprintf(stdout, "cursor: %" PRId64", count: %d\n", cursor, static_cast<int>(values2.size()));
             for (i=0; i<static_cast<int>(values2.size()); ++i)
-                fprintf(stdout, "%s => %"PRId64"\n", values2[i].first.c_str(), values2[i].second);
+                fprintf(stdout, "%s => %" PRId64"\n", values2[i].first.c_str(), values2[i].second);
         }
         else
         {
