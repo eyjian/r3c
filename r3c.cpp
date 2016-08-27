@@ -1016,7 +1016,7 @@ int CRedisClient::hvals(const std::string& key, std::vector<std::string>* vals, 
     return static_cast<int>(vals->size());
 }
 
-int CRedisClient::hscan(const std::string& key, int64_t cursor, std::map<std::string, std::string>* map, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+int64_t CRedisClient::hscan(const std::string& key, int64_t cursor, std::map<std::string, std::string>* map, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     const std::string str1 = any2string(cursor);
     struct ParamInfo param_info("HSCAN", sizeof("HSCAN")-1, &key, which);
@@ -1025,7 +1025,7 @@ int CRedisClient::hscan(const std::string& key, int64_t cursor, std::map<std::st
     return redis_command(REDIS_REPLY_ARRAY, &param_info);
 }
 
-int CRedisClient::hscan(const std::string& key, int64_t cursor, int count, std::map<std::string, std::string>* map, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+int64_t CRedisClient::hscan(const std::string& key, int64_t cursor, int count, std::map<std::string, std::string>* map, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     const std::string str1 = any2string(cursor);
     const std::string str2 = "COUNT";
@@ -1039,7 +1039,7 @@ int CRedisClient::hscan(const std::string& key, int64_t cursor, int count, std::
     return redis_command(REDIS_REPLY_ARRAY, &param_info);
 }
 
-int CRedisClient::hscan(const std::string& key, int64_t cursor, const std::string& pattern, std::map<std::string, std::string>* map, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+int64_t CRedisClient::hscan(const std::string& key, int64_t cursor, const std::string& pattern, std::map<std::string, std::string>* map, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     const std::string str1 = any2string(cursor);
     const std::string str2 = "MATCH";
@@ -1053,7 +1053,7 @@ int CRedisClient::hscan(const std::string& key, int64_t cursor, const std::strin
     return redis_command(REDIS_REPLY_ARRAY, &param_info);
 }
 
-int CRedisClient::hscan(const std::string& key, int64_t cursor, const std::string& pattern, int count, std::map<std::string, std::string>* map, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+int64_t CRedisClient::hscan(const std::string& key, int64_t cursor, const std::string& pattern, int count, std::map<std::string, std::string>* map, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     const std::string str1 = any2string(cursor);
     const std::string str2 = "MATCH";
@@ -1865,9 +1865,11 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
                     if ((2 == redis_reply->elements) && (REDIS_REPLY_ARRAY == redis_reply->element[1]->type))
                     {
                         // hscan
+                        //(gdb) p *redis_reply->element[0]
+                        //$47 = {type = 1, integer = 0, len = 1, str = 0x6585a0 "6", elements = 0, element = 0x0}
+                        result = static_cast<int64_t>(atoll(redis_reply->element[0]->str));
                         elements = redis_reply->element[1]->elements;
                         element = redis_reply->element[1]->element;
-                        result = redis_reply->element[1]->integer; // cursor
                     }
                     else
                     {
