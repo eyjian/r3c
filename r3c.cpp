@@ -1812,6 +1812,7 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
                     else
                     {
                         result = 0;
+                        (*g_debug_log)("[%s:%d] type=%d, command=%s\n", __FILE__, __LINE__, redis_reply->element[0]->type, param_info->command);
                     }
                 }
                 else
