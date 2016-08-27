@@ -1157,18 +1157,17 @@ int CRedisClient::srem(const std::string& key, const std::vector<std::string>& v
     return static_cast<int>(result);
 }
 
-int CRedisClient::sscan(const std::string& key, int64_t cursor, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+int64_t CRedisClient::sscan(const std::string& key, int64_t cursor, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     const std::string str1 = any2string(cursor);
     struct ParamInfo param_info("SSCAN", sizeof("SSCAN")-1, &key, which);
 
     param_info.str1 = &str1;
     param_info.values = values;
-    (void)redis_command(REDIS_REPLY_ARRAY, &param_info);
-    return static_cast<int>(values->size());
+    return redis_command(REDIS_REPLY_ARRAY, &param_info);
 }
 
-int CRedisClient::sscan(const std::string& key, int64_t cursor, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+int64_t CRedisClient::sscan(const std::string& key, int64_t cursor, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     const std::string str1 = any2string(cursor);
     const std::string str2 = "COUNT";
@@ -1179,11 +1178,10 @@ int CRedisClient::sscan(const std::string& key, int64_t cursor, int count, std::
     param_info.str2 = &str2;
     param_info.str3 = &str3;
     param_info.values = values;
-    (void)redis_command(REDIS_REPLY_ARRAY, &param_info);
-    return static_cast<int>(values->size());
+    return redis_command(REDIS_REPLY_ARRAY, &param_info);
 }
 
-int CRedisClient::sscan(const std::string& key, int64_t cursor, const std::string& pattern, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+int64_t CRedisClient::sscan(const std::string& key, int64_t cursor, const std::string& pattern, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     const std::string str1 = any2string(cursor);
     const std::string str2 = "MATCH";
@@ -1194,11 +1192,10 @@ int CRedisClient::sscan(const std::string& key, int64_t cursor, const std::strin
     param_info.str2 = &str2;
     param_info.str3 = &str3;
     param_info.values = values;
-    (void)redis_command(REDIS_REPLY_ARRAY, &param_info);
-    return static_cast<int>(values->size());
+    return redis_command(REDIS_REPLY_ARRAY, &param_info);
 }
 
-int CRedisClient::sscan(const std::string& key, int64_t cursor, const std::string& pattern, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+int64_t CRedisClient::sscan(const std::string& key, int64_t cursor, const std::string& pattern, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     const std::string str1 = any2string(cursor);
     const std::string str2 = "MATCH";
@@ -1213,8 +1210,7 @@ int CRedisClient::sscan(const std::string& key, int64_t cursor, const std::strin
     param_info.str4 = &str4;
     param_info.str5 = &str5;
     param_info.values = values;
-    (void)redis_command(REDIS_REPLY_ARRAY, &param_info);
-    return static_cast<int>(values->size());
+    return redis_command(REDIS_REPLY_ARRAY, &param_info);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
