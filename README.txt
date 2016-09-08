@@ -1,34 +1,34 @@
 Redis Cluster C++ Client, based on hiredis and support standalone, it's easy to make and use, not depends on C++11 or later.
 
-r3c»ùÓÚredis¹Ù·½µÄc¿âhiredisÊµÏÖ£¬È«³ÆÊÇredis cluster C++ client£¬Ö§³Öredis cluster¡£
+r3cåŸºäºrediså®˜æ–¹çš„cåº“hirediså®ç°ï¼Œå…¨ç§°æ˜¯redis cluster C++ clientï¼Œæ”¯æŒredis clusterã€‚
 
-±àÒëÁ´½Ór3cÊ±£¬Ä¬ÈÏÈÏÎªhiredisµÄ°²×°Ä¿Â¼Îª/usr/local/hiredis£¬
-µ«¿ÉÒÔÔÚÖ´ĞĞmakeÊ±Ö¸¶¨hiredis°²×°Ä¿Â¼£¬Èç¼ÙÉèhiredis°²×°Ä¿Â¼Îª/tmp/hiredis£ºmake HIREDIS=/tmp/hiredis£¬
-»òĞŞ¸ÄMakefileÖĞ±äÁ¿HIREDISµÄÖµÀ´Ö¸¶¨hiredisÊµÏÖµÄ°²×°Ä¿Â¼¡£
+ç¼–è¯‘é“¾æ¥r3cæ—¶ï¼Œé»˜è®¤è®¤ä¸ºhiredisçš„å®‰è£…ç›®å½•ä¸º/usr/local/hiredisï¼Œ
+ä½†å¯ä»¥åœ¨æ‰§è¡Œmakeæ—¶æŒ‡å®šhirediså®‰è£…ç›®å½•ï¼Œå¦‚å‡è®¾hirediså®‰è£…ç›®å½•ä¸º/tmp/hiredisï¼šmake HIREDIS=/tmp/hiredisï¼Œ
+æˆ–ä¿®æ”¹Makefileä¸­å˜é‡HIREDISçš„å€¼æ¥æŒ‡å®šhirediså®ç°çš„å®‰è£…ç›®å½•ã€‚
 
-±àÒër3c³É¹¦ºó£¬½«Éú³Élibr3c.a¾²Ì¬¿â£¬Ã»ÓĞ¹²Ïí¿â±»Éú³É¡£
-Ò²¿ÉÒÔÖ±½Ó½«r3c.hºÍr3c.cppÁ½¸öÎÄ¼ş¼ÓÈëµ½×Ô¼ºÏîÄ¿´úÂëÖĞÒ»Æğ±àÒë£¬¶ø²»¶ÀÁ¢±àÒër3c¡£
+ç¼–è¯‘r3cæˆåŠŸåï¼Œå°†ç”Ÿæˆlibr3c.aé™æ€åº“ï¼Œæ²¡æœ‰å…±äº«åº“è¢«ç”Ÿæˆã€‚
+ä¹Ÿå¯ä»¥ç›´æ¥å°†r3c.hå’Œr3c.cppä¸¤ä¸ªæ–‡ä»¶åŠ å…¥åˆ°è‡ªå·±é¡¹ç›®ä»£ç ä¸­ä¸€èµ·ç¼–è¯‘ï¼Œè€Œä¸ç‹¬ç«‹ç¼–è¯‘r3cã€‚
 
-r3c_cmd.cppÊÇr3cµÄ·Ç½»»¥Ê½ÃüÁîĞĞ¹¤¾ß£¨command line tool£©£¬¾ß±¸redis-cliµÄÒ»Ğ©¹¦ÄÜ£¬µ«ÓÃ·¨²»¾¡ÏàÍ¬£¬½«Öğ²½½«¸²¸Çredis-cliµÄËùÓĞ¹¦ÄÜ¡£
-r3c_test.cppÊÇr3cµÄµ¥Ôª²âÊÔ³ÌĞò£¨unit test£©£¬Ö´ĞĞmake test¼´¿É¡£
+r3c_cmd.cppæ˜¯r3cçš„éäº¤äº’å¼å‘½ä»¤è¡Œå·¥å…·ï¼ˆcommand line toolï¼‰ï¼Œå…·å¤‡redis-cliçš„ä¸€äº›åŠŸèƒ½ï¼Œä½†ç”¨æ³•ä¸å°½ç›¸åŒï¼Œå°†é€æ­¥å°†è¦†ç›–redis-cliçš„æ‰€æœ‰åŠŸèƒ½ã€‚
+r3c_test.cppæ˜¯r3cçš„å•å…ƒæµ‹è¯•ç¨‹åºï¼ˆunit testï¼‰ï¼Œæ‰§è¡Œmake testå³å¯ã€‚
 
-±àÒër3c£¨Compile r3c£©£º
+ç¼–è¯‘r3cï¼ˆCompile r3cï¼‰ï¼š
 make
-»ò£¨or£©
+æˆ–ï¼ˆorï¼‰
 make HIREDIS=/tmp/hiredis
 
-°²×°£¨PREFIXÖ¸¶¨°²×°Ä¿Â¼£¬Èç¹û²»Ö¸¶¨ÔòÎª/usr/local£©£º
+å®‰è£…ï¼ˆPREFIXæŒ‡å®šå®‰è£…ç›®å½•ï¼Œå¦‚æœä¸æŒ‡å®šåˆ™ä¸º/usr/localï¼‰ï¼š
 make install
-»ò£¨or£©
+æˆ–ï¼ˆorï¼‰
 make install PREFIX=/usr/local/r3c
 
-Ö´ĞĞµ¥Ôª²âÊÔ£º
+æ‰§è¡Œå•å…ƒæµ‹è¯•ï¼š
 make test
-»ò£¨or£©
+æˆ–ï¼ˆorï¼‰
 make test REDIS_CLUSTER_NODES=192.168.31.11:6379,192.168.31.11:6380
 
-Éú³ÉÔ´´úÂë¼äµÄÒÀÀµ£º
+ç”Ÿæˆæºä»£ç é—´çš„ä¾èµ–ï¼š
 make dep
 
-¹ØÓÚ½Ó¿Ú£º
-Èç¹û´«¸øCRedisClientµÄnodes²ÎÊıÎªµ¥¸ö½Úµã×Ö·û´®£¬Èç192.168.0.1:6379ÔòÎªµ¥»úÄ£Ê½£¬Îª¶à½Úµã×Ö·û´®Ê±ÔòÎªRedis ClusterÄ£Ê½¡£
+å…³äºæ¥å£ï¼š
+å¦‚æœä¼ ç»™CRedisClientçš„nodeså‚æ•°ä¸ºå•ä¸ªèŠ‚ç‚¹å­—ç¬¦ä¸²ï¼Œå¦‚192.168.0.1:6379åˆ™ä¸ºå•æœºæ¨¡å¼ï¼Œä¸ºå¤šèŠ‚ç‚¹å­—ç¬¦ä¸²æ—¶åˆ™ä¸ºRedis Clusteræ¨¡å¼ã€‚
