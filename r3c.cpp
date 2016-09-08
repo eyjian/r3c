@@ -1215,6 +1215,20 @@ int64_t CRedisClient::sscan(const std::string& key, int64_t cursor, const std::s
 
 ////////////////////////////////////////////////////////////////////////////////
 // SORTED SET
+int CRedisClient::zrem(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    struct ParamInfo param_info("ZREM", sizeof("ZREM")-1, &key, which);
+    param_info.str1 = &field;
+    return static_cast<int>(redis_command(REDIS_REPLY_INTEGER, &param_info));
+}
+
+int CRedisClient::zrem(const std::string& key, const std::vector<std::string>& fields, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    struct ParamInfo param_info("ZREM", sizeof("ZREM")-1, &key, which);
+    param_info.array = &fields;
+    return static_cast<int>(redis_command(REDIS_REPLY_INTEGER, &param_info));
+}
+
 int CRedisClient::zadd(const std::string& key, const std::string& field, int64_t score, ZADDFLAG flag, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     std::map<std::string, int64_t> map;

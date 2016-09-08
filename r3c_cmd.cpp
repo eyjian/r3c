@@ -816,6 +816,20 @@ int main(int argc, char* argv[])
         }
         ////////////////////////////////////////////////////////////////////////////
         // SORTED SET
+        else if (0 == strcasecmp(cmd, "zrem"))
+        {
+            // ZREM command
+            if (argc < 4)
+            {
+                fprintf(stderr, "Usage: r3c_cmd zrem key field1 score2 field2 ...\n");
+                exit(1);
+            }
+
+            for (i=3; i<argc; ++i)
+                fields.push_back(argv[i]);
+            count = redis_client.zrem(key, fields, &which_node);
+            fprintf(stdout, "%d\n", count);
+        }
         else if (0 == strcasecmp(cmd, "zadd"))
         {
             // ZADD command

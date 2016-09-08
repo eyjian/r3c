@@ -80,6 +80,7 @@ static void test_set(const std::string& redis_cluster_nodes);
 static void test_sorted_set(const std::string& redis_cluster_nodes);
 static void test_zrange(const std::string& redis_cluster_nodes);
 static void test_zrevrange(const std::string& redis_cluster_nodes);
+static void test_zrem(const std::string& redis_cluster_nodes);
 
 static void my_log_write(const char* format, ...)
 {
@@ -141,6 +142,7 @@ int main(int argc, char* argv[])
     test_sorted_set(redis_cluster_nodes);
     test_zrange(redis_cluster_nodes);
     test_zrevrange(redis_cluster_nodes);
+    test_zrem(redis_cluster_nodes);
 
     ////////////////////////////////////////////////////////////////////////////
     // MISC
@@ -1366,6 +1368,47 @@ void test_zrevrange(const std::string& redis_cluster_nodes)
             ERROR_PRINT("zrevrangebyscore error: %s/%" PRId64",%s/%" PRId64, values[0].first.c_str(), values[0].second, values[1].first.c_str(), values[1].second);
 
         rc.del(key);
+        SUCCESS_PRINT("%s", "OK");
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        ERROR_PRINT("ERROR: %s", ex.str().c_str());
+    }
+}
+
+void test_zrem(const std::string& redis_cluster_nodes)
+{
+    TIPS_PRINT();
+
+    try
+    {
+        int count = -1;
+        r3c::CRedisClient rc(redis_cluster_nodes);
+        const std::string key = "r3c_kk";
+        rc.del(key);
+
+        std::map<std::string, int64_t> map;
+        map["a"] = 1;
+        map["b"] = 2;
+        map["c"] = 3;
+        map["d"] = 4;
+        map["e"] = 5;
+        count = rc.zadd(key, map);
+        if (count != 5)
+            ERROR_PRINT("zadd error: %d", count);
+
+        count = rc.zrem(key, "c");
+        if (count != 1)
+            ERROR_PRINT("zrem error: %d", count);
+
+        std::vector<std::string> fields;
+        fields.push_back("x");
+        fields.push_back("a");
+        fields.push_back("e");
+        count = rc.zrem(key, fields);
+        if (count != 2)
+            ERROR_PRINT("zrem error: %d", count);
+
         SUCCESS_PRINT("%s", "OK");
     }
     catch (r3c::CRedisException& ex)
