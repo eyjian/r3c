@@ -880,7 +880,7 @@ bool CRedisClient::rpop(const std::string& key, std::string* value, std::pair<st
 int CRedisClient::rpush(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     std::vector<std::string> values(1, value);
-    return rpush(key, value, which);
+    return rpush(key, values, which);
 }
 
 int CRedisClient::rpush(const std::string& key, const std::vector<std::string>& values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
