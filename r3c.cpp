@@ -728,10 +728,10 @@ bool CRedisClient::setnx(const std::string& key, const std::string& value, std::
 
 void CRedisClient::setex(const std::string& key, const std::string& value, uint32_t seconds, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-    const std::string str6 = any2string(seconds);
+    const std::string str1 = any2string(seconds);
     struct ParamInfo param_info("SETEX", sizeof("SETEX")-1, &key, which);
-    param_info.str1 = &value;
-    param_info.str6 = &str6;
+    param_info.str1 = &str1;
+    param_info.str2 = &value;
     (void)redis_command(REDIS_REPLY_STATUS, &param_info);
 }
 
