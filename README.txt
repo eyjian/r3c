@@ -32,3 +32,28 @@ make dep
 
 关于接口：
 如果传给CRedisClient的nodes参数为单个节点字符串，如192.168.0.1:6379则为单机模式，为多节点字符串时则为Redis Cluster模式。
+
+性能测试工具：
+https://github.com/eyjian/mooon/blob/master/mooon/tools/r3c_stress.cpp
+
+单机性能数据：
+r3c_stress --redis=192.168.0.88:6379 --requests=100000 --threads=20 
+set:
+microseconds=18867143, milliseconds=18867, seconds=18
+total: 2000000, success: 2000000, failure: 0
+qps: 111111
+
+get:
+microseconds=16063882, milliseconds=16063, seconds=16
+total: 2000000, success: 2000000, failure: 0, not exists: 0
+qps: 125000
+
+hset:
+microseconds=16134011, milliseconds=16134, seconds=16
+total: 1999992, success: 1999992, failure: 0
+qps: 124999
+
+hget:
+microseconds=15249201, milliseconds=15249, seconds=15
+total: 2000000, success: 2000000, failure: 0, not exists: 0
+qps: 133333
