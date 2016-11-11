@@ -1011,6 +1011,18 @@ bool CRedisClient::hset(const std::string& key, const std::string& field, const 
     return result > 0;
 }
 
+bool CRedisClient::hsetex(const std::string& key, const std::string& field, const std::string& value, uint32_t timeout_seconds, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    const std::string lua_scripts = format_string("local n; n=redis.call('hset','%s','%s','%s'); redis.call('expire', '%s', '%u'); return n;", key.c_str(), field.c_str(), value.c_str(), key.c_str(), timeout_seconds);
+    const redisReply* redis_reply = eval(key, lua_scripts, which);
+
+    if (redis_reply->type != REDIS_REPLY_INTEGER)
+    {
+        THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(redis_reply->type, redis_reply->str, which->first, which->second, "INCRBY", NULL);
+    }
+    return redis_reply->integer > 0;
+}
+
 bool CRedisClient::hsetnx(const std::string& key, const std::string& field, const std::string& value, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     struct ParamInfo param_info("HSETNX", sizeof("HSETNX")-1, &key, which);
@@ -1018,6 +1030,18 @@ bool CRedisClient::hsetnx(const std::string& key, const std::string& field, cons
     param_info.str2 = &value;
     int64_t result = redis_command(REDIS_REPLY_INTEGER, &param_info);
     return result > 0;
+}
+
+bool CRedisClient::hsetnxex(const std::string& key, const std::string& field, const std::string& value, uint32_t timeout_seconds, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    const std::string lua_scripts = format_string("local n; n=redis.call('hsetnx','%s','%s','%s'); redis.call('expire', '%s', '%u'); return n;", key.c_str(), field.c_str(), value.c_str(), key.c_str(), timeout_seconds);
+    const redisReply* redis_reply = eval(key, lua_scripts, which);
+
+    if (redis_reply->type != REDIS_REPLY_INTEGER)
+    {
+        THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(redis_reply->type, redis_reply->str, which->first, which->second, "INCRBY", NULL);
+    }
+    return redis_reply->integer > 0;
 }
 
 bool CRedisClient::hget(const std::string& key, const std::string& field, std::string* value, std::pair<std::string, uint16_t>* which) throw (CRedisException)

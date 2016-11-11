@@ -516,6 +516,18 @@ int main(int argc, char* argv[])
 
             redis_client.hset(key, argv[3], argv[4], &which_node);
         }
+        else if (0 == strcasecmp(cmd, "hsetex"))
+        {
+            // HSET command
+            if (argc != 6)
+            {
+                fprintf(stderr, "Usage: r3c_cmd hsetex key field value timeout_seconds\n");
+                exit(1);
+            }
+
+            seconds = static_cast<uint32_t>(atoll(argv[5]));
+            redis_client.hsetex(key, argv[3], argv[4], seconds, &which_node);
+        }
         else if (0 == strcasecmp(cmd, "hsetnx"))
         {
             // HSETNX command
@@ -526,6 +538,21 @@ int main(int argc, char* argv[])
             }
 
             if (redis_client.hsetnx(key, argv[3], argv[4], &which_node))
+                fprintf(stdout, "[%s:%s] ok\n", key, argv[3]);
+            else
+                fprintf(stderr, "[%s:%s] exists\n", key, argv[3]);
+        }
+        else if (0 == strcasecmp(cmd, "hsetnxex"))
+        {
+            // HSETNX command
+            if (argc != 6)
+            {
+                fprintf(stderr, "Usage: r3c_cmd hsetnxex key field value timeout_seconds\n");
+                exit(1);
+            }
+
+            seconds = static_cast<uint32_t>(atoll(argv[5]));
+            if (redis_client.hsetnxex(key, argv[3], argv[4], seconds, &which_node))
                 fprintf(stdout, "[%s:%s] ok\n", key, argv[3]);
             else
                 fprintf(stderr, "[%s:%s] exists\n", key, argv[3]);
