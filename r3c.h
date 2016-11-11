@@ -59,6 +59,8 @@
 #define PRINT_COLOR_LIGHT_CYAN   "\033[1;36m"
 #define PRINT_COLOR_LIGHT_PURPLE "\033[1;35m"
 #define PRINT_COLOR_LIGHT_GRAY   "\033[0;37m"
+
+std::ostream& operator <<(std::ostream& os, const struct redisReply& redis_reply);
 namespace r3c {
 
 enum ZADDFLAG
@@ -216,6 +218,9 @@ public:
     bool key_type(const std::string& key, std::string* key_type, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     bool exists(const std::string& key, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     bool expire(const std::string& key, uint32_t seconds, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+
+    // Evaluate scripts using the Lua interpreter built
+    const redisReply* eval(const std::string& key, const std::string& lua_scripts, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
 
     // Success returns the remaining time to live of a key that has a timeout
     // Returns -2 if the key does not exist

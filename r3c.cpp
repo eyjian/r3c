@@ -54,6 +54,44 @@
 #define THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(errcode, errmsg, node_ip, node_port, command, key) throw CRedisException(errcode, errmsg, __FILE__, __LINE__, node_ip, node_port, command, key)
 
 ////////////////////////////////////////////////////////////////////////////////
+std::ostream& operator <<(std::ostream& os, const struct redisReply& redis_reply)
+{
+    if (REDIS_REPLY_STRING == redis_reply.type)
+    {
+        os << "type: string" << std::endl
+           << redis_reply.str << std::endl;
+    }
+    else if (REDIS_REPLY_ARRAY == redis_reply.type)
+    {
+        os << "type: array" << std::endl;
+    }
+    else if (REDIS_REPLY_INTEGER == redis_reply.type)
+    {
+        os << "type: integer" << std::endl
+           << redis_reply.integer << std::endl;
+    }
+    else if (REDIS_REPLY_NIL == redis_reply.type)
+    {
+        os << "type: nil" << std::endl;
+    }
+    else if (REDIS_REPLY_STATUS == redis_reply.type)
+    {
+        os << "type: status" << std::endl
+           << redis_reply.integer << std::endl;
+    }
+    else if (REDIS_REPLY_ERROR == redis_reply.type)
+    {
+        os << "type: error" << std::endl
+           << redis_reply.str << std::endl;
+    }
+    else
+    {
+        os << "type: unknown" << std::endl;
+    }
+
+    return os;
+}
+
 namespace r3c {
 
 enum
@@ -703,6 +741,28 @@ bool CRedisClient::expire(const std::string& key, uint32_t seconds, std::pair<st
 
     int64_t result = redis_command(REDIS_REPLY_INTEGER, &param_info);
     return result > 0;
+}
+
+const redisReply* CRedisClient::eval(const std::string& key, const std::string& lua_scripts, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    const int excepted_reply_type = -1;
+    const int argc = 3;
+    size_t* argv_len = new size_t[argc];
+    char** argv = new char*[argc];
+
+    argv_len[0] = sizeof("EVAL")-1;
+    argv_len[1] = lua_scripts.size();
+    argv_len[2] = 1;
+    argv[0] = new char[argv_len[0]+1];
+    argv[1] = new char[argv_len[1]+1];
+    argv[2] = new char[argv_len[2]+1];
+    strncpy(argv[0], "EVAL", sizeof("EVAL"));
+    strncpy(argv[1], lua_scripts.c_str(), lua_scripts.size()+1);
+    strncpy(argv[2], "0", 2);
+    FreeArgvHelper fah(argc, argv, argv_len);
+
+    const std::string command_string;
+    return redis_command(excepted_reply_type, which, &key, "EVAL", command_string, argc, (const char**)argv, argv_len);
 }
 
 int CRedisClient::ttl(const std::string& key, std::pair<std::string, uint16_t>* which) throw (CRedisException)

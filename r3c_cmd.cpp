@@ -29,6 +29,7 @@
  */
 #include "r3c.h"
 #include <inttypes.h>
+#include <iostream>
 #include <stdlib.h>
 #include <strings.h>
 
@@ -181,6 +182,20 @@ int main(int argc, char* argv[])
                 fprintf(stdout, "[%s] exist\n", key);
             else
                 fprintf(stderr, "[%s] not exist\n", key);
+        }
+        else if (0 == strcasecmp(cmd, "eval"))
+        {
+            // EVAL command
+            if (argc != 4)
+            {
+                fprintf(stderr, "Usage: r3c_cmd eval key lua_scripts\n");
+                exit(1);
+            }
+
+            const char* lua_scripts = argv[3];
+            const redisReply* reply = redis_client.eval(key, lua_scripts, &which_node);
+            if (reply != NULL)
+                std::cout << *reply;
         }
         else if (0 == strcasecmp(cmd, "ttl"))
         {
