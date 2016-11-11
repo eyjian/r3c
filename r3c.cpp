@@ -1573,6 +1573,10 @@ const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair
             {
                 break;
             }
+            else if ((redis_reply->type != REDIS_REPLY_ERROR) && (-1 == excepted_reply_type))
+            {
+                break; // To support eval etc., a special type, can not decide type statically.
+            }
             else if (redis_reply->type != excepted_reply_type)
             {
                 //#define REDIS_REPLY_ERROR 6
