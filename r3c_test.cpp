@@ -52,6 +52,9 @@ static void success_print(const char* file, int line, const char* function, cons
 // MISC
 static void test_slots(const std::string& redis_cluster_nodes);
 
+// EVAL
+static void test_eval(const std::string& redis_cluster_nodes);
+
 ////////////////////////////////////////////////////////////////////////////
 // KEY VALUE
 static void test_expire(const std::string& redis_cluster_nodes);
@@ -113,6 +116,10 @@ int main(int argc, char* argv[])
 
     r3c::set_info_log_write(my_log_write);
     r3c::set_debug_log_write(my_log_write);
+
+    ////////////////////////////////////////////////////////////////////////////
+    // EVAL
+    test_eval(redis_cluster_nodes);
 
     ////////////////////////////////////////////////////////////////////////////
     // KEY VALUE
@@ -240,6 +247,66 @@ void test_slots(const std::string& redis_cluster_nodes)
     }
 
     SUCCESS_PRINT("%s", "OK");
+}
+
+////////////////////////////////////////////////////////////////////////////
+// EVAL
+void test_eval(const std::string& redis_cluster_nodes)
+{
+    TIPS_PRINT();
+
+    try
+    {
+        r3c::CRedisClient rc(redis_cluster_nodes);
+        const uint32_t timeout_seconds = 3;
+        const std::string key = "eval_key";
+        const std::string lua_scripts = r3c::format_string("local n; n=redis.call('incrby','%s','2016');redis.call('expire','%s','%u'); return n;", key.c_str(), key.c_str(), timeout_seconds);
+        rc.del(key);
+        const redisReply* redis_reply = rc.eval(key, lua_scripts);
+        if (NULL == redis_reply)
+        {
+            ERROR_PRINT("%s", "EVAL ERROR");
+            return;
+        }
+
+        if (redis_reply->type != REDIS_REPLY_INTEGER)
+        {
+            ERROR_PRINT("%s", "EVAL RUN ERROR");
+            return;
+        }
+        if (redis_reply->integer != 2016)
+        {
+            ERROR_PRINT("%s", "EVAL RESULT ERROR");
+            return;
+        }
+
+        sleep(1);
+        std::string value1;
+        if (!rc.get(key, &value1))
+        {
+            ERROR_PRINT("%s", "EVAL GET1 ERROR");
+            return;
+        }
+        if (value1 != "2016")
+        {
+            ERROR_PRINT("%s: %s", "EVAL ERROR VALUE: ", value1.c_str());
+            return;
+        }
+
+        sleep(timeout_seconds-1);
+        std::string value2;
+        if (rc.get(key, &value2))
+        {
+            ERROR_PRINT("%s", "EVAL GET2 ERROR");
+            return;
+        }
+
+        SUCCESS_PRINT("%s", "OK");
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        ERROR_PRINT("ERROR: %s", ex.str().c_str());
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////
