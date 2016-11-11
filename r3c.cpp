@@ -823,7 +823,7 @@ int64_t CRedisClient::incrby(const std::string& key, int64_t increment, uint32_t
     const redisReply* redis_reply = eval(key, lua_scripts, which);
     if (redis_reply->type != REDIS_REPLY_INTEGER)
     {
-        THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(redis_reply->type, redis_reply->str, which->first, which->second, "INCRBY", NULL);
+        THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(redis_reply->type, "unexpected type", which->first, which->second, "INCRBY", NULL);
     }
     return static_cast<int64_t>(redis_reply->integer);
 }
@@ -1018,7 +1018,7 @@ bool CRedisClient::hsetex(const std::string& key, const std::string& field, cons
 
     if (redis_reply->type != REDIS_REPLY_INTEGER)
     {
-        THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(redis_reply->type, redis_reply->str, which->first, which->second, "INCRBY", NULL);
+        THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(redis_reply->type, "unexpected type", which->first, which->second, "INCRBY", NULL);
     }
     return redis_reply->integer > 0;
 }
@@ -1039,7 +1039,7 @@ bool CRedisClient::hsetnxex(const std::string& key, const std::string& field, co
 
     if (redis_reply->type != REDIS_REPLY_INTEGER)
     {
-        THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(redis_reply->type, redis_reply->str, which->first, which->second, "INCRBY", NULL);
+        THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(redis_reply->type, "unexpected type", which->first, which->second, "INCRBY", NULL);
     }
     return redis_reply->integer > 0;
 }
@@ -1060,6 +1060,44 @@ int64_t CRedisClient::hincrby(const std::string& key, const std::string& field, 
     param_info.str1 = &field;
     param_info.str6 = &str6;
     return redis_command(REDIS_REPLY_INTEGER, &param_info);
+}
+
+void CRedisClient::hincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    int m = 0;
+    std::string lua_scripts;
+    for (std::vector<std::pair<std::string, int64_t> >::size_type i=0; i<increments.size(); ++i,++m)
+    {
+        const std::string& field = increments[i].first;
+        const int64_t increment = increments[i].second;
+        if (lua_scripts.empty())
+            lua_scripts = format_string("local r%d;r%d=redis.call('hincrby','%s','%s','%" PRId64"')", m, m, key.c_str(), field.c_str(), increment);
+        else
+            lua_scripts += format_string(";local r%d;r%d=redis.call('hincrby','%s','%s','%" PRId64"')", m, m, key.c_str(), field.c_str(), increment);
+    }
+
+    lua_scripts += std::string(";return {");
+    for (int n=0; n<m; ++n)
+    {
+        if (0 == n)
+            lua_scripts += format_string("r%d", n);
+        else
+            lua_scripts += format_string(",r%d", n);
+    }
+    lua_scripts += std::string("}");
+    (*g_debug_log)("[%s:%d]lua scripts: \n%s\n", __FILE__, __LINE__, lua_scripts.c_str());
+
+    const redisReply* redis_reply = eval(key, lua_scripts, which);
+    if (redis_reply->type != REDIS_REPLY_ARRAY)
+    {
+        THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(redis_reply->type, "unexpected type", which->first, which->second, "INCRBY", NULL);
+    }
+    else if (values != NULL)
+    {
+        values->resize(redis_reply->elements);
+        for (size_t i=0; i<redis_reply->elements; ++i)
+            (*values)[i] = static_cast<int64_t>(redis_reply->element[i]->integer);
+    }
 }
 
 void CRedisClient::hmset(const std::string& key, const std::map<std::string, std::string>& map, std::pair<std::string, uint16_t>* which) throw (CRedisException)

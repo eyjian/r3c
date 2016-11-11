@@ -68,7 +68,7 @@ int main(int argc, char* argv[])
             exit(1);
         }
 
-        int i = 0;
+        int i = 0, j=0;
         int ret = 0;
         int offset = 0;
         int count = 0;
@@ -578,15 +578,32 @@ int main(int argc, char* argv[])
         else if (0 == strcasecmp(cmd, "hincrby"))
         {
             // HINCRBY command
-            if (argc != 5)
+            if ((argc < 5) || (argc%2 != 1))
             {
-                fprintf(stderr, "Usage: r3c_cmd hincrby key field increment\n");
+                fprintf(stderr, "Usage: r3c_cmd hincrby key field1 increment1 field2 increment2 ...\n");
                 exit(1);
             }
 
-            increment = atoll(argv[4]);
-            new_value_int64 = redis_client.hincrby(key, argv[3], increment, &which_node);
-            fprintf(stdout, "%" PRId64"\n", new_value_int64);
+            if (5 == argc)
+            {
+                increment = atoll(argv[4]);
+                new_value_int64 = redis_client.hincrby(key, argv[3], increment, &which_node);
+                fprintf(stdout, "%" PRId64"\n", new_value_int64);
+            }
+            else
+            {
+                std::vector<std::pair<std::string, int64_t> > increments((argc-3)/2);
+                for (i=3,j=0; i<argc; i+=2,++j)
+                {
+                    increments[j].first = argv[i];
+                    increments[j].second = static_cast<int64_t>(atoll(argv[i+1]));
+                }
+
+                std::vector<int64_t> values;
+                redis_client.hincrby(key, increments, &values, &which_node);
+                for (std::vector<int64_t>::size_type k=0; k<values.size(); ++k)
+                    fprintf(stdout, "%" PRId64"\n", values[k]);
+            }
         }
         else if (0 == strcasecmp(cmd, "hmset"))
         {
