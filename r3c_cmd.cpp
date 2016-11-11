@@ -275,14 +275,23 @@ int main(int argc, char* argv[])
         else if (0 == strcasecmp(cmd, "incrby"))
         {
             // INCRBY command
-            if (argc != 4)
+            if ((argc != 4) && (argc != 5))
             {
-                fprintf(stderr, "Usage: r3c_cmd incrby key increment\n");
+                fprintf(stderr, "Usage1: r3c_cmd incrby key increment\n");
+                fprintf(stderr, "Usage2: r3c_cmd incrby key increment timeout_seconds\n");
                 exit(1);
             }
 
             increment = atoll(argv[3]);
-            new_value_int64 = redis_client.incrby(key, increment, &which_node);
+            if (4 == argc)
+            {
+                new_value_int64 = redis_client.incrby(key, increment, &which_node);
+            }
+            else
+            {
+                seconds = static_cast<uint32_t>(atoll(argv[4]));
+                new_value_int64 = redis_client.incrby(key, increment, seconds, &which_node);
+            }
             fprintf(stdout, "%" PRId64"\n", new_value_int64);
         }
         else if (0 == strcasecmp(cmd, "scan"))

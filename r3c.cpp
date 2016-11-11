@@ -817,6 +817,17 @@ int64_t CRedisClient::incrby(const std::string& key, int64_t increment, std::pai
     return redis_command(REDIS_REPLY_INTEGER, &param_info);
 }
 
+int64_t CRedisClient::incrby(const std::string& key, int64_t increment, uint32_t timeout_seconds, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    const std::string lua_scripts = format_string("local n; n=redis.call('incrby','%s','%" PRId64"'); redis.call('expire', '%s', '%u'); return n;", key.c_str(), increment, key.c_str(), timeout_seconds);
+    const redisReply* redis_reply = eval(key, lua_scripts, which);
+    if (redis_reply->type != REDIS_REPLY_INTEGER)
+    {
+        THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(redis_reply->type, redis_reply->str, which->first, which->second, "INCRBY", NULL);
+    }
+    return static_cast<int64_t>(redis_reply->integer);
+}
+
 int64_t CRedisClient::scan(int64_t cursor, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     const std::string str1 = any2string(cursor);
