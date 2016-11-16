@@ -293,7 +293,14 @@ public:
     bool get(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     bool del(const std::string& key, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     int64_t incrby(const std::string& key, int64_t increment, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int64_t incrby(const std::string& key, int64_t increment, uint32_t timeout_seconds, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+
+    // incrby and expire
+    // If incrby return value equal to expired_increment, then set expired seconds for key with the given seconds
+    // In general, expired_increment should be equal to increment.
+    //
+    // example (100 seconds):
+    // incrby(key, 10, 10, 100);
+    int64_t incrby(const std::string& key, int64_t increment, int64_t expired_increment, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
 
     // Return the cursor, not support cluster mode
     int64_t scan(int64_t cursor, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);

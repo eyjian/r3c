@@ -290,7 +290,7 @@ int main(int argc, char* argv[])
             else
             {
                 seconds = static_cast<uint32_t>(atoll(argv[4]));
-                new_value_int64 = redis_client.incrby(key, increment, seconds, &which_node);
+                new_value_int64 = redis_client.incrby(key, increment, increment, seconds, &which_node);
             }
             fprintf(stdout, "%" PRId64"\n", new_value_int64);
         }

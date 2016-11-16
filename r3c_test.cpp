@@ -61,6 +61,7 @@ static void test_eval(const std::string& redis_cluster_nodes);
 static void test_expire(const std::string& redis_cluster_nodes);
 static void test_get_and_set1(const std::string& redis_cluster_nodes);
 static void test_get_and_set2(const std::string& redis_cluster_nodes);
+static void test_incrby(const std::string& redis_cluster_nodes);
 
 ////////////////////////////////////////////////////////////////////////////
 // LIST
@@ -127,6 +128,7 @@ int main(int argc, char* argv[])
     test_expire(redis_cluster_nodes);
     test_get_and_set1(redis_cluster_nodes);
     test_get_and_set2(redis_cluster_nodes);
+    test_incrby(redis_cluster_nodes);
 
     ////////////////////////////////////////////////////////////////////////////
     // LIST
@@ -439,6 +441,56 @@ void test_get_and_set2(const std::string& redis_cluster_nodes)
     }
 }
 
+void test_incrby(const std::string& redis_cluster_nodes)
+{
+    TIPS_PRINT();
+
+    try
+    {
+        r3c::CRedisClient rc(redis_cluster_nodes);
+        const std::string key = "r3c kk";
+        std::string value;
+
+        rc.del(key);
+        int64_t n = rc.incrby(key, 2016);
+        if (n != 2016)
+        {
+            ERROR_PRINT("%s", "incrby ERROR1");
+            return;
+        }
+
+        sleep(2);
+        if (!rc.get(key, &value) && (value != "2016"))
+        {
+            ERROR_PRINT("%s", "incrby ERROR2");
+            return;
+        }
+
+        value.clear();
+        rc.del(key);
+        n = rc.incrby(key, 2016, 2016, 2);
+        if (n != 2016)
+        {
+            ERROR_PRINT("%s", "incrby ERROR3");
+            return;
+        }
+
+        sleep(2);
+        if (rc.get(key, &value))
+        {
+            ERROR_PRINT("%s", "incrby ERROR4");
+            rc.del(key);
+            return;
+        }
+
+        SUCCESS_PRINT("%s", "OK");
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        ERROR_PRINT("ERROR: %s", ex.str().c_str());
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////
 // LIST
 void test_list(const std::string& redis_cluster_nodes)
@@ -462,13 +514,13 @@ void test_list(const std::string& redis_cluster_nodes)
 
         if (rc.rpop(key, &value) || !value.empty())
         {
-            ERROR_PRINT("%s", "rpop ok");
+            ERROR_PRINT("%s", "rpop ERROR");
             return;
         }
 
         if (rc.lpop(key, &value) || !value.empty())
         {
-            ERROR_PRINT("%s", "lpop ok");
+            ERROR_PRINT("%s", "lpop ERROR");
             return;
         }
 
