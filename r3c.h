@@ -93,6 +93,7 @@ enum
 };
 
 void millisleep(uint32_t millisecond);
+void free_redis_reply(const redisReply* redis_reply);
 std::string format_string(const char* format, ...) __attribute__((format(printf, 1, 2)));
 std::string ip2string(uint32_t ip);
 int split(std::vector<std::string>* tokens, const std::string& source, const std::string& sep, bool skip_sep=false);
@@ -167,6 +168,65 @@ private:
 struct SlotInfo; // Forward declare
 struct ParamInfo;
 
+// Help to free redisReply automatically
+// DO NOT use RedisReplyHelper for nested redisReply
+class RedisReplyHelper
+{
+public:
+    RedisReplyHelper(const redisReply* redis_reply)
+        : _redis_reply(redis_reply)
+    {
+    }
+
+    RedisReplyHelper(const RedisReplyHelper& other)
+    {
+        _redis_reply = other.detach();
+    }
+
+    ~RedisReplyHelper()
+    {
+        if (_redis_reply != NULL)
+            free_redis_reply(const_cast<redisReply*>(_redis_reply));
+    }
+
+    operator bool() const
+    {
+        return _redis_reply != NULL;
+    }
+
+    const redisReply* get() const
+    {
+        return _redis_reply;
+    }
+
+    const redisReply* detach() const
+    {
+        const redisReply* redis_reply = _redis_reply;
+        _redis_reply = NULL;
+        return redis_reply;
+    }
+
+    RedisReplyHelper& operator =(const RedisReplyHelper& other)
+    {
+        _redis_reply = other.detach();
+        return *this;
+    }
+
+    const redisReply* operator ->() const
+    {
+        return _redis_reply;
+    }
+
+    std::ostream& operator <<(std::ostream& os)
+    {
+        os << _redis_reply;
+        return os;
+    }
+
+private:
+    mutable const redisReply* _redis_reply;
+};
+
 // NOTICE: not thread safe
 // A redis client than support redis cluster
 //
@@ -220,7 +280,8 @@ public:
     bool expire(const std::string& key, uint32_t seconds, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
 
     // Evaluate scripts using the Lua interpreter built
-    const redisReply* eval(const std::string& key, const std::string& lua_scripts, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    // NOTICE: Caller should be free `redisReply*`: free_redis_reply(redis_reply);
+    const RedisReplyHelper eval(const std::string& key, const std::string& lua_scripts, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
 
     // Success returns the remaining time to live of a key that has a timeout
     // Returns -2 if the key does not exist

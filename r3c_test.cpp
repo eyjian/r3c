@@ -263,8 +263,8 @@ void test_eval(const std::string& redis_cluster_nodes)
         const std::string key = "eval_key";
         const std::string lua_scripts = r3c::format_string("local n; n=redis.call('incrby','%s','2016');redis.call('expire','%s','%u'); return n;", key.c_str(), key.c_str(), timeout_seconds);
         rc.del(key);
-        const redisReply* redis_reply = rc.eval(key, lua_scripts);
-        if (NULL == redis_reply)
+        const r3c::RedisReplyHelper redis_reply = rc.eval(key, lua_scripts);
+        if (!redis_reply)
         {
             ERROR_PRINT("%s", "EVAL ERROR");
             return;
@@ -282,6 +282,7 @@ void test_eval(const std::string& redis_cluster_nodes)
         }
 
         sleep(1);
+
         std::string value1;
         if (!rc.get(key, &value1))
         {

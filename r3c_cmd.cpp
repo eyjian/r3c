@@ -193,9 +193,9 @@ int main(int argc, char* argv[])
             }
 
             const char* lua_scripts = argv[3];
-            const redisReply* reply = redis_client.eval(key, lua_scripts, &which_node);
-            if (reply != NULL)
-                std::cout << *reply;
+            const r3c::RedisReplyHelper reply = redis_client.eval(key, lua_scripts, &which_node);
+            if (reply)
+                std::cout << reply;
         }
         else if (0 == strcasecmp(cmd, "ttl"))
         {
