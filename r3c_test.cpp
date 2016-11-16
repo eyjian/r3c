@@ -303,6 +303,7 @@ void test_eval(const std::string& redis_cluster_nodes)
             return;
         }
 
+        rc.del(key);
         SUCCESS_PRINT("%s", "OK");
     }
     catch (r3c::CRedisException& ex)
