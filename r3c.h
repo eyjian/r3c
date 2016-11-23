@@ -280,7 +280,6 @@ public:
     bool expire(const std::string& key, uint32_t seconds, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
 
     // Evaluate scripts using the Lua interpreter built
-    // NOTICE: Caller should be free `redisReply*`: free_redis_reply(redis_reply);
     const RedisReplyHelper eval(const std::string& key, const std::string& lua_scripts, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
 
     // Success returns the remaining time to live of a key that has a timeout
