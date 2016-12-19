@@ -25,13 +25,13 @@ make install PREFIX=/usr/local/r3c
 执行单元测试：
 make test
 或（or）
-make test REDIS_CLUSTER_NODES=192.168.31.11:6379,192.168.31.11:6380
+make test REDIS_CLUSTER_NODES=192.168.1.31:6379,192.168.1.31:6380
 
 生成源代码间的依赖：
 make dep
 
 关于接口：
-如果传给CRedisClient的nodes参数为单个节点字符串，如192.168.0.1:6379则为单机模式，为多节点字符串时则为Redis Cluster模式。
+如果传给CRedisClient的nodes参数为单个节点字符串，如192.168.1.31:6379则为单机模式，为多节点字符串时则为Redis Cluster模式。
 
 性能测试工具：
 https://github.com/eyjian/mooon/blob/master/mooon/tools/r3c_stress.cpp

@@ -254,6 +254,21 @@ int main(int argc, char* argv[])
             redis_client.setex(key, argv[4], seconds, &which_node);
             fprintf(stdout, "[%s] ok\n", key);
         }
+        else if (0 == strcasecmp(cmd, "setnxex"))
+        {
+            // SETNXEX command
+            if (argc != 5)
+            {
+                fprintf(stderr, "Usage: r3c_cmd setnxex key seconds value\n");
+                exit(1);
+            }
+
+            seconds = atoi(argv[3]);
+            if (redis_client.setnxex(key, argv[4], seconds, &which_node))
+                fprintf(stdout, "[%s] ok\n", key);
+            else
+                fprintf(stdout, "[%s] exists\n", key);
+        }
         else if (0 == strcasecmp(cmd, "get"))
         {
             // GET command

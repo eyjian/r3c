@@ -62,6 +62,7 @@ static void test_expire(const std::string& redis_cluster_nodes);
 static void test_get_and_set1(const std::string& redis_cluster_nodes);
 static void test_get_and_set2(const std::string& redis_cluster_nodes);
 static void test_incrby(const std::string& redis_cluster_nodes);
+static void test_setnxex(const std::string& redis_cluster_nodes);
 
 ////////////////////////////////////////////////////////////////////////////
 // LIST
@@ -75,6 +76,7 @@ static void test_hmget_and_hmset1(const std::string& redis_cluster_nodes);
 static void test_hmget_and_hmset2(const std::string& redis_cluster_nodes);
 static void test_hscan(const std::string& redis_cluster_nodes);
 static void test_hincrby_and_hlen(const std::string& redis_cluster_nodes);
+static void test_hincrby(const std::string& redis_cluster_nodes);
 
 ////////////////////////////////////////////////////////////////////////////
 // SET
@@ -129,6 +131,7 @@ int main(int argc, char* argv[])
     test_get_and_set1(redis_cluster_nodes);
     test_get_and_set2(redis_cluster_nodes);
     test_incrby(redis_cluster_nodes);
+    test_setnxex(redis_cluster_nodes);
 
     ////////////////////////////////////////////////////////////////////////////
     // LIST
@@ -142,6 +145,7 @@ int main(int argc, char* argv[])
     test_hmget_and_hmset2(redis_cluster_nodes);
     test_hscan(redis_cluster_nodes);
     test_hincrby_and_hlen(redis_cluster_nodes);
+    test_hincrby(redis_cluster_nodes);
 
     ////////////////////////////////////////////////////////////////////////////
     // SET
@@ -297,7 +301,7 @@ void test_eval(const std::string& redis_cluster_nodes)
             return;
         }
 
-        sleep(timeout_seconds-1);
+        sleep(timeout_seconds);
         std::string value2;
         if (rc.get(key, &value2))
         {
@@ -448,6 +452,7 @@ void test_incrby(const std::string& redis_cluster_nodes)
     try
     {
         r3c::CRedisClient rc(redis_cluster_nodes);
+        const uint32_t expired_seconds = 2;
         const std::string key = "r3c kk";
         std::string value;
 
@@ -468,18 +473,63 @@ void test_incrby(const std::string& redis_cluster_nodes)
 
         value.clear();
         rc.del(key);
-        n = rc.incrby(key, 2016, 2016, 2);
+        n = rc.incrby(key, 2016, 2016, expired_seconds);
         if (n != 2016)
         {
             ERROR_PRINT("%s", "incrby ERROR3");
             return;
         }
 
-        sleep(2);
+        sleep(3);
+        value.clear();
         if (rc.get(key, &value))
         {
-            ERROR_PRINT("%s", "incrby ERROR4");
+            ERROR_PRINT("incrby ERROR4: %s", value.c_str());
             rc.del(key);
+            return;
+        }
+
+        SUCCESS_PRINT("%s", "OK");
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        ERROR_PRINT("ERROR: %s", ex.str().c_str());
+    }
+}
+
+void test_setnxex(const std::string& redis_cluster_nodes)
+{
+    TIPS_PRINT();
+
+    try
+    {
+        r3c::CRedisClient rc(redis_cluster_nodes);
+        const std::string key = "r3c kk";
+        std::string value;
+
+        rc.del(key);
+        if (!rc.setnxex(key, "v", 2))
+        {
+            ERROR_PRINT("%s", "setnxex ERROR1");
+            return;
+        }
+        if (!rc.get(key, &value))
+        {
+            ERROR_PRINT("%s", "setnxex ERROR2");
+            return;
+        }
+        if (value != "v")
+        {
+            ERROR_PRINT("%s", "setnxex ERROR3");
+            rc.del(key);
+            return;
+        }
+
+        sleep(3);
+        value.clear();
+        if (rc.get(key, &value))
+        {
+            ERROR_PRINT("setnxex ERROR4: %s", value.c_str());
             return;
         }
 
@@ -954,6 +1004,65 @@ void test_hincrby_and_hlen(const std::string& redis_cluster_nodes)
         if (count != 3)
         {
             ERROR_PRINT("hlen error: %d", count);
+            return;
+        }
+
+        rc.del(key);
+        SUCCESS_PRINT("%s", "OK");
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        ERROR_PRINT("ERROR: %s", ex.str().c_str());
+    }
+}
+
+void test_hincrby(const std::string& redis_cluster_nodes)
+{
+    TIPS_PRINT();
+
+    try
+    {
+        r3c::CRedisClient rc(redis_cluster_nodes);
+        const std::string key = "r3c_kk";
+        rc.del(key);
+
+        std::vector<std::pair<std::string, int64_t> > increments1(3);
+        increments1[0].first = "f1";
+        increments1[0].second = 3;
+        increments1[1].first = "f2";
+        increments1[1].second = 4;
+        increments1[2].first = "f3";
+        increments1[2].second = 5;
+        rc.hincrby(key, increments1);
+
+        std::vector<std::string> fields(3);
+        std::map<std::string, std::string> map1;
+        fields[0] = "f1";
+        fields[1] = "f2";
+        fields[2] = "f3";
+        int n = rc.hmget(key, fields, &map1);
+        printf("n=%d\n", n);
+        if ((map1["f1"] != "3") || (map1["f2"] != "4") || (map1["f3"] != "5"))
+        {
+            ERROR_PRINT("hincrby ERROR1: %s, %s, %s", map1["f1"].c_str(), map1["f2"].c_str(), map1["f3"].c_str());
+            rc.del(key);
+            return;
+        }
+
+        std::vector<std::pair<std::string, int64_t> > increments2(2);
+        increments2[0].first = "f1";
+        increments2[0].second = 1;
+        increments2[1].first = "f3";
+        increments2[1].second = 1;
+        rc.hincrby(key, increments2);
+
+        std::map<std::string, std::string> map2;
+        n = rc.hmget(key, fields, &map2);
+        printf("n=%d\n", n);
+        if ((map2["f1"] != "4") || (map2["f2"] != "4") || (map2["f3"] != "6"))
+        {
+            ERROR_PRINT("hincrby ERROR2: %s, %s, %s", map2["f1"].c_str(), map2["f2"].c_str(), map2["f3"].c_str());
+            rc.del(key);
             return;
         }
 

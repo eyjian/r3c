@@ -792,13 +792,27 @@ bool CRedisClient::setnx(const std::string& key, const std::string& value, std::
     return redis_command(REDIS_REPLY_INTEGER, &param_info) > 0;
 }
 
-void CRedisClient::setex(const std::string& key, const std::string& value, uint32_t seconds, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+void CRedisClient::setex(const std::string& key, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-    const std::string str1 = any2string(seconds);
+    const std::string str1 = any2string(expired_seconds);
     struct ParamInfo param_info("SETEX", sizeof("SETEX")-1, &key, which);
     param_info.str1 = &str1;
     param_info.str2 = &value;
     (void)redis_command(REDIS_REPLY_STATUS, &param_info);
+}
+
+bool CRedisClient::setnxex(const std::string& key, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    const std::string lua_scripts = format_string("local n; n=redis.call('setnx','%s','%s'); if (n>0) then redis.call('expire', '%s', '%u') end; return n;", key.c_str(), value.c_str(), key.c_str(), expired_seconds);
+    const RedisReplyHelper redis_reply = eval(key, lua_scripts, which);
+
+    if (redis_reply->type != REDIS_REPLY_INTEGER)
+    {
+        THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(redis_reply->type, "unexpected type", which->first, which->second, "SETNXEX", NULL);
+    }
+
+    int ret = static_cast<int>(redis_reply->integer);
+    return ret > 0;
 }
 
 bool CRedisClient::get(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which) throw (CRedisException)
@@ -829,7 +843,7 @@ int64_t CRedisClient::incrby(const std::string& key, int64_t increment, int64_t 
     const RedisReplyHelper redis_reply = eval(key, lua_scripts, which);
     if (redis_reply->type != REDIS_REPLY_INTEGER)
     {
-        THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(redis_reply->type, "unexpected type", which->first, which->second, "INCRBY", NULL);
+        THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(redis_reply->type, "unexpected type", which->first, which->second, "INCRBYEX", NULL);
     }
 
     int64_t ret = static_cast<int64_t>(redis_reply->integer);
@@ -1019,9 +1033,9 @@ bool CRedisClient::hset(const std::string& key, const std::string& field, const 
     return result > 0;
 }
 
-bool CRedisClient::hsetex(const std::string& key, const std::string& field, const std::string& value, uint32_t timeout_seconds, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+bool CRedisClient::hsetex(const std::string& key, const std::string& field, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-    const std::string lua_scripts = format_string("local n; n=redis.call('hset','%s','%s','%s'); redis.call('expire', '%s', '%u'); return n;", key.c_str(), field.c_str(), value.c_str(), key.c_str(), timeout_seconds);
+    const std::string lua_scripts = format_string("local n; n=redis.call('hset','%s','%s','%s'); if (n>0) then redis.call('expire', '%s', '%u') end; return n;", key.c_str(), field.c_str(), value.c_str(), key.c_str(), expired_seconds);
     const RedisReplyHelper redis_reply = eval(key, lua_scripts, which);
 
     if (redis_reply->type != REDIS_REPLY_INTEGER)
@@ -1042,14 +1056,14 @@ bool CRedisClient::hsetnx(const std::string& key, const std::string& field, cons
     return result > 0;
 }
 
-bool CRedisClient::hsetnxex(const std::string& key, const std::string& field, const std::string& value, uint32_t timeout_seconds, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+bool CRedisClient::hsetnxex(const std::string& key, const std::string& field, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-    const std::string lua_scripts = format_string("local n; n=redis.call('hsetnx','%s','%s','%s'); redis.call('expire', '%s', '%u'); return n;", key.c_str(), field.c_str(), value.c_str(), key.c_str(), timeout_seconds);
+    const std::string lua_scripts = format_string("local n; n=redis.call('hsetnx','%s','%s','%s'); if (n>0) then redis.call('expire', '%s', '%u') end; return n;", key.c_str(), field.c_str(), value.c_str(), key.c_str(), expired_seconds);
     const RedisReplyHelper redis_reply = eval(key, lua_scripts, which);
 
     if (redis_reply->type != REDIS_REPLY_INTEGER)
     {
-        THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(redis_reply->type, "unexpected type", which->first, which->second, "INCRBY", NULL);
+        THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(redis_reply->type, "unexpected type", which->first, which->second, "HSETNXEX", NULL);
     }
 
     int ret = static_cast<int>(redis_reply->integer);
