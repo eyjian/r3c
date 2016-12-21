@@ -2365,6 +2365,10 @@ redisContext* CRedisClient::connect_node(int* errcode, std::string* errmsg, std:
                     // 出错redisSetTimeout返回REDIS_ERR，
                     // 并设置redis_context->err为REDIS_ERR_IO，redis_context->errstr存储出错信息。
                     redisSetTimeout(redis_context, data_timeout);
+
+                    // 不能通过redisSetTimeout的返回值来判断成功与否，
+                    // 原因是如果是非阻塞的redis_context，总是返回REDIS_ERR，
+                    // 而这个时候redis_context->err的值可能是0，这种情况不认为是出错，而应视作为成功。
                     if (0 == redis_context->err)
                     {
                         return redis_context;
