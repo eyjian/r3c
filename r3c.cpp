@@ -2364,7 +2364,8 @@ redisContext* CRedisClient::connect_node(int* errcode, std::string* errmsg, std:
 
                     // 出错redisSetTimeout返回REDIS_ERR，
                     // 并设置redis_context->err为REDIS_ERR_IO，redis_context->errstr存储出错信息。
-                    if (REDIS_OK == redisSetTimeout(redis_context, data_timeout))
+                    redisSetTimeout(redis_context, data_timeout);
+                    if (0 == redis_context->err)
                     {
                         return redis_context;
                     }
