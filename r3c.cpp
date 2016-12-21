@@ -2350,19 +2350,28 @@ redisContext* CRedisClient::connect_node(int* errcode, std::string* errmsg, std:
         }
         else
         {
-            if (_data_timeout_milliseconds > 0)
-            {
-                struct timeval data_timeout;
-                data_timeout.tv_sec = _data_timeout_milliseconds / 1000;
-                data_timeout.tv_usec = (_data_timeout_milliseconds % 1000) * 1000;
-                redisSetTimeout(redis_context, data_timeout);
-            }
-
             if (0 == redis_context->err)
             {
-                return redis_context;
+                if (_data_timeout_milliseconds <= 0)
+                {
+                    return redis_context;
+                }
+                else
+                {
+                    struct timeval data_timeout;
+                    data_timeout.tv_sec = _data_timeout_milliseconds / 1000;
+                    data_timeout.tv_usec = (_data_timeout_milliseconds % 1000) * 1000;
+
+                    // 出错redisSetTimeout返回REDIS_ERR，
+                    // 并设置redis_context->err为REDIS_ERR_IO，redis_context->errstr存储出错信息。
+                    if (REDIS_OK == redisSetTimeout(redis_context, data_timeout))
+                    {
+                        return redis_context;
+                    }
+                }
             }
-            else
+
+            if (redis_context->err != 0)
             {
                 // REDIS_ERR_IO should use the "errno" variable to find out what is wrong
                 // For other values, the "errstr" field will hold a description.
