@@ -487,7 +487,7 @@ int main(int argc, char* argv[])
                 std::vector<std::string> fields;
                 for (i=3; i<argc; ++i)
                     fields.push_back(argv[i]);
-                count = redis_client.hdel(key, fields, &which_node);
+                count = redis_client.hmdel(key, fields, &which_node);
                 if (count > 0)
                     fprintf(stdout, "[%s] deleted: %d\n", key, count);
                 else
@@ -615,7 +615,7 @@ int main(int argc, char* argv[])
                 }
 
                 std::vector<int64_t> values;
-                redis_client.hincrby(key, increments, &values, &which_node);
+                redis_client.hmincrby(key, increments, &values, &which_node);
                 for (std::vector<int64_t>::size_type k=0; k<values.size(); ++k)
                     fprintf(stdout, "%" PRId64"\n", values[k]);
             }

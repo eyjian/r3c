@@ -1033,7 +1033,7 @@ void test_hincrby(const std::string& redis_cluster_nodes)
         increments1[1].second = 4;
         increments1[2].first = "f3";
         increments1[2].second = 5;
-        rc.hincrby(key, increments1);
+        rc.hmincrby(key, increments1);
 
         std::vector<std::string> fields(3);
         std::map<std::string, std::string> map1;
@@ -1054,7 +1054,7 @@ void test_hincrby(const std::string& redis_cluster_nodes)
         increments2[0].second = 1;
         increments2[1].first = "f3";
         increments2[1].second = 1;
-        rc.hincrby(key, increments2);
+        rc.hmincrby(key, increments2);
 
         std::map<std::string, std::string> map2;
         n = rc.hmget(key, fields, &map2);

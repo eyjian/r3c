@@ -998,10 +998,10 @@ bool CRedisClient::hdel(const std::string& key, const std::string& field, std::p
 {
     std::vector<std::string> fields(1);
     fields[0] = field;
-    return hdel(key, fields, which) > 0;
+    return hmdel(key, fields, which) > 0;
 }
 
-int CRedisClient::hdel(const std::string& key, const std::vector<std::string>& fields, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+int CRedisClient::hmdel(const std::string& key, const std::vector<std::string>& fields, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     struct ParamInfo param_info("HDEL", sizeof("HDEL")-1, &key, which);
     param_info.array = &fields;
@@ -1088,7 +1088,7 @@ int64_t CRedisClient::hincrby(const std::string& key, const std::string& field, 
     return redis_command(REDIS_REPLY_INTEGER, &param_info);
 }
 
-void CRedisClient::hincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+void CRedisClient::hmincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     int m = 0;
     std::string lua_scripts;
