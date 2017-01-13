@@ -86,10 +86,10 @@ enum
 // Consts
 enum
 {
-    RETRY_TIMES = 10,                    // Default value
-    RETRY_SLEEP_MILLISECONDS = 1000,     // Default value
+    RETRY_TIMES = 3,                     // Default value
+    RETRY_SLEEP_MILLISECONDS = 1000,     // Default value, sleep 1000ms to retry
     CONNECT_TIMEOUT_MILLISECONDS = 1000, // Connect timeout milliseconds
-    DATA_TIMEOUT_MILLISECONDS = 2000     // Read and write socket timeout milliseconds
+    DATA_TIMEOUT_MILLISECONDS = 1000     // Read and write socket timeout milliseconds
 };
 
 void millisleep(uint32_t millisecond);
