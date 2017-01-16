@@ -258,6 +258,8 @@ public:
     // nodes - Redis cluster nodes separated by comma,
     //         e.g., 127.0.0.1:6379,127.0.0.1:6380,127.0.0.2:6379,127.0.0.3:6379,
     //         standalone mode if only one node, else cluster mode.
+    //
+    // NOTICE: CRedisClient will not retry if read/write timeout, because the result is uncertain.
     CRedisClient(const std::string& nodes, int connect_timeout_milliseconds=CONNECT_TIMEOUT_MILLISECONDS, int data_timeout_milliseconds=DATA_TIMEOUT_MILLISECONDS) throw (CRedisException);
     ~CRedisClient();
 

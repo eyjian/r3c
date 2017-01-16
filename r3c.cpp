@@ -1715,11 +1715,20 @@ const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair
             // disconnnected
             errcode = ERROR_COMMAND;
             errmsg = format_string("redis `%s` error", command);
-            (*g_error_log)("[%s:%d][%d/%d][%s][%s:%d](%d)%s|(%d)%s\n", __FILE__, __LINE__, i, _retry_times, command, node.first.c_str(), node.second, errcode, errmsg.c_str(), redis_context->err, redis_context->errstr);
+            (*g_error_log)("[%s:%d][%d/%d][%s][%s:%d](%d)%s|(%d, %d)%s\n", __FILE__, __LINE__, i, _retry_times, command, node.first.c_str(), node.second, errcode, errmsg.c_str(), errno, redis_context->err, redis_context->errstr);
 
-            init();
-            retry_sleep();
-            continue;
+            if ((EAGAIN == errno) || (EWOULDBLOCK == errno))
+            {
+                // Resource temporarily unavailable
+                // 对于超时，不能重试，也许成功了，结果是不确定的！！！
+                break;
+            }
+            else
+            {
+                init();
+                retry_sleep();
+                continue;
+            }
         }
         else
         {
