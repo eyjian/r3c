@@ -76,7 +76,7 @@ static void test_hmget_and_hmset1(const std::string& redis_cluster_nodes);
 static void test_hmget_and_hmset2(const std::string& redis_cluster_nodes);
 static void test_hscan(const std::string& redis_cluster_nodes);
 static void test_hincrby_and_hlen(const std::string& redis_cluster_nodes);
-static void test_hincrby(const std::string& redis_cluster_nodes);
+static void test_hmincrby(const std::string& redis_cluster_nodes);
 
 ////////////////////////////////////////////////////////////////////////////
 // SET
@@ -145,7 +145,7 @@ int main(int argc, char* argv[])
     test_hmget_and_hmset2(redis_cluster_nodes);
     test_hscan(redis_cluster_nodes);
     test_hincrby_and_hlen(redis_cluster_nodes);
-    test_hincrby(redis_cluster_nodes);
+    test_hmincrby(redis_cluster_nodes);
 
     ////////////////////////////////////////////////////////////////////////////
     // SET
@@ -1016,7 +1016,7 @@ void test_hincrby_and_hlen(const std::string& redis_cluster_nodes)
     }
 }
 
-void test_hincrby(const std::string& redis_cluster_nodes)
+void test_hmincrby(const std::string& redis_cluster_nodes)
 {
     TIPS_PRINT();
 
