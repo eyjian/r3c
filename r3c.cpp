@@ -1205,30 +1205,17 @@ int64_t CRedisClient::hincrby(const std::string& key, const std::string& field, 
 
 void CRedisClient::hmincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-    int m = 0;
-    std::string lua_scripts;
-    for (std::vector<std::pair<std::string, int64_t> >::size_type i=0; i<increments.size(); ++i,++m)
+    const std::string lua_scripts = format_string("local j=1;local results={};for i=1,#ARGV,2 do local f=ARGV[i];local v=ARGV[i+1];results[j]=redis.call('hincrby','%s',f,v);j=j+1; end;return results;", key.c_str());
+
+    std::vector<std::string> parameters(2*increments.size());
+    for (std::vector<std::pair<std::string, int64_t> >::size_type i=0,j=0; i<increments.size(); ++i,j+=2)
     {
-        const std::string& field = increments[i].first;
-        const int64_t increment = increments[i].second;
-        if (lua_scripts.empty())
-            lua_scripts = format_string("local r%d;r%d=redis.call('hincrby','%s','%s','%" PRId64"')", m, m, key.c_str(), field.c_str(), increment);
-        else
-            lua_scripts += format_string(";local r%d;r%d=redis.call('hincrby','%s','%s','%" PRId64"')", m, m, key.c_str(), field.c_str(), increment);
+        parameters[j] = increments[i].first;
+        parameters[j+1] = any2string(increments[i].second);
     }
 
-    lua_scripts += std::string(";return {");
-    for (int n=0; n<m; ++n)
-    {
-        if (0 == n)
-            lua_scripts += format_string("r%d", n);
-        else
-            lua_scripts += format_string(",r%d", n);
-    }
-    lua_scripts += std::string("}");
     (*g_debug_log)("[%s:%d]lua scripts: \n%s\n", __FILE__, __LINE__, lua_scripts.c_str());
-
-    const RedisReplyHelper redis_reply = eval(key, lua_scripts, which);
+    const RedisReplyHelper redis_reply = eval(key, lua_scripts, parameters, which);
     if (redis_reply->type != REDIS_REPLY_ARRAY)
     {
         int type = redis_reply->type;
