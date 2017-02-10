@@ -748,6 +748,7 @@ bool CRedisClient::expire(const std::string& key, uint32_t seconds, std::pair<st
     return result > 0;
 }
 
+// EVAL script numkeys key [key ...] arg [arg ...]
 const RedisReplyHelper CRedisClient::eval(const std::string& key, const std::string& lua_scripts, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     const int excepted_reply_type = -1;
@@ -766,6 +767,58 @@ const RedisReplyHelper CRedisClient::eval(const std::string& key, const std::str
     strncpy(argv[2], "0", 2);
     FreeArgvHelper fah(argc, argv, argv_len);
 
+    const std::string command_string;
+    const redisReply* redis_reply = redis_command(excepted_reply_type, which, &key, "EVAL", command_string, argc, (const char**)argv, argv_len);
+    return RedisReplyHelper(redis_reply);
+}
+
+// EVAL script numkeys key [key ...] arg [arg ...]
+// EVALSHA sha1 numkeys key [key ...] arg [arg ...]
+//
+// r3c_cmd eval 123456 "local n; n=redis.call('setnx',KEYS[1],ARGV[1]); if (n>0) then redis.call('expire', KEYS[1], ARGV[2]) end; return n;" abcdefg 10
+const RedisReplyHelper CRedisClient::eval(const std::string& key, const std::string& lua_scripts, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    const int excepted_reply_type = -1;
+
+    // 3: EVAL script 1 key
+    const int argc = 4 + static_cast<int>(parameters.size());
+    size_t* argv_len = new size_t[argc];
+    char** argv = new char*[argc];
+    int argv_len_index = 0;
+
+    // EVAL
+    argv_len[argv_len_index] = sizeof("EVAL")-1;
+    argv[argv_len_index] = new char[argv_len[argv_len_index]+1];
+    strncpy(argv[argv_len_index], "EVAL", argv_len[argv_len_index]+1);
+    ++argv_len_index;
+
+    // script/sha1
+    argv_len[argv_len_index] = lua_scripts.size();
+    argv[argv_len_index] = new char[argv_len[argv_len_index]+1];
+    strncpy(argv[argv_len_index], lua_scripts.c_str(), argv_len[argv_len_index]+1);
+    ++argv_len_index;
+
+    // numkeys
+    argv_len[argv_len_index] = 1;
+    argv[argv_len_index] = new char[argv_len[argv_len_index]+1];
+    strncpy(argv[argv_len_index], "1", argv_len[argv_len_index]+1);
+    ++argv_len_index;
+
+    // key
+    argv_len[argv_len_index] = key.size();
+    argv[argv_len_index] = new char[argv_len[argv_len_index]+1];
+    strncpy(argv[argv_len_index], key.c_str(), argv_len[argv_len_index]+1);
+    ++argv_len_index;
+
+    for (std::vector<std::string>::size_type i=0; i<parameters.size(); ++i)
+    {
+        argv_len[argv_len_index] = parameters[i].size();
+        argv[argv_len_index] = new char[argv_len[argv_len_index]+1];
+        strncpy(argv[argv_len_index], parameters[i].c_str(), argv_len[argv_len_index]+1);
+        ++argv_len_index;
+    }
+
+    FreeArgvHelper fah(argc, argv, argv_len);
     const std::string command_string;
     const redisReply* redis_reply = redis_command(excepted_reply_type, which, &key, "EVAL", command_string, argc, (const char**)argv, argv_len);
     return RedisReplyHelper(redis_reply);

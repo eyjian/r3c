@@ -283,6 +283,7 @@ public:
 
     // Evaluate scripts using the Lua interpreter built
     const RedisReplyHelper eval(const std::string& key, const std::string& lua_scripts, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    const RedisReplyHelper eval(const std::string& key, const std::string& lua_scripts, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
 
     // Success returns the remaining time to live of a key that has a timeout
     // Returns -2 if the key does not exist

@@ -186,16 +186,31 @@ int main(int argc, char* argv[])
         else if (0 == strcasecmp(cmd, "eval"))
         {
             // EVAL command
-            if (argc != 4)
+            if (argc < 4)
             {
-                fprintf(stderr, "Usage: r3c_cmd eval key lua_scripts\n");
+                fprintf(stderr, "Usage1: r3c_cmd eval key lua_scripts\n");
+                fprintf(stderr, "Usage1: r3c_cmd eval key lua_scripts parameter1 parameter2 ...\n");
                 exit(1);
             }
 
-            const char* lua_scripts = argv[3];
-            const r3c::RedisReplyHelper reply = redis_client.eval(key, lua_scripts, &which_node);
-            if (reply)
-                std::cout << reply;
+            if (4 == argc)
+            {
+                const char* lua_scripts = argv[3];
+                const r3c::RedisReplyHelper reply = redis_client.eval(key, lua_scripts, &which_node);
+                if (reply)
+                    std::cout << reply;
+            }
+            else
+            {
+                const char* lua_scripts = argv[3];
+                std::vector<std::string> parameters(argc-4);
+
+                for (int i=4; i<argc; ++i)
+                    parameters[i-4] = argv[i];
+                const r3c::RedisReplyHelper reply = redis_client.eval(key, lua_scripts, parameters, &which_node);
+                if (reply)
+                    std::cout << reply;
+            }
         }
         else if (0 == strcasecmp(cmd, "ttl"))
         {
