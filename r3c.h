@@ -96,6 +96,7 @@ void millisleep(uint32_t millisecond);
 void free_redis_reply(const redisReply* redis_reply);
 std::string format_string(const char* format, ...) __attribute__((format(printf, 1, 2)));
 std::string ip2string(uint32_t ip);
+std::string strsha1(const std::string& str);
 int split(std::vector<std::string>* tokens, const std::string& source, const std::string& sep, bool skip_sep=false);
 
 // Cluster node info

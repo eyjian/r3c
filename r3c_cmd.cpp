@@ -93,7 +93,18 @@ int main(int argc, char* argv[])
         std::pair<std::string, uint16_t> which_node;
         r3c::CRedisClient redis_client(nodes);
 
-        if (0 == strcasecmp(cmd, "slot"))
+        if (0 == strcasecmp(cmd, "sha1"))
+        {
+            if (argc != 3)
+            {
+                fprintf(stderr, "Usage: r3c_cmd sha1 string\n");
+                exit(1);
+            }
+
+            str =  key;
+            fprintf(stdout, "%s\n", r3c::strsha1(str).c_str());
+        }
+        else if (0 == strcasecmp(cmd, "slot"))
         {
             if (argc != 3)
             {

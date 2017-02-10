@@ -29,6 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #include "r3c.h"
+#include "sha1.h"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <inttypes.h>
@@ -186,6 +187,27 @@ std::string ip2string(uint32_t ip)
     struct in_addr in;
     in.s_addr = ip;
     return inet_ntoa(in);
+}
+
+std::string strsha1(const std::string& str)
+{
+    static unsigned char hex_table[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+
+    std::string result(40, '\0'); // f3512504d8a2f422b45faad2f2f44d569a963da1
+    unsigned char hash[20];
+    SHA1_CTX ctx;
+
+    SHA1Init(&ctx);
+    SHA1Update(&ctx, (const unsigned char*)str.data(), str.size());
+    SHA1Final(hash, &ctx);
+
+    for (size_t i=0,j=0; i<sizeof(hash)/sizeof(hash[0]); ++i,j+=2)
+    {
+        result[j] = hex_table[(hash[i] >> 4) & 0x0f];
+        result[j+1] = hex_table[hash[i] & 0x0f];
+    }
+
+    return result;
 }
 
 int split(std::vector<std::string>* tokens, const std::string& source, const std::string& sep, bool skip_sep)
@@ -866,8 +888,12 @@ void CRedisClient::setex(const std::string& key, const std::string& value, uint3
 
 bool CRedisClient::setnxex(const std::string& key, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-    const std::string lua_scripts = format_string("local n; n=redis.call('setnx','%s','%s'); if (n>0) then redis.call('expire', '%s', '%u') end; return n;", key.c_str(), value.c_str(), key.c_str(), expired_seconds);
-    const RedisReplyHelper redis_reply = eval(key, lua_scripts, which);
+    std::vector<std::string> parameters(2);
+    parameters[0] = value;
+    parameters[1] = any2string(expired_seconds);
+
+    const std::string lua_scripts = format_string("local n;n=redis.call('setnx',KEYS[1],ARGV[1]);if (n>0) then redis.call('expire',KEYS[1],ARGV[2]) end;return n;");
+    const RedisReplyHelper redis_reply = eval(key, lua_scripts, parameters, which);
 
     if (redis_reply->type != REDIS_REPLY_INTEGER)
     {
