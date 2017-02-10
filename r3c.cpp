@@ -893,15 +893,41 @@ bool CRedisClient::setnxex(const std::string& key, const std::string& value, uin
     parameters[1] = any2string(expired_seconds);
 
     const std::string lua_scripts = format_string("local n;n=redis.call('setnx',KEYS[1],ARGV[1]);if (n>0) then redis.call('expire',KEYS[1],ARGV[2]) end;return n;");
-    const RedisReplyHelper redis_reply = eval(key, lua_scripts, parameters, which);
+    const std::string sha1 = strsha1(lua_scripts);
 
-    if (redis_reply->type != REDIS_REPLY_INTEGER)
+    try
     {
-        THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(redis_reply->type, "unexpected type", which->first, which->second, "SETNXEX", NULL);
+        const RedisReplyHelper redis_reply = evalsha(key, sha1, parameters, which);
+        if (redis_reply->type != REDIS_REPLY_INTEGER)
+        {
+            THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(redis_reply->type, "unexpected type", which->first, which->second, "SETNXEX", NULL);
+        }
+        else
+        {
+            return redis_reply->integer > 0;
+        }
     }
+    catch (CRedisException& ex)
+    {
+        if (ex.errcode() != ERROR_NOSCRIPT)
+        {
+            throw;
+        }
+        else
+        {
+            (*g_debug_log)("[%s:%d] sha1 not exists: %s\n", __FILE__, __LINE__, sha1.c_str());
 
-    int ret = static_cast<int>(redis_reply->integer);
-    return ret > 0;
+            const RedisReplyHelper redis_reply = eval(key, lua_scripts, parameters, which);
+            if (redis_reply->type != REDIS_REPLY_INTEGER)
+            {
+                THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(redis_reply->type, "unexpected type", which->first, which->second, "SETNXEX", NULL);
+            }
+            else
+            {
+                return redis_reply->integer > 0;
+            }
+        }
+    }
 }
 
 bool CRedisClient::get(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which) throw (CRedisException)
@@ -1852,9 +1878,13 @@ const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair
                 // NOSCRIPT No matching script. Please use EVAL.
                 (*g_error_log)("[%s:%d][%d/%d][%s][%s:%d](%d)%s|(%d)%s\n", __FILE__, __LINE__, i, _retry_times, command, node.first.c_str(), node.second, errcode, errmsg.c_str(), redis_context->err, redis_context->errstr);
                 if ((0 == strncmp(errmsg.c_str(), "WRONGTYPE", sizeof("WRONGTYPE")-1)) ||
-                    (0 == strncmp(errmsg.c_str(), "ERR", sizeof("ERR")-1)) ||
-                    (0 == strncmp(errmsg.c_str(), "NOSCRIPT", sizeof("NOSCRIPT")-1)))
+                    (0 == strncmp(errmsg.c_str(), "ERR", sizeof("ERR")-1)))
                 {
+                    break;
+                }
+                else if (0 == strncmp(errmsg.c_str(), "NOSCRIPT", sizeof("NOSCRIPT")-1))
+                {
+                    errcode = ERROR_NOSCRIPT;
                     break;
                 }
                 else

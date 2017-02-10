@@ -80,7 +80,8 @@ enum
     ERROR_CONNECT_REDIS = -4,  // Can not connect any cluster node
     ERROR_FORMAT = -5,         // Format error
     ERROR_NOT_SUPPORT = -6,    // Not support
-    ERROR_SLOT_NOT_EXIST = -7  // Slot not exists
+    ERROR_SLOT_NOT_EXIST = -7, // Slot not exists
+    ERROR_NOSCRIPT = -8        // NOSCRIPT No matching script
 };
 
 // Consts
@@ -145,6 +146,7 @@ public:
     CRedisException(int errcode, const std::string& errmsg, const char* file, int line, const std::string& node_ip=std::string("-"), uint16_t node_port=0, const char* command=NULL, const char* key=NULL) throw ();
     virtual ~CRedisException() throw () {}
     virtual const char* what() const throw ();
+    int errcode() const { return _errcode; }
     std::string str() const throw ();
 
     const char* file() const throw () { return _file.c_str(); }
