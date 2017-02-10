@@ -778,6 +778,16 @@ const RedisReplyHelper CRedisClient::eval(const std::string& key, const std::str
 // r3c_cmd eval 123456 "local n; n=redis.call('setnx',KEYS[1],ARGV[1]); if (n>0) then redis.call('expire', KEYS[1], ARGV[2]) end; return n;" abcdefg 10
 const RedisReplyHelper CRedisClient::eval(const std::string& key, const std::string& lua_scripts, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
+    return do_eval("EVAL", key, lua_scripts, parameters, which);
+}
+
+const RedisReplyHelper CRedisClient::evalsha(const std::string& key, const std::string& sha1, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    return do_eval("EVALSHA", key, sha1, parameters, which);
+}
+
+const RedisReplyHelper CRedisClient::do_eval(const char* eval_command, const std::string& key, const std::string& lua_script_or_sha1, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
     const int excepted_reply_type = -1;
 
     // 3: EVAL script 1 key
@@ -786,16 +796,16 @@ const RedisReplyHelper CRedisClient::eval(const std::string& key, const std::str
     char** argv = new char*[argc];
     int argv_len_index = 0;
 
-    // EVAL
-    argv_len[argv_len_index] = sizeof("EVAL")-1;
+    // EVAL/EVALSHA
+    argv_len[argv_len_index] = strlen(eval_command);
     argv[argv_len_index] = new char[argv_len[argv_len_index]+1];
-    strncpy(argv[argv_len_index], "EVAL", argv_len[argv_len_index]+1);
+    strncpy(argv[argv_len_index], eval_command, argv_len[argv_len_index]+1);
     ++argv_len_index;
 
     // script/sha1
-    argv_len[argv_len_index] = lua_scripts.size();
+    argv_len[argv_len_index] = lua_script_or_sha1.size();
     argv[argv_len_index] = new char[argv_len[argv_len_index]+1];
-    strncpy(argv[argv_len_index], lua_scripts.c_str(), argv_len[argv_len_index]+1);
+    strncpy(argv[argv_len_index], lua_script_or_sha1.c_str(), argv_len[argv_len_index]+1);
     ++argv_len_index;
 
     // numkeys

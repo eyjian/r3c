@@ -284,6 +284,7 @@ public:
     // Evaluate scripts using the Lua interpreter built
     const RedisReplyHelper eval(const std::string& key, const std::string& lua_scripts, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     const RedisReplyHelper eval(const std::string& key, const std::string& lua_scripts, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    const RedisReplyHelper evalsha(const std::string& key, const std::string& sha1, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
 
     // Success returns the remaining time to live of a key that has a timeout
     // Returns -2 if the key does not exist
@@ -420,6 +421,11 @@ private:
     const redisReply* redis_command(int excepted_reply_type, std::pair<std::string, uint16_t>* which, const std::string* key, const char* command, const std::string& command_string, int argc, const char* argv[], const size_t* argv_len) throw (CRedisException);
     int64_t redis_command(int excepted_reply_type, struct ParamInfo* param_info) throw (CRedisException);
     int calc_argc(const struct ParamInfo* param_info) const;
+
+private:
+    // eval_command EVAL or EVALSHA
+    // lua_script_or_sha1 lua script or sha1 string
+    const RedisReplyHelper do_eval(const char* eval_command, const std::string& key, const std::string& lua_script_or_sha1, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
 
 private:
     void parse_nodes() throw (CRedisException);
