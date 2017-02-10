@@ -830,7 +830,7 @@ const RedisReplyHelper CRedisClient::do_eval(const char* eval_command, const std
 
     FreeArgvHelper fah(argc, argv, argv_len);
     const std::string command_string;
-    const redisReply* redis_reply = redis_command(excepted_reply_type, which, &key, "EVAL", command_string, argc, (const char**)argv, argv_len);
+    const redisReply* redis_reply = redis_command(excepted_reply_type, which, &key, eval_command, command_string, argc, (const char**)argv, argv_len);
     return RedisReplyHelper(redis_reply);
 }
 
