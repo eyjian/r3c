@@ -1823,9 +1823,11 @@ const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair
                 // LOADING Redis is loading the dataset in memory （需重试错误）
                 // MOVED 6474 127.0.0.1:6380 （需重试错误）
                 // ERR wrong number of arguments for 'sadd' command|(0)（此种错误时不需重试）
+                // NOSCRIPT No matching script. Please use EVAL.
                 (*g_error_log)("[%s:%d][%d/%d][%s][%s:%d](%d)%s|(%d)%s\n", __FILE__, __LINE__, i, _retry_times, command, node.first.c_str(), node.second, errcode, errmsg.c_str(), redis_context->err, redis_context->errstr);
                 if ((0 == strncmp(errmsg.c_str(), "WRONGTYPE", sizeof("WRONGTYPE")-1)) ||
-                    (0 == strncmp(errmsg.c_str(), "ERR", sizeof("ERR")-1)))
+                    (0 == strncmp(errmsg.c_str(), "ERR", sizeof("ERR")-1)) ||
+                    (0 == strncmp(errmsg.c_str(), "NOSCRIPT", sizeof("NOSCRIPT")-1)))
                 {
                     break;
                 }
