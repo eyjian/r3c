@@ -1599,10 +1599,10 @@ int CRedisClient::zrangebyscore(const std::string& key, int64_t min, int64_t max
     return static_cast<int>(result);
 }
 
-int CRedisClient::zrevrangebyscore(const std::string& key, int64_t min, int64_t max, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+int CRedisClient::zrevrangebyscore(const std::string& key, int64_t max, int64_t min, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-    const std::string str7 = any2string(min);
-    const std::string str6 = any2string(max);
+    const std::string str6 = any2string(min);
+    const std::string str7 = any2string(max);
     struct ParamInfo param_info("ZREVRANGEBYSCORE", sizeof("ZREVRANGEBYSCORE")-1, &key, which);
 
     param_info.str6 = &str6;

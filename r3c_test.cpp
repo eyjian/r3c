@@ -87,6 +87,8 @@ static void test_set(const std::string& redis_cluster_nodes);
 static void test_sorted_set(const std::string& redis_cluster_nodes);
 static void test_zrange(const std::string& redis_cluster_nodes);
 static void test_zrevrange(const std::string& redis_cluster_nodes);
+static void test_zrangebyscore(const std::string& redis_cluster_nodes);
+static void test_zrevrangebyscore(const std::string& redis_cluster_nodes);
 static void test_zrem(const std::string& redis_cluster_nodes);
 
 static void my_log_write(const char* format, ...)
@@ -156,6 +158,8 @@ int main(int argc, char* argv[])
     test_sorted_set(redis_cluster_nodes);
     test_zrange(redis_cluster_nodes);
     test_zrevrange(redis_cluster_nodes);
+    test_zrangebyscore(redis_cluster_nodes);
+    test_zrevrangebyscore(redis_cluster_nodes);
     test_zrem(redis_cluster_nodes);
 
     ////////////////////////////////////////////////////////////////////////////
@@ -1600,6 +1604,96 @@ void test_zrevrange(const std::string& redis_cluster_nodes)
 
         rc.del(key);
         SUCCESS_PRINT("%s", "OK");
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        ERROR_PRINT("ERROR: %s", ex.str().c_str());
+    }
+}
+
+void test_zrangebyscore(const std::string& redis_cluster_nodes)
+{
+    TIPS_PRINT();
+
+    try
+    {
+        r3c::CRedisClient rc(redis_cluster_nodes);
+        const std::string key = "r3c_kk";
+
+        rc.del(key);
+        for (int i=0; i<10; ++i)
+            rc.zadd(key, r3c::format_string("f%d", i), i);
+        rc.expire(key, 60);
+
+        std::vector<std::pair<std::string, int64_t> > vec;
+        rc.zrangebyscore(key, 0, 3, true, &vec);
+        if (vec.size() != 4)
+        {
+            ERROR_PRINT("size eror: %zd\n", vec.size());
+        }
+        else
+        {
+            if ((vec[0] != std::pair<std::string, int64_t>("f0", 0)) ||
+                (vec[1] != std::pair<std::string, int64_t>("f1", 1)) ||
+                (vec[2] != std::pair<std::string, int64_t>("f2", 2)) ||
+                (vec[3] != std::pair<std::string, int64_t>("f3", 3)))
+            {
+                ERROR_PRINT("value error: (%s/%" PRId64"), (%s/%" PRId64"), (%s/%" PRId64"), (%s/%" PRId64")\n",
+                        vec[0].first.c_str(), vec[0].second,
+                        vec[1].first.c_str(), vec[1].second,
+                        vec[2].first.c_str(), vec[2].second,
+                        vec[3].first.c_str(), vec[3].second);
+            }
+            else
+            {
+                SUCCESS_PRINT("%s", "OK");
+            }
+        }
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        ERROR_PRINT("ERROR: %s", ex.str().c_str());
+    }
+}
+
+void test_zrevrangebyscore(const std::string& redis_cluster_nodes)
+{
+    TIPS_PRINT();
+
+    try
+    {
+        r3c::CRedisClient rc(redis_cluster_nodes);
+        const std::string key = "r3c_kk";
+
+        rc.del(key);
+        for (int i=0; i<10; ++i)
+            rc.zadd(key, r3c::format_string("f%d", i), i);
+        rc.expire(key, 60);
+
+        std::vector<std::pair<std::string, int64_t> > vec;
+        rc.zrevrangebyscore(key, 0, 3, true, &vec);
+        if (vec.size() != 4)
+        {
+            ERROR_PRINT("size eror: %zd\n", vec.size());
+        }
+        else
+        {
+            if ((vec[0] != std::pair<std::string, int64_t>("f3", 3)) ||
+                (vec[1] != std::pair<std::string, int64_t>("f2", 2)) ||
+                (vec[2] != std::pair<std::string, int64_t>("f1", 1)) ||
+                (vec[3] != std::pair<std::string, int64_t>("f0", 0)))
+            {
+                ERROR_PRINT("value error: (%s/%" PRId64"), (%s/%" PRId64"), (%s/%" PRId64"), (%s/%" PRId64")\n",
+                        vec[0].first.c_str(), vec[0].second,
+                        vec[1].first.c_str(), vec[1].second,
+                        vec[2].first.c_str(), vec[2].second,
+                        vec[3].first.c_str(), vec[3].second);
+            }
+            else
+            {
+                SUCCESS_PRINT("%s", "OK");
+            }
+        }
     }
     catch (r3c::CRedisException& ex)
     {

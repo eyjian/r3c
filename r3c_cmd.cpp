@@ -1092,14 +1092,14 @@ int main(int argc, char* argv[])
             // ZREVRANGEBYSCORE command
             if ((argc != 5) && (argc != 7))
             {
-                fprintf(stderr, "Usage1: r3c_cmd zrevrangebyscore key min max\n");
-                fprintf(stderr, "Usage2: r3c_cmd zrangebyscore key min max offset count\n");
+                fprintf(stderr, "Usage1: r3c_cmd zrevrangebyscore key max min\n");
+                fprintf(stderr, "Usage2: r3c_cmd zrangebyscore key max min offset count\n");
                 exit(1);
             }
 
             i = 0;
-            min = atol(argv[3]);
-            max = atol(argv[4]);
+            min = atol(argv[4]);
+            max = atol(argv[3]);
             std::vector<std::pair<std::string, int64_t> > vec;
 
             if (5 == argc)
