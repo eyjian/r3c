@@ -888,46 +888,16 @@ void CRedisClient::setex(const std::string& key, const std::string& value, uint3
 
 bool CRedisClient::setnxex(const std::string& key, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-    std::vector<std::string> parameters(2);
-    parameters[0] = value;
-    parameters[1] = any2string(expired_seconds);
+    const std::string str2 = "NX";
+    const std::string str3 = "EX";
+    const std::string str4 = any2string(expired_seconds);
+    struct ParamInfo param_info("SET", sizeof("SET")-1, &key, which);
+    param_info.str1 = &value;
+    param_info.str2 = &str2;
+    param_info.str3 = &str3;
+    param_info.str4 = &str4;
 
-    const std::string lua_scripts = format_string("local n;n=redis.call('setnx',KEYS[1],ARGV[1]);if (n>0) then redis.call('expire',KEYS[1],ARGV[2]) end;return n;");
-    const std::string sha1 = strsha1(lua_scripts);
-
-    try
-    {
-        const RedisReplyHelper redis_reply = evalsha(key, sha1, parameters, which);
-        if (redis_reply->type != REDIS_REPLY_INTEGER)
-        {
-            THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(redis_reply->type, "unexpected type", which->first, which->second, "SETNXEX", NULL);
-        }
-        else
-        {
-            return redis_reply->integer > 0;
-        }
-    }
-    catch (CRedisException& ex)
-    {
-        if (ex.errcode() != ERROR_NOSCRIPT)
-        {
-            throw;
-        }
-        else
-        {
-            (*g_debug_log)("[%s:%d] sha1 not exists: %s\n", __FILE__, __LINE__, sha1.c_str());
-
-            const RedisReplyHelper redis_reply = eval(key, lua_scripts, parameters, which);
-            if (redis_reply->type != REDIS_REPLY_INTEGER)
-            {
-                THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(redis_reply->type, "unexpected type", which->first, which->second, "SETNXEX", NULL);
-            }
-            else
-            {
-                return redis_reply->integer > 0;
-            }
-        }
-    }
+    return redis_command(REDIS_REPLY_STATUS, &param_info) > 0;
 }
 
 bool CRedisClient::get(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which) throw (CRedisException)
