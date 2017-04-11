@@ -704,7 +704,15 @@ void CRedisClient::flushall(std::vector<std::pair<std::string, std::string> >* r
             }
             else
             {
+				if(_password.size() > 0)
+				{
+					redisReply* redis_reply = (redisReply*)redisCommand(redis_context, "auth %s", _password.c_str());
+					if (NULL == redis_reply)
+					{
+						std::cout<<"auth failure"<<std::endl;
+					}
 
+				}
                            
                
                 redisReply* redis_reply = (redisReply*)redisCommand(redis_context, "FLUSHALL");
@@ -2321,7 +2329,15 @@ redisContext* CRedisClient::get_redis_context(unsigned int slot, std::pair<std::
             }
             else if (_data_timeout_milliseconds > 0)
             {
+				if(_password.size() > 0)
+				{
+					redisReply* redis_reply = (redisReply*)redisCommand(redis_context, "auth %s", _password.c_str());
+					if (NULL == redis_reply)
+					{
+						std::cout<<"auth failure"<<std::endl;
+					}
 
+				}
                 struct timeval data_timeout;
                 data_timeout.tv_sec = _data_timeout_milliseconds / 1000;
                 data_timeout.tv_usec = (_data_timeout_milliseconds % 1000) * 1000;
@@ -2381,7 +2397,15 @@ redisContext* CRedisClient::get_redis_context(unsigned int slot, std::pair<std::
                         }
                         else
                         {                            
+							if(_password.size() > 0)
+							{
+								redisReply* redis_reply = (redisReply*)redisCommand(redis_context, "auth %s", _password.c_str());
+								if (NULL == redis_reply)
+								{
+									std::cout<<"auth failure"<<std::endl;
+								}
 
+							}
                             slot_info->redis_context = redis_context;
                             _redis_contexts.insert(std::make_pair(slot_info->node, redis_context));
 
@@ -2450,7 +2474,15 @@ redisContext* CRedisClient::connect_node(int* errcode, std::string* errmsg, std:
         }
         else
         {
+			if(_password.size() > 0)
+			{
+				redisReply* redis_reply = (redisReply*)redisCommand(redis_context, "auth %s", _password.c_str());
+				if (NULL == redis_reply)
+				{
+					std::cout<<"auth failure"<<std::endl;
+				}
 
+			}
             if (0 == redis_context->err)
             {
                 if (_data_timeout_milliseconds <= 0)
