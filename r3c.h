@@ -263,7 +263,7 @@ public:
     //         standalone mode if only one node, else cluster mode.
     //
     // NOTICE: CRedisClient will not retry if read/write timeout, because the result is uncertain.
-    CRedisClient(const std::string& nodes, int connect_timeout_milliseconds=CONNECT_TIMEOUT_MILLISECONDS, int data_timeout_milliseconds=DATA_TIMEOUT_MILLISECONDS) throw (CRedisException);
+    CRedisClient(const std::string& nodes, std::string password="", int connect_timeout_milliseconds=CONNECT_TIMEOUT_MILLISECONDS, int data_timeout_milliseconds=DATA_TIMEOUT_MILLISECONDS) throw (CRedisException);
     ~CRedisClient();
 
     bool cluster_mode() const;
@@ -444,6 +444,7 @@ private:
     void retry_sleep() const;
 
 private:
+    std::string _password;
     bool _cluster_mode;
     std::string _nodes_string;
     int _connect_timeout_milliseconds;
