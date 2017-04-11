@@ -479,8 +479,8 @@ struct ParamInfo
     }
 };
 
-CRedisClient::CRedisClient(const std::string& nodes, std::string password, int connect_timeout_milliseconds, int data_timeout_milliseconds) throw (CRedisException)
-    : _cluster_mode(false), _nodes_string(nodes),_password(password),
+CRedisClient::CRedisClient(const std::string& nodes, int connect_timeout_milliseconds, int data_timeout_milliseconds, const std::string& password) throw (CRedisException)
+    : _cluster_mode(false), _password(password), _nodes_string(nodes),
       _connect_timeout_milliseconds(connect_timeout_milliseconds), _data_timeout_milliseconds(data_timeout_milliseconds),
       _retry_times(RETRY_TIMES), _retry_sleep_milliseconds(RETRY_SLEEP_MILLISECONDS),
       _redis_context(NULL), _slots(CLUSTER_SLOTS, NULL)
