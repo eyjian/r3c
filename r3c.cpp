@@ -709,7 +709,7 @@ void CRedisClient::flushall(std::vector<std::pair<std::string, std::string> >* r
 					redisReply* redis_reply = (redisReply*)redisCommand(redis_context, "auth %s", _password.c_str());
 					if (NULL == redis_reply)
 					{
-						std::cout<<"auth failure"<<std::endl;
+						(*g_error_log)("[%s:%d]auth failure\n", FILE, LINE);						
 					}
 
 				}
@@ -2334,7 +2334,7 @@ redisContext* CRedisClient::get_redis_context(unsigned int slot, std::pair<std::
 					redisReply* redis_reply = (redisReply*)redisCommand(redis_context, "auth %s", _password.c_str());
 					if (NULL == redis_reply)
 					{
-						std::cout<<"auth failure"<<std::endl;
+						(*g_error_log)("[%s:%d]auth failure\n", FILE, LINE);	
 					}
 
 				}
@@ -2402,7 +2402,7 @@ redisContext* CRedisClient::get_redis_context(unsigned int slot, std::pair<std::
 								redisReply* redis_reply = (redisReply*)redisCommand(redis_context, "auth %s", _password.c_str());
 								if (NULL == redis_reply)
 								{
-									std::cout<<"auth failure"<<std::endl;
+									(*g_error_log)("[%s:%d]auth failure\n", FILE, LINE);	
 								}
 
 							}
@@ -2479,7 +2479,7 @@ redisContext* CRedisClient::connect_node(int* errcode, std::string* errmsg, std:
 				redisReply* redis_reply = (redisReply*)redisCommand(redis_context, "auth %s", _password.c_str());
 				if (NULL == redis_reply)
 				{
-					std::cout<<"auth failure"<<std::endl;
+					(*g_error_log)("[%s:%d]auth failure\n", FILE, LINE);	
 				}
 
 			}
