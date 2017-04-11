@@ -1,6 +1,6 @@
-Redis Cluster C++ Client, based on hiredis and support standalone, it's easy to make and use, not depends on C++11 or later.
+Redis Cluster C++ Client, based on hiredis, support password and standalone, it's easy to make and use, not depends on C++11 or later.
 
-r3c基于redis官方的c库hiredis实现，全称是redis cluster C++ client，支持redis cluster。
+r3c基于redis官方的c库hiredis实现，全称是redis cluster C++ client，支持redis cluster，支持密码访问。
 
 编译链接r3c时，默认认为hiredis的安装目录为/usr/local/hiredis，
 但可以在执行make时指定hiredis安装目录，如假设hiredis安装目录为/tmp/hiredis：make HIREDIS=/tmp/hiredis，
