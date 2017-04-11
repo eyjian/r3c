@@ -1,4 +1,4 @@
-Redis Cluster C++ Client, based on hiredis and support standalone and password, it's easy to make and use, not depends on C++11 or later.
+Redis Cluster C++ Client, based on hiredis, support password and standalone, it's easy to make and use, not depends on C++11 or later.
 
 r3c基于redis官方的c库hiredis实现，全称是redis cluster C++ client，支持redis cluster。
 
