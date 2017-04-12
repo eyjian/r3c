@@ -922,6 +922,15 @@ bool CRedisClient::get(const std::string& key, std::string* value, std::pair<std
     return !value->empty();
 }
 
+int64_t CRedisClient::mget(const std::vector<std::string>& keys, std::vector<std::string>* values,
+                           std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    struct ParamInfo param_info("MGET", sizeof("MGET")-1, NULL, which);
+    param_info.array = &keys;
+    param_info.values = values;
+    return redis_command(REDIS_REPLY_ARRAY, &param_info);
+}
+
 bool CRedisClient::del(const std::string& key, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     struct ParamInfo param_info("DEL", sizeof("DEL")-1, &key, which);
