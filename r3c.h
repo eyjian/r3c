@@ -298,6 +298,8 @@ public:
     void setex(const std::string& key, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     bool setnxex(const std::string& key, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     bool get(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    int64_t mget(const std::vector<std::string>& keys, std::vector<std::string>* values,
+        std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     bool del(const std::string& key, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     int64_t incrby(const std::string& key, int64_t increment, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
 
