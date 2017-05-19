@@ -2329,28 +2329,42 @@ redisContext* CRedisClient::get_redis_context(unsigned int slot, std::pair<std::
                 redis_context = redisConnectWithTimeout(node->first.c_str(), node->second, connect_timeout);
             }
 
-			
-
-            _redis_context = redis_context;
             if (NULL == redis_context)
             {
                 (*g_error_log)("[%s:%d][standalone]redisConnect failed\n", __FILE__, __LINE__, slot);
             }
-            else if (_data_timeout_milliseconds > 0)
+            else
             {
-				if(_password.size() > 0)
-				{
-					redisReply* redis_reply = (redisReply*)redisCommand(redis_context, "auth %s", _password.c_str());
-					if (NULL == redis_reply)
-					{
-						(*g_error_log)("[%s:%d]auth failure\n", __FILE__, __LINE__);		
-					}
+                if (_password.size() > 0)
+                {
+                    redisReply* redis_reply = (redisReply*)redisCommand(redis_context, "auth %s", _password.c_str());
+                    if (NULL == redis_reply)
+                    {
+                        (*g_error_log)("[%s:%d]auth failure, err=%s\n",
+                            __FILE__, __LINE__, redis_context->errstr);
+                        redisFree(redis_context);
+                        return NULL;
+                    }
+                    if (REDIS_REPLY_STATUS != redis_reply->type || 0 != strcasecmp(redis_reply->str, "OK"))
+                    {
+                        (*g_error_log)("[%s:%d]auth failure, reply err=%s\n",
+                            __FILE__, __LINE__, redis_reply->str);
+                        freeReplyObject(redis_reply);
+                        redisFree(redis_context);
+                        return NULL;
+                    }
+                    freeReplyObject(redis_reply);
+                }
 
-				}
-                struct timeval data_timeout;
-                data_timeout.tv_sec = _data_timeout_milliseconds / 1000;
-                data_timeout.tv_usec = (_data_timeout_milliseconds % 1000) * 1000;
-                redisSetTimeout(redis_context, data_timeout);
+                if (_data_timeout_milliseconds > 0)
+                {
+                    struct timeval data_timeout;
+                    data_timeout.tv_sec = _data_timeout_milliseconds / 1000;
+                    data_timeout.tv_usec = (_data_timeout_milliseconds % 1000) * 1000;
+                    redisSetTimeout(redis_context, data_timeout);
+                }
+
+                _redis_context = redis_context;
             }
         }
     }
@@ -2405,18 +2419,27 @@ redisContext* CRedisClient::get_redis_context(unsigned int slot, std::pair<std::
                             (*g_error_log)("[%s:%d]slot[%u] redisConnect failed\n", __FILE__, __LINE__, slot);
                         }
                         else
-                        {                            
-							if(_password.size() > 0)
-							{
-								redisReply* redis_reply = (redisReply*)redisCommand(redis_context, "auth %s", _password.c_str());
-								if (NULL == redis_reply)
-								{
-									(*g_error_log)("[%s:%d]auth failure\n", __FILE__, __LINE__);		
-								}
-
-							}
-                            slot_info->redis_context = redis_context;
-                            _redis_contexts.insert(std::make_pair(slot_info->node, redis_context));
+                        {
+                            if (_password.size() > 0)
+                            {
+                                redisReply* redis_reply = (redisReply*)redisCommand(redis_context, "auth %s", _password.c_str());
+                                if (NULL == redis_reply)
+                                {
+                                    (*g_error_log)("[%s:%d]auth failure, err=%s\n",
+                                        __FILE__, __LINE__, redis_context->errstr);
+                                    redisFree(redis_context);
+                                    return NULL;
+                                }
+                                if (REDIS_REPLY_STATUS != redis_reply->type || 0 != strcasecmp(redis_reply->str, "OK"))
+                                {
+                                    (*g_error_log)("[%s:%d]auth failure, reply err=%s\n",
+                                        __FILE__, __LINE__, redis_reply->str);
+                                    freeReplyObject(redis_reply);
+                                    redisFree(redis_context);
+                                    return NULL;
+                                }
+                                freeReplyObject(redis_reply);
+                            }
 
                             if (_data_timeout_milliseconds > 0)
                             {
@@ -2425,6 +2448,9 @@ redisContext* CRedisClient::get_redis_context(unsigned int slot, std::pair<std::
                                 data_timeout.tv_usec = (_data_timeout_milliseconds % 1000) * 1000;
                                 redisSetTimeout(redis_context, data_timeout);
                             }
+
+                            slot_info->redis_context = redis_context;
+                            _redis_contexts.insert(std::make_pair(slot_info->node, redis_context));
                         }
                     }
                 } // if (slot_info->redis_context != NULL)
@@ -2485,12 +2511,23 @@ redisContext* CRedisClient::connect_node(int* errcode, std::string* errmsg, std:
         {
 			if(_password.size() > 0)
 			{
-				redisReply* redis_reply = (redisReply*)redisCommand(redis_context, "auth %s", _password.c_str());
-				if (NULL == redis_reply)
-				{
-					(*g_error_log)("[%s:%d]auth failure\n", __FILE__, __LINE__);		
-				}
-
+                redisReply* redis_reply = (redisReply*)redisCommand(redis_context, "auth %s", _password.c_str());
+                if (NULL == redis_reply)
+                {
+                    (*g_error_log)("[%s:%d]redisCommand auth failed, err=%s\n",
+                        __FILE__, __LINE__, redis_context->errstr);
+                    redisFree(redis_context);
+                    return NULL;
+                }
+                if (REDIS_REPLY_STATUS != redis_reply->type || 0 != strcasecmp(redis_reply->str, "OK"))
+                {
+                    (*g_error_log)("[%s:%d][standalone]redisCommand auth failed, reply err=%s\n",
+                        __FILE__, __LINE__, redis_reply->str);
+                    freeReplyObject(redis_reply);
+                    redisFree(redis_context);
+                    return NULL;
+                }
+                freeReplyObject(redis_reply);
 			}
             if (0 == redis_context->err)
             {
