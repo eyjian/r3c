@@ -334,6 +334,8 @@ public:
     int hmdel(const std::string& key, const std::vector<std::string>& fields, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     bool hexists(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     int hlen(const std::string& key, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+
+    // if field not exists return true, or return false
     bool hset(const std::string& key, const std::string& field, const std::string& value, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     bool hsetex(const std::string& key, const std::string& field, const std::string& value, uint32_t timeout_seconds, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     bool hsetnx(const std::string& key, const std::string& field, const std::string& value, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
