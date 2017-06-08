@@ -1879,15 +1879,17 @@ const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair
             redis_reply = (redisReply*)redisCommandArgv(redis_context, argc, argv, argv_len);
         if (NULL == redis_reply)
         {
+            const int old_errno = errno;
+
             // disconnnected
             errcode = ERROR_COMMAND;
             if (0 == redis_context->err)
-                errmsg = format_string("redis `%s` error", command);
+                errmsg = format_string("redis `%s` error(%d)", command, old_errno);
             else
-                errmsg = format_string("redis `%s` error: (%d)%s", command, redis_context->err, redis_context->errstr);
-            (*g_error_log)("[%s:%d][%d/%d][%s][%s:%d](%d)%s|(%d, %d)%s\n", __FILE__, __LINE__, i, _retry_times, command, node.first.c_str(), node.second, errcode, errmsg.c_str(), errno, redis_context->err, redis_context->errstr);
+                errmsg = format_string("redis `%s` error(%d): (%d)%s", command, old_errno, redis_context->err, redis_context->errstr);
+            (*g_error_log)("[%s:%d][%d/%d][%s][%s:%d](%d)%s|(%d, %d)%s\n", __FILE__, __LINE__, i, _retry_times, command, node.first.c_str(), node.second, errcode, errmsg.c_str(), old_errno, redis_context->err, redis_context->errstr);
 
-            if ((EAGAIN == errno) || (EWOULDBLOCK == errno))
+            if ((EAGAIN == old_errno) || (EWOULDBLOCK == old_errno))
             {
                 // Resource temporarily unavailable
                 // 对于超时，不能重试，也许成功了，结果是不确定的！！！
