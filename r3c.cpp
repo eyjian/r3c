@@ -1893,6 +1893,7 @@ const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair
             {
                 // Resource temporarily unavailable
                 // 对于超时，不能重试，也许成功了，结果是不确定的！！！
+                //reset_redis_context(slot);
                 break;
             }
             else
@@ -2704,6 +2705,22 @@ void CRedisClient::retry_sleep() const
 {
     if (_retry_sleep_milliseconds > 0)
         millisleep(_retry_sleep_milliseconds);
+}
+
+void CRedisClient::reset_redis_context(unsigned int slot)
+{
+    if (slot < CLUSTER_SLOTS)
+    {
+        struct SlotInfo* slot_info = _slots[slot];
+        if (slot_info != NULL)
+        {
+            if (slot_info->redis_context != NULL)
+            {
+                redisFree(slot_info->redis_context);
+                slot_info->redis_context = NULL;
+            }
+        }
+    }
 }
 
 } // namespace r3c {

@@ -448,6 +448,7 @@ private:
     void clear_redis_contexts();
     void clear_slots();
     void retry_sleep() const;
+    void reset_redis_context(unsigned int slot);
 
 private:
     bool _cluster_mode;
