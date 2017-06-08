@@ -1881,7 +1881,10 @@ const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair
         {
             // disconnnected
             errcode = ERROR_COMMAND;
-            errmsg = format_string("redis `%s` error", command);
+            if (0 == redis_context->err)
+                errmsg = format_string("redis `%s` error", command);
+            else
+                errmsg = format_string("redis `%s` error: (%d)%s", command, redis_context->err, redis_context->errstr);
             (*g_error_log)("[%s:%d][%d/%d][%s][%s:%d](%d)%s|(%d, %d)%s\n", __FILE__, __LINE__, i, _retry_times, command, node.first.c_str(), node.second, errcode, errmsg.c_str(), errno, redis_context->err, redis_context->errstr);
 
             if ((EAGAIN == errno) || (EWOULDBLOCK == errno))
