@@ -74,14 +74,16 @@ enum ZADDFLAG
 // Error code
 enum
 {
-    ERR_PARAMETER = -1,        // Parameter error
-    ERR_INIT_REDIS_CONN = -2,  // Initialize redis connection error
-    ERROR_COMMAND = -3,        // Command error
-    ERROR_CONNECT_REDIS = -4,  // Can not connect any cluster node
-    ERROR_FORMAT = -5,         // Format error
-    ERROR_NOT_SUPPORT = -6,    // Not support
-    ERROR_SLOT_NOT_EXIST = -7, // Slot not exists
-    ERROR_NOSCRIPT = -8        // NOSCRIPT No matching script
+    ERR_PARAMETER = -1,            // Parameter error
+    ERR_INIT_REDIS_CONN = -2,      // Initialize redis connection error
+    ERROR_COMMAND = -3,            // Command error
+    ERROR_CONNECT_REDIS = -4,      // Can not connect any cluster node
+    ERROR_FORMAT = -5,             // Format error
+    ERROR_NOT_SUPPORT = -6,        // Not support
+    ERROR_SLOT_NOT_EXIST = -7,     // Slot not exists
+    ERROR_NOSCRIPT = -8,           // NOSCRIPT No matching script
+    ERROR_UNKNOWN_REPLY_TYPE = -9, // unknhown reply type
+    ERROR_NIL = -10                // Redis返回Nil
 };
 
 // Consts

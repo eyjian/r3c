@@ -414,8 +414,10 @@ int main(int argc, char* argv[])
                 exit(1);
             }
 
-            redis_client.lpop(key, &value, &which_node);
-            fprintf(stdout, "[%s] => %s\n", key, value.c_str());
+            if (redis_client.lpop(key, &value, &which_node))
+                fprintf(stdout, "[%s] => %s\n", key, value.c_str());
+            else
+                fprintf(stdout, "empty\n");
         }
         else if (0 == strcasecmp(cmd, "lpush"))
         {
@@ -476,7 +478,7 @@ int main(int argc, char* argv[])
             if (redis_client.rpop(key, &value, &which_node))
                 fprintf(stdout, "%s\n", value.c_str());
             else
-                fprintf(stderr, "ERROR\n");
+                fprintf(stderr, "empty\n");
         }
         else if (0 == strcasecmp(cmd, "rpush"))
         {
@@ -692,7 +694,8 @@ int main(int argc, char* argv[])
 
             for (i=3; i<argc; ++i)
                 vec.push_back(argv[i]);
-            redis_client.hmget(key, vec, &map, false, &which_node);
+            const int x = redis_client.hmget(key, vec, &map, false, &which_node);
+            fprintf(stdout, "x: %d\n", x);
             if (map.empty())
                 fprintf(stdout, "not exists\n");
             else

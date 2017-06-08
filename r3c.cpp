@@ -902,24 +902,43 @@ void CRedisClient::setex(const std::string& key, const std::string& value, uint3
 
 bool CRedisClient::setnxex(const std::string& key, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-    const std::string str2 = "NX";
-    const std::string str3 = "EX";
-    const std::string str4 = any2string(expired_seconds);
-    struct ParamInfo param_info("SET", sizeof("SET")-1, &key, which);
-    param_info.str1 = &value;
-    param_info.str2 = &str2;
-    param_info.str3 = &str3;
-    param_info.str4 = &str4;
+    try
+    {
+        const std::string str2 = "NX";
+        const std::string str3 = "EX";
+        const std::string str4 = any2string(expired_seconds);
+        struct ParamInfo param_info("SET", sizeof("SET")-1, &key, which);
+        param_info.str1 = &value;
+        param_info.str2 = &str2;
+        param_info.str3 = &str3;
+        param_info.str4 = &str4;
 
-    return redis_command(REDIS_REPLY_STATUS, &param_info) > 0;
+        (void)redis_command(REDIS_REPLY_STATUS, &param_info);
+        return true;
+    }
+    catch (CRedisException& ex)
+    {
+        if (ERROR_NIL == ex.errcode())
+            return false;
+        throw;
+    }
 }
 
 bool CRedisClient::get(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-    struct ParamInfo param_info("GET", sizeof("GET")-1, &key, which);
-    param_info.value = value;
-    redis_command(REDIS_REPLY_STRING, &param_info);
-    return !value->empty();
+    try
+    {
+        struct ParamInfo param_info("GET", sizeof("GET")-1, &key, which);
+        param_info.value = value;
+        (void)redis_command(REDIS_REPLY_STRING, &param_info);
+        return true;
+    }
+    catch (CRedisException& ex)
+    {
+        if (ERROR_NIL == ex.errcode())
+            return false;
+        throw;
+    }
 }
 
 int64_t CRedisClient::mget(const std::vector<std::string>& keys, std::vector<std::string>* values,
@@ -1033,10 +1052,19 @@ int CRedisClient::llen(const std::string& key, std::pair<std::string, uint16_t>*
 
 bool CRedisClient::lpop(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-    struct ParamInfo param_info("LPOP", sizeof("LPOP")-1, &key, which);
-    param_info.value = value;
-    (void)redis_command(REDIS_REPLY_STRING, &param_info);
-    return !value->empty();
+    try
+    {
+        struct ParamInfo param_info("LPOP", sizeof("LPOP")-1, &key, which);
+        param_info.value = value;
+        (void)redis_command(REDIS_REPLY_STRING, &param_info);
+        return true;
+    }
+    catch (CRedisException& ex)
+    {
+        if (ERROR_NIL == ex.errcode())
+            return false;
+        throw;
+    }
 }
 
 int CRedisClient::lpush(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which) throw (CRedisException)
@@ -1080,10 +1108,19 @@ bool CRedisClient::ltrim(const std::string& key, int64_t start, int64_t end, std
 
 bool CRedisClient::rpop(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-    struct ParamInfo param_info("RPOP", sizeof("RPOP")-1, &key, which);
-    param_info.value = value;
-    int64_t result = redis_command(REDIS_REPLY_STRING, &param_info);
-    return 1 == result;
+    try
+    {
+        struct ParamInfo param_info("RPOP", sizeof("RPOP")-1, &key, which);
+        param_info.value = value;
+        (void)redis_command(REDIS_REPLY_STRING, &param_info);
+        return true;
+    }
+    catch (CRedisException& ex)
+    {
+        if (ERROR_NIL == ex.errcode())
+            return false;
+        throw;
+    }
 }
 
 int CRedisClient::rpush(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which) throw (CRedisException)
@@ -1188,11 +1225,20 @@ bool CRedisClient::hsetnxex(const std::string& key, const std::string& field, co
 
 bool CRedisClient::hget(const std::string& key, const std::string& field, std::string* value, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-    struct ParamInfo param_info("HGET", sizeof("HGET")-1, &key, which);
-    param_info.str1 = &field;
-    param_info.value = value;
-    int64_t result = redis_command(REDIS_REPLY_STRING, &param_info);
-    return 1 == result;
+    try
+    {
+        struct ParamInfo param_info("HGET", sizeof("HGET")-1, &key, which);
+        param_info.str1 = &field;
+        param_info.value = value;
+        (void)redis_command(REDIS_REPLY_STRING, &param_info);
+        return true;
+    }
+    catch (CRedisException& ex)
+    {
+        if (ERROR_NIL == ex.errcode())
+            return false;
+        throw;
+    }
 }
 
 int64_t CRedisClient::hincrby(const std::string& key, const std::string& field, int64_t increment, std::pair<std::string, uint16_t>* which) throw (CRedisException)
@@ -1664,18 +1710,36 @@ int CRedisClient::zrevrangebyscore(const std::string& key, int64_t min, int64_t 
 
 int CRedisClient::zrank(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-    struct ParamInfo param_info("ZRANK", sizeof("ZRANK")-1, &key, which);
-    param_info.str1 = &field;
-    int64_t result = redis_command(REDIS_REPLY_INTEGER, &param_info);
-    return static_cast<int>(result);
+    try
+    {
+        struct ParamInfo param_info("ZRANK", sizeof("ZRANK")-1, &key, which);
+        param_info.str1 = &field;
+        int64_t result = redis_command(REDIS_REPLY_INTEGER, &param_info);
+        return static_cast<int>(result);
+    }
+    catch (CRedisException& ex)
+    {
+        if (ERROR_NIL == ex.errcode())
+            return -1;
+        throw;
+    }
 }
 
 int CRedisClient::zrevrank(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
-    struct ParamInfo param_info("ZREVRANK", sizeof("ZREVRANK")-1, &key, which);
-    param_info.str1 = &field;
-    int64_t result = redis_command(REDIS_REPLY_INTEGER, &param_info);
-    return static_cast<int>(result);
+    try
+    {
+        struct ParamInfo param_info("ZREVRANK", sizeof("ZREVRANK")-1, &key, which);
+        param_info.str1 = &field;
+        int64_t result = redis_command(REDIS_REPLY_INTEGER, &param_info);
+        return static_cast<int>(result);
+    }
+    catch (CRedisException& ex)
+    {
+        if (ERROR_NIL == ex.errcode())
+            return -1;
+        throw;
+    }
 }
 
 int64_t CRedisClient::zscore(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which) throw (CRedisException)
@@ -2218,6 +2282,17 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
                     }
                 } // hmget
             } // hmget & hgetall
+        }
+        else if (REDIS_REPLY_NIL == redis_reply->type)
+        {
+            (*g_debug_log)("[%s:%d] reply nil, command[%s]\n", __FILE__, __LINE__, param_info->command);
+            THROW_REDIS_EXCEPTION(ERROR_NIL, "reply nil");
+        }
+        else
+        {
+            result = -1;
+            (*g_error_log)("[%s:%d] unknown reply type: %d, command[%s]\n", __FILE__, __LINE__, redis_reply->type, param_info->command);
+            THROW_REDIS_EXCEPTION(ERROR_UNKNOWN_REPLY_TYPE, "unknown reply type");
         }
 
         freeReplyObject(const_cast<redisReply*>(redis_reply));
