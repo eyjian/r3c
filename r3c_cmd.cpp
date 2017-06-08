@@ -31,6 +31,7 @@
 #include <inttypes.h>
 #include <iostream>
 #include <stdlib.h>
+#include <string.h>
 #include <strings.h>
 
 static void my_log_write(const char* format, ...)
@@ -56,15 +57,21 @@ int main(int argc, char* argv[])
     {
         const char* cmd = argv[1];
         const char* key = argv[2];
-        const char* nodes = getenv("HOSTS");
+        const char* nodes = getenv("H");
         if (NULL == nodes)
         {
-            fprintf(stderr, "Environment[HOSTS] not set, example: export HOSTS=127.0.0.1:6379,127.0.0.1:6380,127.0.0.1:6381\n");
+            fprintf(stderr, "Environment[H] not set, example: export H=127.0.0.1:6379,127.0.0.1:6380,127.0.0.1:6381\n");
             exit(1);
         }
         if ('\0' == *nodes)
         {
-            fprintf(stderr, "Environment[HOSTS] without value, example: export HOSTS=127.0.0.1:6379,127.0.0.1:6380,127.0.0.1:6381\n");
+            fprintf(stderr, "Environment[H] without value, example: export H=127.0.0.1:6379,127.0.0.1:6380,127.0.0.1:6381\n");
+            exit(1);
+        }
+        const char* colon = strchr(nodes, ':');
+        if (NULL == colon)
+        {
+            fprintf(stderr, "Environment[H] with error value, example: export H=127.0.0.1:6379,127.0.0.1:6380,127.0.0.1:6381\n");
             exit(1);
         }
 
