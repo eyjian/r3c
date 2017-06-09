@@ -1987,18 +1987,38 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
     size_t* argv_len = new size_t[argc];
     std::string str;
 
+    // check command
+    if (param_info->command_length <= 0)
+    {
+        (*g_error_log)("[%s:%d] invalid command: command size is zero\n", __FILE__, __LINE__);
+        THROW_REDIS_EXCEPTION(ERROR_INVALID_COMMAND, "command size is zero");
+    }
+
+    // check key
+    if ((*param_info->key).size() <= 0)
+    {
+        (*g_error_log)("[%s:%d] invalid command(%s): key size is zero\n", __FILE__, __LINE__, param_info->command);
+        THROW_REDIS_EXCEPTION(ERROR_ZERO_KEY, "key size is zero");
+    }
+
     // command
     argv_len[index] = param_info->command_length;
-    argv[index] = new char[argv_len[index]];
-    memcpy(argv[index], param_info->command, argv_len[index]);
+    if (argv_len[index] > 0)
+    {
+        argv[index] = new char[argv_len[index]];
+        memcpy(argv[index], param_info->command, argv_len[index]);
+    }
     ++index;
 
     // key
     if (param_info->key != NULL)
     {
         argv_len[index] = (*param_info->key).size();
-        argv[index] = new char[argv_len[index]];
-        memcpy(argv[index], (*param_info->key).c_str(), argv_len[index]);
+        if (argv_len[index] > 0)
+        {
+            argv[index] = new char[argv_len[index]];
+            memcpy(argv[index], (*param_info->key).c_str(), argv_len[index]);
+        }
         ++index;
     }
 
@@ -2006,8 +2026,11 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
     if (param_info->str1 != NULL)
     {
         argv_len[index] = (*param_info->str1).size();
-        argv[index] = new char[argv_len[index]];
-        memcpy(argv[index], (*param_info->str1).c_str(), argv_len[index]);
+        if (argv_len[index] > 0)
+        {
+            argv[index] = new char[argv_len[index]];
+            memcpy(argv[index], (*param_info->str1).c_str(), argv_len[index]);
+        }
         ++index;
     }
 
@@ -2015,8 +2038,11 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
     if (param_info->str2 != NULL)
     {
         argv_len[index] = (*param_info->str2).size();
-        argv[index] = new char[argv_len[index]];
-        memcpy(argv[index], (*param_info->str2).c_str(), argv_len[index]);
+        if (argv_len[index] > 0)
+        {
+            argv[index] = new char[argv_len[index]];
+            memcpy(argv[index], (*param_info->str2).c_str(), argv_len[index]);
+        }
         ++index;
     }
 
@@ -2024,8 +2050,11 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
     if (param_info->str3 != NULL)
     {
         argv_len[index] = (*param_info->str3).size();
-        argv[index] = new char[argv_len[index]];
-        memcpy(argv[index], (*param_info->str3).c_str(), argv_len[index]);
+        if (argv_len[index] > 0)
+        {
+            argv[index] = new char[argv_len[index]];
+            memcpy(argv[index], (*param_info->str3).c_str(), argv_len[index]);
+        }
         ++index;
     }
 
@@ -2033,8 +2062,11 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
     if (param_info->str4 != NULL)
     {
         argv_len[index] = (*param_info->str4).size();
-        argv[index] = new char[argv_len[index]];
-        memcpy(argv[index], (*param_info->str4).c_str(), argv_len[index]);
+        if (argv_len[index] > 0)
+        {
+            argv[index] = new char[argv_len[index]];
+            memcpy(argv[index], (*param_info->str4).c_str(), argv_len[index]);
+        }
         ++index;
     }
 
@@ -2042,8 +2074,11 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
     if (param_info->str5 != NULL)
     {
         argv_len[index] = (*param_info->str5).size();
-        argv[index] = new char[argv_len[index]];
-        memcpy(argv[index], (*param_info->str5).c_str(), argv_len[index]);
+        if (argv_len[index] > 0)
+        {
+            argv[index] = new char[argv_len[index]];
+            memcpy(argv[index], (*param_info->str5).c_str(), argv_len[index]);
+        }
         ++index;
     }
 
@@ -2053,8 +2088,11 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
         for (i=0; i<param_info->array->size(); ++i)
         {
             argv_len[index] = (*param_info->array)[i].size();
-            argv[index] = new char[argv_len[index]];
-            memcpy(argv[index], (*param_info->array)[i].c_str(), argv_len[index]);
+            if (argv_len[index] > 0)
+            {
+                argv[index] = new char[argv_len[index]];
+                memcpy(argv[index], (*param_info->array)[i].c_str(), argv_len[index]);
+            }
             ++index;
         }
     }
@@ -2065,13 +2103,19 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
         for (std::map<std::string, std::string>::const_iterator c_iter=(*param_info->in_map1).begin(); c_iter!=(*param_info->in_map1).end(); ++c_iter)
         {
             argv_len[index] = c_iter->first.size();
-            argv[index] = new char[argv_len[index]];
-            memcpy(argv[index], c_iter->first.c_str(), argv_len[index]);
+            if (argv_len[index] > 0)
+            {
+                argv[index] = new char[argv_len[index]];
+                memcpy(argv[index], c_iter->first.c_str(), argv_len[index]);
+            }
             ++index;
 
             argv_len[index] = c_iter->second.size();
-            argv[index] = new char[argv_len[index]];
-            memcpy(argv[index], c_iter->second.c_str(), argv_len[index]);
+            if (argv_len[index] > 0)
+            {
+                argv[index] = new char[argv_len[index]];
+                memcpy(argv[index], c_iter->second.c_str(), argv_len[index]);
+            }
             ++index;
         }
     }
@@ -2084,14 +2128,20 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
             // score
             str = any2string(c_iter->second);
             argv_len[index] = str.size();
-            argv[index] = new char[argv_len[index]];
-            memcpy(argv[index], str.c_str(), argv_len[index]);
+            if (argv_len[index] > 0)
+            {
+                argv[index] = new char[argv_len[index]];
+                memcpy(argv[index], str.c_str(), argv_len[index]);
+            }
             ++index;
 
             // value
             argv_len[index] = c_iter->first.size();
-            argv[index] = new char[argv_len[index]];
-            memcpy(argv[index], c_iter->first.c_str(), argv_len[index]);
+            if (argv_len[index] > 0)
+            {
+                argv[index] = new char[argv_len[index]];
+                memcpy(argv[index], c_iter->first.c_str(), argv_len[index]);
+            }
             ++index;
         }
     }
@@ -2100,8 +2150,11 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
     if (param_info->str6 != NULL)
     {
         argv_len[index] = param_info->str6->size();
-        argv[index] = new char[argv_len[index]];
-        memcpy(argv[index], param_info->str6->c_str(), argv_len[index]);
+        if (argv_len[index] > 0)
+        {
+            argv[index] = new char[argv_len[index]];
+            memcpy(argv[index], param_info->str6->c_str(), argv_len[index]);
+        }
         ++index;
     }
 
@@ -2109,8 +2162,11 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
     if (param_info->str7)
     {
         argv_len[index] = param_info->str7->size();
-        argv[index] = new char[argv_len[index]];
-        memcpy(argv[index], param_info->str7->c_str(), argv_len[index]);
+        if (argv_len[index] > 0)
+        {
+            argv[index] = new char[argv_len[index]];
+            memcpy(argv[index], param_info->str7->c_str(), argv_len[index]);
+        }
         ++index;
     }
 
@@ -2118,8 +2174,11 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
     if (param_info->tag != NULL)
     {
         argv_len[index] = param_info->tag_length;
-        argv[index] = new char[argv_len[index]];
-        memcpy(argv[index], param_info->tag, argv_len[index]);
+        if (argv_len[index] > 0)
+        {
+            argv[index] = new char[argv_len[index]];
+            memcpy(argv[index], param_info->tag, argv_len[index]);
+        }
         ++index;
     }
 

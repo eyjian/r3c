@@ -83,7 +83,9 @@ enum
     ERROR_SLOT_NOT_EXIST = -7,     // Slot not exists
     ERROR_NOSCRIPT = -8,           // NOSCRIPT No matching script
     ERROR_UNKNOWN_REPLY_TYPE = -9, // unknhown reply type
-    ERROR_NIL = -10                // Redis返回Nil
+    ERROR_NIL = -10,               // Redis return Nil
+    ERROR_INVALID_COMMAND = -11,   // Invalid command
+    ERROR_ZERO_KEY = -12           // Key size is zero
 };
 
 // Consts
