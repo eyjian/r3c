@@ -1936,14 +1936,23 @@ const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair
                 // ERR Error running script (call to f_9b8bd9adab23a1c5fb1a5142b577a0e7b4cb166d): @user_script:1: @user_script: 1: Lua script attempted to access a non local key in a cluster node（需重试错误）
                 // NOSCRIPT No matching script. Please use EVAL.
                 (*g_error_log)("[%s:%d][%d/%d][%s][%s:%d](%d)%s|(%d)%s\n", __FILE__, __LINE__, i, _retry_times, command, node.first.c_str(), node.second, errcode, errmsg.c_str(), redis_context->err, redis_context->errstr);
-                if ((0 == strncmp(errmsg.c_str(), "WRONGTYPE", sizeof("WRONGTYPE")-1)) ||
-                    (0 == strncmp(errmsg.c_str(), "ERR", sizeof("ERR")-1)))
+                if (0 == strncmp(errmsg.c_str(), "WRONGTYPE", sizeof("WRONGTYPE")-1))
                 {
                     break;
                 }
                 else if (0 == strncmp(errmsg.c_str(), "NOSCRIPT", sizeof("NOSCRIPT")-1))
                 {
                     errcode = ERROR_NOSCRIPT;
+                    break;
+                }
+                else if (0 == strncmp(errmsg.c_str(), "ERR", sizeof("ERR")-1))
+                {
+                    // eval will not return MOVED when slot is not right
+                    // ERR Error running script (call to f_9b8bd9adab23a1c5fb1a5142b577a0e7b4cb166d): @user_script:1: @user_script: 1: Lua script attempted to access a non local key in a cluster node（需重试错误）
+                    if (0 == strncasecmp(command, "eval", sizeof("eval")-1))
+                    {
+                        init();
+                    }
                     break;
                 }
                 else
