@@ -1949,7 +1949,8 @@ const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair
                 {
                     // eval will not return MOVED when slot is not right
                     // ERR Error running script (call to f_9b8bd9adab23a1c5fb1a5142b577a0e7b4cb166d): @user_script:1: @user_script: 1: Lua script attempted to access a non local key in a cluster node（需重试错误）
-                    if (0 == strncasecmp(command, "eval", sizeof("eval")-1))
+                    if ((0 == strncasecmp(command, "eval", sizeof("eval")-1)) ||
+                        (0 == strncasecmp(command, "evalsha", sizeof("eval")-1)))
                     {
                         init();
                     }
