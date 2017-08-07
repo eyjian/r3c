@@ -2209,6 +2209,8 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
     const redisReply* redis_reply = redis_command(excepted_reply_type, param_info->which, param_info->key, param_info->command, argc, (const char**)argv, argv_len);
     if (redis_reply != NULL)
     {
+        RedisReplyHelper rrh(redis_reply);
+
         if (REDIS_REPLY_STATUS == redis_reply->type)
         {
             if (0 == strcmp(redis_reply->str, "OK"))
@@ -2370,9 +2372,6 @@ int64_t CRedisClient::redis_command(int excepted_reply_type, struct ParamInfo* p
             (*g_error_log)("[%s:%d] unknown reply type: %d, command[%s]\n", __FILE__, __LINE__, redis_reply->type, param_info->command);
             THROW_REDIS_EXCEPTION(ERROR_UNKNOWN_REPLY_TYPE, "unknown reply type");
         }
-
-        freeReplyObject(const_cast<redisReply*>(redis_reply));
-        redis_reply = NULL;
     }
 
     return result;
