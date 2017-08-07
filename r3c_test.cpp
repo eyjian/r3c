@@ -718,6 +718,9 @@ void test_hget_and_hset1(const std::string& redis_cluster_nodes)
             ERROR_PRINT("%s", "DEL ERROR");
 
         rc.del(key);
+        // test empty value
+        rc.hset(key, field, "");
+        rc.del(key);
     }
     catch (r3c::CRedisException& ex)
     {
