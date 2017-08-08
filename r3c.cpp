@@ -361,7 +361,10 @@ public:
     ~FreeArgvHelper()
     {
         for (int i=0; i<_argc; ++i)
-            delete []_argv[i];
+        {
+            if (_argv_len[i] > 0)
+                delete []_argv[i];
+        }
 
         delete []_argv;
         delete []_argv_len;
