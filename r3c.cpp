@@ -1869,6 +1869,7 @@ const redisReply* CRedisClient::redis_command(int excepted_reply_type, std::pair
             }
             else
             {
+                errmsg = format_string("(%d)%s", errcode, errmsg.c_str());
                 if (NULL == key)
                     THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(ERR_INIT_REDIS_CONN, errmsg, node.first, node.second, command, NULL);
                 else
