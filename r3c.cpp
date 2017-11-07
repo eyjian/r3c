@@ -1711,6 +1711,18 @@ int CRedisClient::zrevrangebyscore(const std::string& key, int64_t min, int64_t 
     return static_cast<int>(result);
 }
 
+int CRedisClient::zremrangebyrank(const std::string& key, int64_t start, int64_t end, std::pair<std::string, uint16_t>* which) throw (CRedisException)
+{
+    const std::string str6 = any2string(start);
+    const std::string str7 = any2string(end);
+    struct ParamInfo param_info("ZREMRANGEBYRANK", sizeof("ZREMRANGEBYRANK")-1, &key, which);
+
+    param_info.str6 = &str6;
+    param_info.str7 = &str7;
+    int64_t result = redis_command(REDIS_REPLY_INTEGER, &param_info);
+    return static_cast<int>(result);
+}
+
 int CRedisClient::zrank(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which) throw (CRedisException)
 {
     try

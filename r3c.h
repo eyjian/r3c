@@ -412,6 +412,9 @@ public:
     int zrangebyscore(const std::string& key, int64_t min, int64_t max, int64_t offset, int64_t count, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     int zrevrangebyscore(const std::string& key, int64_t max, int64_t min, int64_t offset, int64_t count, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
 
+    // Add command
+    int zremrangebyrank(const std::string& key, int64_t start, int64_t end, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+
     // Return -1 if field not exists
     int zrank(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
     int zrevrank(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
