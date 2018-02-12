@@ -42,8 +42,11 @@
 #define PRECISION 0.000001
 
 #define TIPS_PRINT() tips_print(__FUNCTION__)
-#define ERROR_PRINT(format, ...) error_print(__FILE__, __LINE__, __FUNCTION__, format, __VA_ARGS__)
-#define SUCCESS_PRINT(format, ...) success_print(__FILE__, __LINE__, __FUNCTION__, format, __VA_ARGS__)
+#define ERROR_PRINT(format, ...) do { sg_faild_cases.push_back(__FUNCTION__); error_print(__FILE__, __LINE__, __FUNCTION__, format, __VA_ARGS__); } while(false)
+#define SUCCESS_PRINT(format, ...) do { sg_success_cases.push_back(__FUNCTION__); success_print(__FILE__, __LINE__, __FUNCTION__, format, __VA_ARGS__); } while(false)
+
+static std::vector<std::string> sg_success_cases;
+static std::vector<std::string> sg_faild_cases;
 
 static void tips_print(const char* function);
 static void error_print(const char* file, int line, const char* function, const char* format, ...);
@@ -58,11 +61,16 @@ static void test_eval(const std::string& redis_cluster_nodes);
 
 ////////////////////////////////////////////////////////////////////////////
 // KEY VALUE
+static void test_empty_key(const std::string& redis_cluster_nodes);
+static void test_key_type(const std::string& redis_cluster_nodes);
 static void test_expire(const std::string& redis_cluster_nodes);
+static void test_get_and_set0(const std::string& redis_cluster_nodes);
 static void test_get_and_set1(const std::string& redis_cluster_nodes);
 static void test_get_and_set2(const std::string& redis_cluster_nodes);
+static void test_get_and_set3(const std::string& redis_cluster_nodes);
 static void test_incrby(const std::string& redis_cluster_nodes);
 static void test_setnxex(const std::string& redis_cluster_nodes);
+static void test_mget_and_mset(const std::string& redis_cluster_nodes);
 
 ////////////////////////////////////////////////////////////////////////////
 // LIST
@@ -77,6 +85,8 @@ static void test_hmget_and_hmset2(const std::string& redis_cluster_nodes);
 static void test_hscan(const std::string& redis_cluster_nodes);
 static void test_hincrby_and_hlen(const std::string& redis_cluster_nodes);
 static void test_hmincrby(const std::string& redis_cluster_nodes);
+static void test_hsetnx(const std::string& redis_cluster_nodes);
+static void test_hsetnxex(const std::string& redis_cluster_nodes);
 
 ////////////////////////////////////////////////////////////////////////////
 // SET
@@ -129,11 +139,16 @@ int main(int argc, char* argv[])
 
     ////////////////////////////////////////////////////////////////////////////
     // KEY VALUE
+    test_empty_key(redis_cluster_nodes);
+    test_key_type(redis_cluster_nodes);
     test_expire(redis_cluster_nodes);
+    test_get_and_set0(redis_cluster_nodes);
     test_get_and_set1(redis_cluster_nodes);
     test_get_and_set2(redis_cluster_nodes);
+    test_get_and_set3(redis_cluster_nodes);
     test_incrby(redis_cluster_nodes);
     test_setnxex(redis_cluster_nodes);
+    test_mget_and_mset(redis_cluster_nodes);
 
     ////////////////////////////////////////////////////////////////////////////
     // LIST
@@ -148,6 +163,8 @@ int main(int argc, char* argv[])
     test_hscan(redis_cluster_nodes);
     test_hincrby_and_hlen(redis_cluster_nodes);
     test_hmincrby(redis_cluster_nodes);
+    test_hsetnx(redis_cluster_nodes);
+    test_hsetnxex(redis_cluster_nodes);
 
     ////////////////////////////////////////////////////////////////////////////
     // SET
@@ -168,6 +185,13 @@ int main(int argc, char* argv[])
     if ((test_slots_env != NULL) && (0 == strcmp(test_slots_env, "1")))
         test_slots(redis_cluster_nodes);
 
+    printf("\n");
+    for (std::vector<std::string>::size_type i=0; i<sg_faild_cases.size(); ++i)
+    {
+        const char* function = sg_faild_cases[i].c_str();
+        error_print(__FILE__, __LINE__, function, "%s", "FAILED");
+    }
+    printf("TOTAL SUCCESS: %zd, FAILED: %zd\n", sg_success_cases.size(), sg_faild_cases.size());
     return 0;
 }
 
@@ -241,10 +265,10 @@ void test_slots(const std::string& redis_cluster_nodes)
     TIPS_PRINT();
 
     r3c::CRedisClient rc(redis_cluster_nodes);
-    for (unsigned int i=0; i<100000000; ++i)
+    for (unsigned int i=0; i<100000; ++i)
     {
-        const std::string key = r3c::any2string(i);
-        unsigned int slot = r3c::get_key_slot(&key);
+        const std::string& key = r3c::any2string(i);
+        const unsigned int slot = r3c::get_key_slot(&key);
 
         try
         {
@@ -271,7 +295,7 @@ void test_eval(const std::string& redis_cluster_nodes)
         r3c::CRedisClient rc(redis_cluster_nodes);
         const uint32_t timeout_seconds = 3;
         const std::string key = "eval_key";
-        const std::string lua_scripts = r3c::format_string("local n; n=redis.call('incrby','%s','2016');redis.call('expire','%s','%u'); return n;", key.c_str(), key.c_str(), timeout_seconds);
+        const std::string& lua_scripts = r3c::format_string("local n; n=redis.call('incrby','%s','2016');redis.call('expire','%s','%u'); return n;", key.c_str(), key.c_str(), timeout_seconds);
         rc.del(key);
         const r3c::RedisReplyHelper redis_reply = rc.eval(key, lua_scripts);
         if (!redis_reply)
@@ -324,6 +348,229 @@ void test_eval(const std::string& redis_cluster_nodes)
 
 ////////////////////////////////////////////////////////////////////////////
 // KEY VALUE
+
+void test_empty_key(const std::string& redis_cluster_nodes)
+{
+    TIPS_PRINT();
+
+    try
+    {
+        r3c::CRedisClient rc(redis_cluster_nodes);
+        const std::string key;
+
+        if (rc.cluster_mode())
+        {
+            // del
+            try
+            {
+                rc.del(key);
+            }
+            catch (r3c::CRedisException& ex)
+            {
+                if (ex.errcode() != r3c::ERROR_ZERO_KEY)
+                {
+                    ERROR_PRINT("del ERROR: %s", ex.str().c_str());
+                    return;
+                }
+                else
+                {
+                    fprintf(stderr, "%s\n", ex.str().c_str());
+                }
+            }
+
+            // set
+            try
+            {
+                rc.set(key, "v1");
+            }
+            catch (r3c::CRedisException& ex)
+            {
+                if (ex.errcode() != r3c::ERROR_ZERO_KEY)
+                {
+                    ERROR_PRINT("set ERROR: %s", ex.str().c_str());
+                    return;
+                }
+                else
+                {
+                    fprintf(stderr, "%s\n", ex.str().c_str());
+                }
+            }
+
+            // hset
+            try
+            {
+                rc.hset(key, "f1", "v1");
+            }
+            catch (r3c::CRedisException& ex)
+            {
+                if (ex.errcode() != r3c::ERROR_ZERO_KEY)
+                {
+                    ERROR_PRINT("hset ERROR: %s", ex.str().c_str());
+                    return;
+                }
+                else
+                {
+                    fprintf(stderr, "%s\n", ex.str().c_str());
+                }
+            }
+
+            // eval
+            try
+            {
+                const std::string& lua_scripts = "redis.call('get', 'f1')";
+                rc.eval(key, lua_scripts);
+            }
+            catch (r3c::CRedisException& ex)
+            {
+                if (ex.errcode() != r3c::ERROR_ZERO_KEY)
+                {
+                    ERROR_PRINT("eval ERROR: %s", ex.str().c_str());
+                    return;
+                }
+                else
+                {
+                    fprintf(stderr, "%s\n", ex.str().c_str());
+                }
+            }
+
+            // eval
+            try
+            {
+                const std::string& lua_scripts = "redis.call('get', '')";
+                rc.eval(key, lua_scripts);
+            }
+            catch (r3c::CRedisException& ex)
+            {
+                if (ex.errcode() != r3c::ERROR_ZERO_KEY)
+                {
+                    ERROR_PRINT("eval ERROR: %s", ex.str().c_str());
+                    return;
+                }
+                else
+                {
+                    fprintf(stderr, "%s\n", ex.str().c_str());
+                }
+            }
+
+            SUCCESS_PRINT("%s", "OK");
+        }
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        ERROR_PRINT("ERROR: %s", ex.str().c_str());
+    }
+}
+
+void test_key_type(const std::string& redis_cluster_nodes)
+{
+    TIPS_PRINT();
+
+    try
+    {
+        r3c::CRedisClient rc(redis_cluster_nodes);
+        const std::string key = "r3c_kk";
+        std::string key_type;
+        std::string value;
+
+        rc.del(key);
+        rc.set(key, "123");
+        if (!rc.get(key, &value))
+        {
+            ERROR_PRINT("%s", "GET ERROR");
+            return;
+        }
+        if (!rc.exists(key))
+        {
+            ERROR_PRINT("%s", "SET ERROR");
+            return;
+        }
+        if (value != "123")
+        {
+            ERROR_PRINT("%s", "SET ERROR");
+            return;
+        }
+        if (!rc.key_type(key, &key_type))
+        {
+            ERROR_PRINT("%s", "TYPE ERROR");
+            return;
+        }
+        if (key_type != "string")
+        {
+            ERROR_PRINT("%s", "TYPE ERROR");
+            return;
+        }
+
+        rc.del(key);
+        if (rc.exists(key))
+        {
+            ERROR_PRINT("%s", "DEL ERROR");
+            return;
+        }
+
+        if (!rc.hset(key, "f1", "v1"))
+        {
+            ERROR_PRINT("%s", "DEL ERROR");
+            return;
+        }
+        if (!rc.exists(key))
+        {
+            ERROR_PRINT("%s", "HSET ERROR");
+            return;
+        }
+        if (!rc.key_type(key, &key_type))
+        {
+            ERROR_PRINT("%s", "TYPE ERROR");
+            return;
+        }
+        if (key_type != "hash")
+        {
+            ERROR_PRINT("%s", "TYPE ERROR");
+            return;
+        }
+
+        rc.del(key);
+        if (rc.zadd(key, "f1", 1) != 1)
+        {
+            ERROR_PRINT("%s", "ZADD ERROR");
+            return;
+        }
+        if (!rc.key_type(key, &key_type))
+        {
+            ERROR_PRINT("%s", "TYPE ERROR");
+            return;
+        }
+        if (key_type != "zset")
+        {
+            ERROR_PRINT("%s", "TYPE ERROR");
+            return;
+        }
+
+        rc.del(key);
+        if (rc.sadd(key, "m1") != 1)
+        {
+            ERROR_PRINT("%s", "SADD ERROR");
+            return;
+        }
+        if (!rc.key_type(key, &key_type))
+        {
+            ERROR_PRINT("%s", "TYPE ERROR");
+            return;
+        }
+        if (key_type != "set")
+        {
+            ERROR_PRINT("%s", "TYPE ERROR");
+            return;
+        }
+
+        rc.del(key);
+        SUCCESS_PRINT("%s", "OK");
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        ERROR_PRINT("ERROR: %s", ex.str().c_str());
+    }
+}
+
 void test_expire(const std::string& redis_cluster_nodes)
 {
     TIPS_PRINT();
@@ -371,6 +618,77 @@ void test_expire(const std::string& redis_cluster_nodes)
     }
 }
 
+void test_get_and_set0(const std::string& redis_cluster_nodes)
+{
+    TIPS_PRINT();
+
+    try
+    {
+        r3c::CRedisClient rc(redis_cluster_nodes);
+        const std::string key1 = "r3c_kk 00";
+        const std::string key2 = "r3c_kk 22";
+        const std::string key3 = "r3c_kk 33";
+        const std::string key4 = "r3c_kk 55";
+        const std::string key5 = "r3c_kk 66";
+        std::string value1, value2, value3, value4, value5;
+
+        rc.del(key1);
+        rc.del(key2);
+        rc.del(key3);
+        rc.del(key4);
+        rc.del(key5);
+        if (rc.get(key1, &value1) ||
+            rc.get(key2, &value2) ||
+            rc.get(key3, &value3) ||
+            rc.get(key4, &value4) ||
+            rc.get(key5, &value5))
+        {
+            ERROR_PRINT("EXIST: %s, %s, %s, %s, %s", key1.c_str(), key2.c_str(), key3.c_str(), key4.c_str(), key5.c_str());
+            return;
+        }
+
+        value1.clear();
+        value2.clear();
+        value3.clear();
+        value4.clear();
+        value5.clear();
+        rc.set(key1, "v1");
+        rc.set(key2, "v2");
+        rc.set(key3, "v3");
+        rc.set(key4, "v4");
+        rc.set(key5, "v5");
+        if (!rc.get(key1, &value1) ||
+            !rc.get(key2, &value2) ||
+            !rc.get(key3, &value3) ||
+            !rc.get(key4, &value4) ||
+            !rc.get(key5, &value5))
+        {
+            ERROR_PRINT("NOT EXIST: %s, %s, %s, %s, %s", key1.c_str(), key2.c_str(), key3.c_str(), key4.c_str(), key5.c_str());
+            return;
+        }
+        if ((value1 != "v1") ||
+            (value2 != "v2") ||
+            (value3 != "v3") ||
+            (value4 != "v4") ||
+            (value5 != "v5"))
+        {
+            ERROR_PRINT("SET: %s, %s, %s, %s, %s", key1.c_str(), key2.c_str(), key3.c_str(), key4.c_str(), key5.c_str());
+            return;
+        }
+
+        rc.del(key1);
+        rc.del(key2);
+        rc.del(key3);
+        rc.del(key4);
+        rc.del(key5);
+        SUCCESS_PRINT("%s", "OK");
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        ERROR_PRINT("EXCEPTION: %s", ex.str().c_str());
+    }
+}
+
 void test_get_and_set1(const std::string& redis_cluster_nodes)
 {
     TIPS_PRINT();
@@ -386,27 +704,30 @@ void test_get_and_set1(const std::string& redis_cluster_nodes)
 
         if (!rc.exists(key))
         {
-            ERROR_PRINT("%s", "NOT EXIST");
+            ERROR_PRINT("NOT EXIST: %s", key.c_str());
             return;
         }
 
         std::string result;
         if (!rc.get(key, &result))
         {
-            ERROR_PRINT("%s", "NOT EXIST");
+            ERROR_PRINT("NOT EXIST: %s", key.c_str());
         }
         else
         {
-            const struct X* p = reinterpret_cast<const struct X*>(result.data());
+            if (result != "123456")
+            {
+                ERROR_PRINT("ERROR: %s", result.c_str());
+            }
             if (rc.del(key))
-                SUCCESS_PRINT("OK: %s", p->str().c_str());
+                SUCCESS_PRINT("OK: %s", key.c_str());
             else
-                ERROR_PRINT("OK: %s", p->str().c_str());
+                ERROR_PRINT("ERROR: %s", key.c_str());
         }
     }
     catch (r3c::CRedisException& ex)
     {
-        ERROR_PRINT("ERROR: %s", ex.str().c_str());
+        ERROR_PRINT("EXCEPTION: %s", ex.str().c_str());
     }
 }
 
@@ -417,8 +738,17 @@ void test_get_and_set2(const std::string& redis_cluster_nodes)
     try
     {
         r3c::CRedisClient rc(redis_cluster_nodes);
-        int k = 20160603;
-        struct X v(1, 3, 5, 7);
+        int k = 20180212;
+        struct X v;
+
+        // memset used to fix valgrind warning:
+        // Syscall param write(buf) points to uninitialised byte(s)
+        // Address 0x678368b is 43 bytes inside a block of size 101 alloc'd
+        memset(&v, 0, sizeof(v));
+        v.a = 1;
+        v.b = 3;
+        v.c = 5;
+        v.d = 8;
 
         std::string key;
         std::string value;
@@ -427,7 +757,7 @@ void test_get_and_set2(const std::string& redis_cluster_nodes)
         rc.del(key);
         rc.set(key, value);
 
-        value.clear();
+        value = "#";
         if (!rc.get(key, &value))
         {
             ERROR_PRINT("%s", "not exists");
@@ -441,7 +771,58 @@ void test_get_and_set2(const std::string& redis_cluster_nodes)
         if (v == v2)
             SUCCESS_PRINT("OK: %s", v2.str().c_str());
         else
-            ERROR_PRINT("ERROR: %s", v2.str().c_str());
+            ERROR_PRINT("ERROR: %s, %s", v2.str().c_str(), v.str().c_str());
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        ERROR_PRINT("ERROR: %s", ex.str().c_str());
+    }
+}
+
+void test_get_and_set3(const std::string& redis_cluster_nodes)
+{
+    TIPS_PRINT();
+
+    try
+    {
+        r3c::CRedisClient rc(redis_cluster_nodes);
+        const std::string key = "r3c kk";
+        std::string value;
+        int step = 0;
+
+        try
+        {
+            rc.del(key);
+
+            // OK: set will overwrite hset
+            step = 0;
+            rc.hset(key, "f1", "v1");
+            step = 1;
+            rc.set(key, "123");
+            step = 2;
+
+            // EXCEPTION: hset can not overwrite set
+            // (error) WRONGTYPE Operation against a key holding the wrong kind of value
+            rc.hset(key, "f1", "v2");
+            step = 3;
+            rc.del(key);
+            step = 5;
+
+            SUCCESS_PRINT("%s", "OK");
+        }
+        catch (r3c::CRedisException& ex)
+        {
+            rc.del(key);
+
+            if ((2 == step) && (ex.errtype() == "WRONGTYPE"))
+            {
+                SUCCESS_PRINT("%s", "OK");
+            }
+            else
+            {
+                ERROR_PRINT("ERROR: %s", ex.str().c_str());
+            }
+        }
     }
     catch (r3c::CRedisException& ex)
     {
@@ -545,6 +926,74 @@ void test_setnxex(const std::string& redis_cluster_nodes)
     }
 }
 
+void test_mget_and_mset(const std::string& redis_cluster_nodes)
+{
+    TIPS_PRINT();
+
+    try
+    {
+        r3c::CRedisClient rc(redis_cluster_nodes);
+        std::vector<std::string> values;
+        std::vector<std::string> keys(3);
+        keys[0] = "r3c kk 0";
+        keys[1] = "r3c kk 1";
+        keys[2] = "r3c kk 2";
+
+        int n = rc.mget(keys, &values);
+        if (n != static_cast<int>(keys.size()))
+        {
+            ERROR_PRINT("mget return size error: %d/%zd", n, keys.size());
+            return;
+        }
+
+        std::map<std::string, std::string> kv_map;
+        kv_map[keys[0]] = "0";
+        kv_map[keys[1]] = "1";
+        kv_map[keys[2]] = "2";
+        n = rc.mset(kv_map);
+        if (n != static_cast<int>(kv_map.size()))
+        {
+            ERROR_PRINT("mset return size error: %d/%zd", n, kv_map.size());
+            return;
+        }
+
+        keys.push_back("r3c kk 3");
+        n = rc.mget(keys, &values);
+        if (n != static_cast<int>(keys.size()))
+        {
+            ERROR_PRINT("mget return size error: %d/%zd", n, keys.size());
+            return;
+        }
+
+        if (values[0] != "0")
+        {
+            ERROR_PRINT("mset return error value: %s\n", values[0].c_str());
+            return;
+        }
+        if (values[1] != "1")
+        {
+            ERROR_PRINT("mset return error value: %s\n", values[1].c_str());
+            return;
+        }
+        if (values[2] != "2")
+        {
+            ERROR_PRINT("mset return error value: %s\n", values[2].c_str());
+            return;
+        }
+        if (!values[3].empty())
+        {
+            ERROR_PRINT("mset return error value: %s\n", values[3].c_str());
+            return;
+        }
+
+        SUCCESS_PRINT("%s", "OK");
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        ERROR_PRINT("ERROR: %s", ex.str().c_str());
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////
 // LIST
 void test_list(const std::string& redis_cluster_nodes)
@@ -578,12 +1027,7 @@ void test_list(const std::string& redis_cluster_nodes)
             return;
         }
 
-        if (!rc.ltrim(key, 0, 100))
-        {
-            ERROR_PRINT("%s", "ltrim ERROR");
-            return;
-        }
-
+        rc.ltrim(key, 0, 100);
         if ((rc.lrange(key, 0, 10, &values) != 0) || (!values.empty()))
         {
             ERROR_PRINT("%s", "exists");
@@ -686,36 +1130,58 @@ void test_hget_and_hset1(const std::string& redis_cluster_nodes)
         const std::string key = "r3c_kk";
         const std::string field = "fiel d";
         const std::string value = "12345 6";
+        const std::string new_value = "#abcdefghijklmnopqrstuvwxyz#";
         std::string str;
 
         rc.del(key);
         if (rc.hget(key, field, &str))
         {
-            ERROR_PRINT("%s", "EXIST");
+            ERROR_PRINT("%s", "HEXIST");
             return;
         }
 
         if (rc.hexists(key, field))
         {
-            ERROR_PRINT("%s", "EXIST");
+            ERROR_PRINT("%s", "HEXIST");
             return;
         }
 
         if (!rc.hset(key, field, value))
         {
-            ERROR_PRINT("%s", "SET ERROR");
+            ERROR_PRINT("%s", "HSET ERROR");
             return;
         }
-
         if (!rc.hget(key, field, &str))
         {
             ERROR_PRINT("%s", "NOT EXISTS");
+            return;
+        }
+        if (str != value)
+        {
+            ERROR_PRINT("%s", "HSET ERROR");
+            return;
+        }
+
+        if (rc.hset(key, field, new_value))
+        {
+            ERROR_PRINT("%s", "HSET ERROR");
+            return;
+        }
+        if (!rc.hget(key, field, &str))
+        {
+            ERROR_PRINT("%s", "NOT EXISTS");
+            return;
+        }
+        if (str != new_value)
+        {
+            ERROR_PRINT("%s", "HSET ERROR");
+            return;
         }
 
         if (rc.hdel(key, field))
             SUCCESS_PRINT("%s", "OK");
         else
-            ERROR_PRINT("%s", "DEL ERROR");
+            ERROR_PRINT("%s", "HDEL ERROR");
 
         rc.del(key);
         // test empty value
@@ -737,7 +1203,16 @@ void test_hget_and_hset2(const std::string& redis_cluster_nodes)
         r3c::CRedisClient rc(redis_cluster_nodes);
         int k = 603;
         int f = 2016;
-        struct X v(2, 4, 6, 8);
+        struct X v;
+
+        // memset used to fix valgrind warning:
+        // Syscall param write(buf) points to uninitialised byte(s)
+        // Address 0x74d80a6 is 54 bytes inside a block of size 123 alloc'd
+        memset(&v, 0, sizeof(v));
+        v.a = 2;
+        v.b = 4;
+        v.c = 6;
+        v.d = 8;
 
         std::string key((char*)&k, sizeof(k));
         std::string field((char*)&f, sizeof(f));
@@ -923,6 +1398,7 @@ void test_hscan(const std::string& redis_cluster_nodes)
             return;
         }
 
+        results.clear();
         cursor = rc.hscan(key, 0, "na*", &results);
         if (results.size() != 2)
         {
@@ -1082,6 +1558,139 @@ void test_hmincrby(const std::string& redis_cluster_nodes)
     }
 }
 
+void test_hsetnx(const std::string& redis_cluster_nodes)
+{
+    TIPS_PRINT();
+
+    try
+    {
+        r3c::CRedisClient rc(redis_cluster_nodes);
+        const std::string key = "r3c kk";
+        std::string value;
+
+        rc.del(key);
+        if (!rc.hsetnx(key, "f1", "v1"))
+        {
+            ERROR_PRINT("%s", "EXISTS");
+            return;
+        }
+        if (!rc.hget(key, "f1", &value))
+        {
+            ERROR_PRINT("%s", "NOT EXISTS");
+            return;
+        }
+        if (value != "v1")
+        {
+            ERROR_PRINT("value error: %s", value.c_str());
+            return;
+        }
+
+        value.clear();
+        if (rc.hsetnx(key, "f1", "v12"))
+        {
+            ERROR_PRINT("%s", "NOT EXISTS");
+            return;
+        }
+        if (!rc.hget(key, "f1", &value))
+        {
+            ERROR_PRINT("%s", "NOT EXISTS");
+            return;
+        }
+        if (value != "v1")
+        {
+            ERROR_PRINT("value error: %s", value.c_str());
+            return;
+        }
+
+        rc.del(key);
+        SUCCESS_PRINT("%s", "OK");
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        ERROR_PRINT("ERROR: %s", ex.str().c_str());
+    }
+}
+
+void test_hsetnxex(const std::string& redis_cluster_nodes)
+{
+    TIPS_PRINT();
+
+    try
+    {
+        r3c::CRedisClient rc(redis_cluster_nodes);
+        const std::string key = "r3c kk";
+        std::string value;
+
+        rc.del(key);
+        if (!rc.hsetnxex(key, "f1", "20180212", 2))
+        {
+            ERROR_PRINT("%s", "NOT EXISTS");
+            return;
+        }
+        if (!rc.hexists(key, "f1"))
+        {
+            ERROR_PRINT("%s", "NOT EXISTS");
+            return;
+        }
+        if (!rc.hget(key, "f1", &value))
+        {
+            ERROR_PRINT("%s", "NOT EXISTS");
+            return;
+        }
+        if (value != "20180212")
+        {
+            ERROR_PRINT("value error: %s", value.c_str());
+            return;
+        }
+
+        value.clear();
+        if (rc.hsetnxex(key, "f1", "v12", 2))
+        {
+            ERROR_PRINT("%s", "NOT EXISTS");
+            return;
+        }
+        if (!rc.hget(key, "f1", &value))
+        {
+            ERROR_PRINT("%s", "NOT EXISTS");
+            return;
+        }
+        if (value != "20180212")
+        {
+            ERROR_PRINT("value error: %s", value.c_str());
+            return;
+        }
+
+        r3c::millisleep(3000);
+        value.clear();
+        if (rc.hexists(key, "f1"))
+        {
+            ERROR_PRINT("%s", "EXISTS");
+            return;
+        }
+        if (!rc.hsetnxex(key, "f1", "V22", 2))
+        {
+            ERROR_PRINT("%s", "EXISTS");
+            return;
+        }
+        if (!rc.hget(key, "f1", &value))
+        {
+            ERROR_PRINT("%s", "NOT EXISTS");
+            return;
+        }
+        if (value != "V22")
+        {
+            ERROR_PRINT("value error: %s", value.c_str());
+            return;
+        }
+
+        SUCCESS_PRINT("%s", "OK");
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        ERROR_PRINT("ERROR: %s", ex.str().c_str());
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////
 // SET
 void test_set(const std::string& redis_cluster_nodes)
@@ -1204,6 +1813,61 @@ void test_set(const std::string& redis_cluster_nodes)
             }
         }
 
+        // srem
+        {
+            int n = 0;
+            std::vector<std::string> x;
+            x.push_back("m3");
+            x.push_back("m4");
+            x.push_back("m5");
+            rc.del(key);
+            if ((n=rc.sadd(key, "m1")) != 1)
+            {
+                ERROR_PRINT("add error: %d", n);
+                return;
+            }
+            if ((n=rc.sadd(key, "m2")) != 1)
+            {
+                ERROR_PRINT("add error: %d", n);
+                return;
+            }
+            if ((n=rc.sadd(key, x)) != 3)
+            {
+                ERROR_PRINT("add error: %d", n);
+                return;
+            }
+
+            if (!rc.sismember(key, "m1"))
+            {
+                ERROR_PRINT("%s", "sismember");
+                return;
+            }
+            if ((n=rc.srem(key, "m1")) != 1)
+            {
+                ERROR_PRINT("srem error: %d", n);
+            }
+            if (rc.sismember(key, "m1"))
+            {
+                ERROR_PRINT("%s", "sismember");
+                return;
+            }
+
+            if (!rc.sismember(key, "m4"))
+            {
+                ERROR_PRINT("%s", "sismember");
+                return;
+            }
+            if ((n=rc.srem(key, "m4")) != 1)
+            {
+                ERROR_PRINT("srem error: %d", n);
+            }
+            if (rc.sismember(key, "m4"))
+            {
+                ERROR_PRINT("%s", "sismember");
+                return;
+            }
+        }
+
         rc.del(key);
         SUCCESS_PRINT("%s", "OK");
     }
@@ -1244,13 +1908,13 @@ void test_sorted_set(const std::string& redis_cluster_nodes)
         count = rc.zadd(key, map);
         if (count != 2)
         {
-            ERROR_PRINT("count error: %d", count);
+            ERROR_PRINT("zadd count error: %d", count);
             return;
         }
         score = rc.zscore(key, "f 3");
         if (score != 7)
         {
-            ERROR_PRINT("score error: %" PRId64, score);
+            ERROR_PRINT("zscore score error: %" PRId64, score);
             return;
         }
 
@@ -1258,25 +1922,25 @@ void test_sorted_set(const std::string& redis_cluster_nodes)
         rank = rc.zrank(key, "f 3");
         if (rank != 2)
         {
-            ERROR_PRINT("rank error: %d", rank);
+            ERROR_PRINT("zrank rank error: %d", rank);
             return;
         }
         rank = rc.zrank(key, "f 2");
         if (rank != 1)
         {
-            ERROR_PRINT("rank error: %d", rank);
+            ERROR_PRINT("zrank rank error: %d", rank);
             return;
         }
         rank = rc.zrank(key, "f 1");
         if (rank != 0)
         {
-            ERROR_PRINT("rank error: %d", rank);
+            ERROR_PRINT("zrank rank error: %d", rank);
             return;
         }
         rank = rc.zrank(key, "f X");
         if (rank != -1)
         {
-            ERROR_PRINT("rank error: %d", rank);
+            ERROR_PRINT("zrank rank error: %d", rank);
             return;
         }
 
@@ -1284,25 +1948,25 @@ void test_sorted_set(const std::string& redis_cluster_nodes)
         rank = rc.zrevrank(key, "f 3");
         if (rank != 0)
         {
-            ERROR_PRINT("rank error: %d", rank);
+            ERROR_PRINT("zrevrank rank error: %d", rank);
             return;
         }
         rank = rc.zrevrank(key, "f 2");
         if (rank != 1)
         {
-            ERROR_PRINT("rank error: %d", rank);
+            ERROR_PRINT("zrevrank rank error: %d", rank);
             return;
         }
         rank = rc.zrevrank(key, "f 1");
         if (rank != 2)
         {
-            ERROR_PRINT("rank error: %d", rank);
+            ERROR_PRINT("zrevrank rank error: %d", rank);
             return;
         }
         rank = rc.zrevrank(key, "f X");
         if (rank != -1)
         {
-            ERROR_PRINT("rank error: %d", rank);
+            ERROR_PRINT("zrevrank rank error: %d", rank);
             return;
         }
 
@@ -1310,37 +1974,37 @@ void test_sorted_set(const std::string& redis_cluster_nodes)
         score = rc.zincrby(key, "f 1", 7);
         if (score != 10)
         {
-            ERROR_PRINT("score error: %" PRId64, score);
+            ERROR_PRINT("zincrby score error: %" PRId64, score);
             return;
         }
         score = rc.zincrby(key, "f X", 6);
         if (score != 6)
         {
-            ERROR_PRINT("score error: %" PRId64, score);
+            ERROR_PRINT("zincrby score error: %" PRId64, score);
             return;
         }
         rank = rc.zrank(key, "f X");
         if (rank != 1)
         {
-            ERROR_PRINT("rank error: %d", rank);
+            ERROR_PRINT("zrank rank error: %d", rank);
             return;
         }
         rank = rc.zrevrank(key, "f X");
         if (rank != 2)
         {
-            ERROR_PRINT("rank error: %d", rank);
+            ERROR_PRINT("zrevrank rank error: %d", rank);
             return;
         }
         score = rc.zscore(key, "f X");
         if (score != 6)
         {
-            ERROR_PRINT("score error: %" PRId64, score);
+            ERROR_PRINT("zscore score error: %" PRId64, score);
             return;
         }
         score = rc.zscore(key, "f 1");
         if (score != 3+7)
         {
-            ERROR_PRINT("score error: %" PRId64, score);
+            ERROR_PRINT("zscore score error: %" PRId64, score);
             return;
         }
 
@@ -1349,13 +2013,13 @@ void test_sorted_set(const std::string& redis_cluster_nodes)
         count = rc.zadd(key, "f1", 9);
         if (count != 1)
         {
-            ERROR_PRINT("zadd error: %d", count);
+            ERROR_PRINT("zadd count error: %d", count);
             return;
         }
         count = rc.zadd(key, "f2", 2);
         if (count != 1)
         {
-            ERROR_PRINT("zadd error: %d", count);
+            ERROR_PRINT("zadd count error: %d", count);
             return;
         }
         map.clear();
@@ -1365,7 +2029,7 @@ void test_sorted_set(const std::string& redis_cluster_nodes)
         count = rc.zadd(key, map);
         if (count != 3)
         {
-            ERROR_PRINT("zadd error: %d", count);
+            ERROR_PRINT("zadd count error: %d", count);
             return;
         }
         map["f5 "] = 6; // exists
@@ -1373,7 +2037,7 @@ void test_sorted_set(const std::string& redis_cluster_nodes)
         count = rc.zadd(key, map);
         if (count != 1)
         {
-            ERROR_PRINT("zadd error: %d", count);
+            ERROR_PRINT("zadd count error: %d", count);
             return;
         }
 
@@ -1381,19 +2045,19 @@ void test_sorted_set(const std::string& redis_cluster_nodes)
         count = rc.zcount(key, 0, 1);
         if (count != 0)
         {
-            ERROR_PRINT("zcount error: %d", count);
+            ERROR_PRINT("zcount count error: %d", count);
             return;
         }
         count = rc.zcount(key, 0, 3);
         if (count != 3)
         {
-            ERROR_PRINT("zcount error: %d", count);
+            ERROR_PRINT("zcount count error: %d", count);
             return;
         }
         count = rc.zcount(key, 0, 7);
         if (count != 5)
         {
-            ERROR_PRINT("zcount error: %d", count);
+            ERROR_PRINT("zcount count error: %d", count);
             return;
         }
 
@@ -1402,31 +2066,31 @@ void test_sorted_set(const std::string& redis_cluster_nodes)
         count = rc.zscan(key, 0, &values);
         if ((count != 0) || static_cast<int>(values.size()) != 6)
         {
-            ERROR_PRINT("zscan error: %d/%d", count, static_cast<int>(values.size()));
+            ERROR_PRINT("zscan count error: %d/%d", count, static_cast<int>(values.size()));
             return;
         }
         count = rc.zscan(key, 0, 3, &values);
         if ((count != 0) || static_cast<int>(values.size()) != 6)
         {
-            ERROR_PRINT("zscan error: %d/%d", count, static_cast<int>(values.size()));
+            ERROR_PRINT("zscan count error: %d/%d", count, static_cast<int>(values.size()));
             return;
         }
         count = rc.zscan(key, 0, "f3", &values);
         if ((count != 0) || static_cast<int>(values.size()) != 0)
         {
-            ERROR_PRINT("zscan error: %d/%d", count, static_cast<int>(values.size()));
+            ERROR_PRINT("zscan count error: %d/%d", count, static_cast<int>(values.size()));
             return;
         }
         count = rc.zscan(key, 0, "f2", &values);
         if ((count != 0) || static_cast<int>(values.size()) != 1)
         {
-            ERROR_PRINT("zscan error: %d/%d", count, static_cast<int>(values.size()));
+            ERROR_PRINT("zscan count error: %d/%d", count, static_cast<int>(values.size()));
             return;
         }
         count = rc.zscan(key, 0, "f2", 1, &values);
         if ((count != 0) || static_cast<int>(values.size()) != 1)
         {
-            ERROR_PRINT("zscan error: %d/%d", count, static_cast<int>(values.size()));
+            ERROR_PRINT("zscan count error: %d/%d", count, static_cast<int>(values.size()));
             return;
         }
 
@@ -1633,6 +2297,7 @@ void test_zrangebyscore(const std::string& redis_cluster_nodes)
         if (vec.size() != 4)
         {
             ERROR_PRINT("size eror: %zd\n", vec.size());
+            return;
         }
         else
         {
@@ -1678,6 +2343,7 @@ void test_zrevrangebyscore(const std::string& redis_cluster_nodes)
         if (vec.size() != 4)
         {
             ERROR_PRINT("size eror: %zd\n", vec.size());
+            return;
         }
         else
         {
@@ -1723,11 +2389,17 @@ void test_zrem(const std::string& redis_cluster_nodes)
         map["e"] = 5;
         count = rc.zadd(key, map);
         if (count != 5)
+        {
             ERROR_PRINT("zadd error: %d", count);
+            return;
+        }
 
         count = rc.zrem(key, "c");
         if (count != 1)
+        {
             ERROR_PRINT("zrem error: %d", count);
+            return;
+        }
 
         std::vector<std::string> fields;
         fields.push_back("x");
@@ -1735,7 +2407,10 @@ void test_zrem(const std::string& redis_cluster_nodes)
         fields.push_back("e");
         count = rc.zrem(key, fields);
         if (count != 2)
+        {
             ERROR_PRINT("zrem error: %d", count);
+            return;
+        }
 
         SUCCESS_PRINT("%s", "OK");
     }

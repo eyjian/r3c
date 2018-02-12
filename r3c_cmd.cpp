@@ -28,6 +28,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #include "r3c.h"
+#include "utils.h"
 #include <inttypes.h>
 #include <iostream>
 #include <stdlib.h>
@@ -126,7 +127,7 @@ int main(int argc, char* argv[])
         else if (0 == strcasecmp(cmd, "list"))
         {
             std::vector<struct r3c::NodeInfo> nodes_info;
-            int num_nodes = redis_client.list_nodes(&nodes_info, &which_node);
+            int num_nodes = redis_client.list_nodes(&nodes_info);
 
             fprintf(stdout, "number of nodes (from %s:%d): %d\n", which_node.first.c_str(), which_node.second, num_nodes);
             for (std::vector<struct r3c::NodeInfo>::size_type i=0; i<nodes_info.size(); ++i)
@@ -135,11 +136,7 @@ int main(int argc, char* argv[])
         else if (0 == strcasecmp(cmd, "flushall"))
         {
             fprintf(stdout, "["PRINT_COLOR_YELLOW"NOTICE"PRINT_COLOR_NONE"] To clear only a node, set `HOSTS` to a single node\n\n");
-
-            std::vector<std::pair<std::string, std::string> > results;
-            redis_client.flushall(&results);
-            for (std::vector<std::pair<std::string, std::string> >::size_type i=0; i<results.size(); ++i)
-                fprintf(stdout, "[%s] %s\n", results[i].first.c_str(), results[i].second.c_str());
+            redis_client.flushall();
         }
         ////////////////////////////////////////////////////////////////////////////
         // KEY VALUE
@@ -225,9 +222,11 @@ int main(int argc, char* argv[])
                 const char* lua_scripts_or_sha1 = argv[3];
                 if (0 == strcasecmp(cmd, "eval"))
                 {
+                    // r3c_cmd eval r3c_k1 "local v=redis.call('get','r3c_k1');return v"
+                    // r3c_cmd eval r3c_k1 "local v=redis.call('set','r3c_k1','123');return v"
                     const r3c::RedisReplyHelper reply = redis_client.eval(key, lua_scripts_or_sha1, &which_node);
                     if (reply)
-                        std::cout << reply;
+                        std::cout << reply.get();
                 }
             }
             else
@@ -468,10 +467,7 @@ int main(int argc, char* argv[])
 
             end = atoi(argv[4]);
             start = atoi(argv[3]);
-            if (redis_client.ltrim(key, start, end, &which_node))
-                fprintf(stdout, "OK\n");
-            else
-                fprintf(stderr, "ERROR\n");
+            redis_client.ltrim(key, start, end, &which_node);
         }
         else if (0 == strcasecmp(cmd, "rpop"))
         {
@@ -948,7 +944,7 @@ int main(int argc, char* argv[])
             }
             else if (6 == argc)
             {
-                cursor = redis_client.sscan(key, cursor, argv[3], atoi(argv[4]), &values, &which_node);
+                cursor = redis_client.sscan(key, cursor, argv[4], atoi(argv[5]), &values, &which_node);
             }
 
             fprintf(stdout, "cursor: %" PRId64", count: %d\n", cursor, static_cast<int>(values.size()));
@@ -1189,7 +1185,7 @@ int main(int argc, char* argv[])
             }
             else if (6 == argc)
             {
-                cursor = redis_client.zscan(key, cursor, argv[3], atoi(argv[4]), &values2, &which_node);
+                cursor = redis_client.zscan(key, cursor, argv[4], atoi(argv[5]), &values2, &which_node);
             }
 
             fprintf(stdout, "cursor: %" PRId64", count: %d\n", cursor, static_cast<int>(values2.size()));

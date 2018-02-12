@@ -1,47 +1,16 @@
-/*
- * Copyright (c) 2016, Jian Yi <eyjian at gmail dot com>
- *
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- *   * Redistributions of source code must retain the above copyright notice,
- *     this list of conditions and the following disclaimer.
- *   * Redistributions in binary form must reproduce the above copyright
- *     notice, this list of conditions and the following disclaimer in the
- *     documentation and/or other materials provided with the distribution.
- *   * Neither the name of Redis nor the names of its contributors may be used
- *     to endorse or promote products derived from this software without
- *     specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
-// Redis Cluster Principle
-// http://blog.chinaunix.net/uid-20682147-id-5727861.html
 #ifndef REDIS_CLUSTER_CLIENT_H
 #define REDIS_CLUSTER_CLIENT_H
 #include <assert.h>
-#include <exception>
 #include <hiredis/hiredis.h>
-#include <inttypes.h> // PRId64
-#include <iostream>
+#include <inttypes.h>
 #include <map>
 #include <ostream>
 #include <sstream>
-#include <stdint.h> // uint16_t
+#include <stdint.h>
 #include <string>
 #include <vector>
+
+#define R3C_ASSERT assert
 
 #define PRINT_COLOR_NONE         "\033[m"
 #define PRINT_COLOR_RED          "\033[0;32;31m"
@@ -60,80 +29,12 @@
 #define PRINT_COLOR_LIGHT_PURPLE "\033[1;35m"
 #define PRINT_COLOR_LIGHT_GRAY   "\033[0;37m"
 
-std::ostream& operator <<(std::ostream& os, const struct redisReply& redis_reply);
 namespace r3c {
 
-enum ZADDFLAG
-{
-    Z_NS, // Don't set options
-    Z_XX, // Only update elements that already exist. Never add elements.
-    Z_NX, // Don't update already existing elements. Always add new elements.
-    Z_CH  // Modify the return value from the number of new elements added
-};
-
-// Error code
-enum
-{
-    ERR_PARAMETER = -1,            // Parameter error
-    ERR_INIT_REDIS_CONN = -2,      // Initialize redis connection error
-    ERROR_COMMAND = -3,            // Command error
-    ERROR_CONNECT_REDIS = -4,      // Can not connect any cluster node
-    ERROR_FORMAT = -5,             // Format error
-    ERROR_NOT_SUPPORT = -6,        // Not support
-    ERROR_SLOT_NOT_EXIST = -7,     // Slot not exists
-    ERROR_NOSCRIPT = -8,           // NOSCRIPT No matching script
-    ERROR_UNKNOWN_REPLY_TYPE = -9, // unknhown reply type
-    ERROR_NIL = -10,               // Redis return Nil
-    ERROR_INVALID_COMMAND = -11,   // Invalid command
-    ERROR_ZERO_KEY = -12           // Key size is zero
-};
-
-// Consts
-enum
-{
-    RETRY_TIMES = 3,                     // Default value
-    RETRY_SLEEP_MILLISECONDS = 1000,     // Default value, sleep 1000ms to retry
-    CONNECT_TIMEOUT_MILLISECONDS = 1000, // Connect timeout milliseconds
-    DATA_TIMEOUT_MILLISECONDS = 1000     // Read and write socket timeout milliseconds
-};
-
-void millisleep(uint32_t millisecond);
-void free_redis_reply(const redisReply* redis_reply);
-std::string format_string(const char* format, ...) __attribute__((format(printf, 1, 2)));
-std::string ip2string(uint32_t ip);
-std::string strsha1(const std::string& str);
-int split(std::vector<std::string>* tokens, const std::string& source, const std::string& sep, bool skip_sep=false);
-
-// Cluster node info
-struct NodeInfo
-{
-    std::string id;         // The node ID, a 40 characters random string generated when a node is created and never changed again (unless CLUSTER RESET HARD is used)
-    std::string ip;         // The node IP
-    uint16_t port;          // The node port
-    std::string flags;      // A list of comma separated flags: myself, master, slave, fail?, fail, handshake, noaddr, noflags
-    bool is_fail;
-    bool is_master;         // true if node is master, false if node is salve
-    bool is_slave;
-    std::string master_id;  // The replication master
-    int ping_sent;          // Milliseconds unix time at which the currently active ping was sent, or zero if there are no pending pings
-    int pong_recv;          // Milliseconds unix time the last pong was received
-    int epoch;              // The configuration epoch (or version) of the current node (or of the current master if the node is a slave). Each time there is a failover, a new, unique, monotonically increasing configuration epoch is created. If multiple nodes claim to serve the same hash slots, the one with higher configuration epoch wins
-    bool connected;         // The state of the link used for the node-to-node cluster bus
-    std::vector<std::pair<int, int> > slots; // A hash slot number or range
-
-    std::string str() const
-    {
-        return format_string("node://%s/%s:%d/%s", id.c_str(), ip.c_str(), port, flags.c_str());
-    }
-};
-
-// Set NULL to discard log
-typedef void (*LOG_WRITE)(const char* format, ...);
-void set_error_log_write(LOG_WRITE info_log);
-void set_info_log_write(LOG_WRITE info_log);
-void set_debug_log_write(LOG_WRITE debug_log);
-unsigned int get_key_slot(const std::string* key);
-std::ostream& operator <<(std::ostream& os, const struct NodeInfo& node_info);
+extern void millisleep(uint32_t milliseconds);
+extern std::string format_string(const char* format, ...);
+extern int split(std::vector<std::string>* tokens, const std::string& source, const std::string& sep, bool skip_sep=false);
+extern unsigned int get_key_slot(const std::string* key);
 
 template <typename T>
 inline std::string any2string(T m)
@@ -143,43 +44,103 @@ inline std::string any2string(T m)
     return ss.str();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-class CRedisException: public std::exception
+enum ReadPolicy
 {
-public:
-    CRedisException(int errcode, const std::string& errmsg, const char* file, int line, const std::string& node_ip=std::string("-"), uint16_t node_port=0, const char* command=NULL, const char* key=NULL) throw ();
-    virtual ~CRedisException() throw () {}
-    virtual const char* what() const throw ();
-    int errcode() const { return _errcode; }
-    std::string str() const throw ();
-
-    const char* file() const throw () { return _file.c_str(); }
-    int line() const throw () { return _line; }
-    const char* node_ip() const throw () { return _node_ip.c_str(); }
-    uint16_t node_port() const throw () { return _node_port; }
-    const char* command() const throw() { return _command.c_str(); }
-    const char* key() const throw() { return _key.c_str(); }
-
-private:
-    const int _errcode;
-    const std::string _errmsg;
-    const std::string _file;
-    const int _line;
-    const std::string _node_ip;
-    const uint16_t _node_port;
-    std::string _command;
-    std::string _key;
+    RP_ONLEY_MASTER // Always read from master
 };
 
+// Consts
+enum
+{
+    RETRY_TIMES = 3,                     // Default value
+    RETRY_SLEEP_MILLISECONDS = 100,      // Default value, sleep 1000ms to retry
+    CONNECT_TIMEOUT_MILLISECONDS = 1000, // Connect timeout milliseconds
+    DATA_TIMEOUT_MILLISECONDS = 1000     // Read and write socket timeout milliseconds
+};
+
+// Error code
+enum
+{
+    ERROR_PARAMETER = -1,              // Parameter error
+    ERROR_INIT_REDIS_CONN = -2,        // Initialize redis connection error
+    ERROR_COMMAND = -3,                // Command error
+    ERROR_CONNECT_REDIS = -4,          // Can not connect any cluster node
+    ERROR_FORMAT = -5,                 // Format error
+    ERROR_NOT_SUPPORT = -6,            // Not support
+    ERROR_SLOT_NOT_EXIST = -7,         // Slot not exists
+    ERROR_NOSCRIPT = -8,               // NOSCRIPT No matching script
+    ERROR_UNKNOWN_REPLY_TYPE = -9,     // unknhown reply type
+    ERROR_NIL = -10,                   // Redis return Nil
+    ERROR_INVALID_COMMAND = -11,       // Invalid command
+    ERROR_ZERO_KEY = -12,              // Key size is zero
+    ERROR_REDIS_CONTEXT = -13,         // Can't allocate redis context
+    ERROR_REDIS_AUTH = 14,             // Authorization failed
+    ERROR_UNEXCEPTED_REPLY_TYPE = -15, // Unexcepted reply type
+    ERROR_REPLY_FORMAT = -16           // Reply format error
+};
+
+enum ZADDFLAG
+{
+    Z_NS, // Don't set options
+    Z_XX, // Only update elements that already exist. Never add elements.
+    Z_NX, // Don't update already existing elements. Always add new elements.
+    Z_CH  // Modify the return value from the number of new elements added
+};
+std::string zaddflag2str(ZADDFLAG zaddflag);
+
 ////////////////////////////////////////////////////////////////////////////////
-struct SlotInfo; // Forward declare
-struct ParamInfo;
+
+// Set NULL to discard log
+typedef void (*LOG_WRITE)(const char* format, ...);
+void set_error_log_write(LOG_WRITE error_log);
+void set_info_log_write(LOG_WRITE info_log);
+void set_debug_log_write(LOG_WRITE debug_log);
+
+struct NodeInfo
+{
+    std::string id;         // The node ID, a 40 characters random string generated when a node is created and never changed again (unless CLUSTER RESET HARD is used)
+    std::string ip;         // The node IP
+    uint16_t port;          // The node port
+    std::string flags;      // A list of comma separated flags: myself, master, slave, fail?, fail, handshake, noaddr, noflags
+    std::string master_id;  // The replication master
+    int ping_sent;          // Milliseconds unix time at which the currently active ping was sent, or zero if there are no pending pings
+    int pong_recv;          // Milliseconds unix time the last pong was received
+    int epoch;              // The configuration epoch (or version) of the current node (or of the current master if the node is a slave). Each time there is a failover, a new, unique, monotonically increasing configuration epoch is created. If multiple nodes claim to serve the same hash slots, the one with higher configuration epoch wins
+    bool connected;         // The state of the link used for the node-to-node cluster bus
+    std::vector<std::pair<int, int> > slots; // A hash slot number or range
+
+    std::string str() const;
+    bool is_master() const;
+    bool is_slave() const;
+    bool is_fail() const;
+};
+std::ostream& operator <<(std::ostream& os, const struct NodeInfo& node_info);
+
+struct ClusterInfo
+{
+    int cluster_state;
+    int cluster_slots_assigned;
+    int cluster_slots_ok;
+    int cluster_slots_pfail;
+    int cluster_slots_fail;
+    int cluster_known_nodes;
+    int cluster_size;
+    int cluster_current_epoch;
+    int cluster_my_epoch;
+    int64_t cluster_stats_messages_sent;
+    int64_t cluster_stats_messages_received;
+};
 
 // Help to free redisReply automatically
 // DO NOT use RedisReplyHelper for nested redisReply
 class RedisReplyHelper
 {
 public:
+    RedisReplyHelper()
+        : _redis_reply(NULL)
+    {
+    }
+
     RedisReplyHelper(const redisReply* redis_reply)
         : _redis_reply(redis_reply)
     {
@@ -193,12 +154,23 @@ public:
     ~RedisReplyHelper()
     {
         if (_redis_reply != NULL)
-            free_redis_reply(const_cast<redisReply*>(_redis_reply));
+        {
+            freeReplyObject((void*)_redis_reply);
+        }
     }
 
     operator bool() const
     {
         return _redis_reply != NULL;
+    }
+
+    void free()
+    {
+        if (_redis_reply != NULL)
+        {
+            freeReplyObject((void*)_redis_reply);
+            _redis_reply = NULL;
+        }
     }
 
     const redisReply* get() const
@@ -213,8 +185,24 @@ public:
         return redis_reply;
     }
 
+    RedisReplyHelper& operator =(const redisReply* redis_reply)
+    {
+        if (_redis_reply != NULL)
+        {
+            freeReplyObject((void*)_redis_reply);
+        }
+
+        _redis_reply = redis_reply;
+        return *this;
+    }
+
     RedisReplyHelper& operator =(const RedisReplyHelper& other)
     {
+        if (_redis_reply != NULL)
+        {
+            freeReplyObject((void*)_redis_reply);
+        }
+
         _redis_reply = other.detach();
         return *this;
     }
@@ -234,6 +222,41 @@ private:
     mutable const redisReply* _redis_reply;
 };
 
+class CRedisException: public std::exception
+{
+public:
+    // key maybe a binary value
+    CRedisException(int errcode, const std::string& errmsg, const std::string& raw_errmsg, const std::string& errtype, const char* file, int line, const std::string& node_ip=std::string("-"), uint16_t node_port=0, const std::string& command=std::string(""), const std::string& key=std::string("")) throw ();
+    virtual ~CRedisException() throw () {}
+    virtual const char* what() const throw ();
+    int errcode() const { return _errcode; }
+    std::string str() const throw ();
+
+    const char* file() const throw () { return _file.c_str(); }
+    int line() const throw () { return _line; }
+    const char* node_ip() const throw () { return _node_ip.c_str(); }
+    uint16_t node_port() const throw () { return _node_port; }
+    const std::string& command() const throw() { return _command; }
+    const std::string& key() const throw() { return _key; }
+    const std::string& errtype() const throw () { return _errtype; }
+    const std::string& raw_errmsg() const throw () { return _raw_errmsg; }
+
+private:
+    const int _errcode;
+    const std::string _errmsg;
+    const std::string _raw_errmsg;
+    const std::string _errtype; // The type of error, such as: ERR, MOVED, WRONGTYPE, ...
+    const std::string _file;
+    const int _line;
+    const std::string _node_ip;
+    const uint16_t _node_port;
+    std::string _command;
+    std::string _key;
+};
+
+bool is_moved_error(const std::string& errtype);
+bool is_wrongtype_error(const std::string& errtype);
+
 // NOTICE: not thread safe
 // A redis client than support redis cluster
 //
@@ -241,15 +264,15 @@ private:
 // Use `__thread` to the global instance of CRedisClient for thread level.
 //
 // EXAMPLE:
-// static __thread r3c::CRedisClient* sg_redis_client = NULL; // thread level gobal variable
+// static __thread r3c::CRedisClient* stg_redis_client = NULL; // thread level gobal variable
 // r3c::CRedisClient* get_redis_client()
 // {
-//     if (NULL == sg_redis_client)
+//     if (NULL == stg_redis_client)
 //     {
-//         sg_redis_client = new r3c::CRedisClient(REDIS_CLUSTER_NODES);
+//         stg_redis_client = new r3c::CRedisClient(REDIS_CLUSTER_NODES);
 //         //pthread_cleanup_push(release_redis_client, NULL);
 //     }
-//     return sg_redis_client;
+//     return stg_redis_client;
 // }
 //
 // By calling pthread_cleanup_push() to registger a callback to release sg_redis_client when thread exits.
@@ -257,8 +280,13 @@ private:
 // void release_redis_client(void*)
 // {
 //     delete sg_redis_client;
-//     sg_redis_client = NULL;
+//     stg_redis_client = NULL;
 // }
+struct RedisNode;
+struct SlotInfo;
+class CCommandArgs;
+
+// NOTICE: All keys and values can be binary.
 class CRedisClient
 {
 public:
@@ -266,209 +294,467 @@ public:
     //         e.g., 127.0.0.1:6379,127.0.0.1:6380,127.0.0.2:6379,127.0.0.3:6379,
     //         standalone mode if only one node, else cluster mode.
     //
-    // NOTICE: CRedisClient will not retry if read/write timeout, because the result is uncertain.
-    CRedisClient(const std::string& nodes, int connect_timeout_milliseconds=CONNECT_TIMEOUT_MILLISECONDS, int data_timeout_milliseconds=DATA_TIMEOUT_MILLISECONDS, const std::string& password=std::string("")) throw (CRedisException);
+    // In particular, the same nodes is allowed for cluster mode:
+    // 127.0.0.1:6379,127.0.0.1:6379
+    CRedisClient(
+            const std::string& nodes,
+            int connect_timeout_milliseconds=CONNECT_TIMEOUT_MILLISECONDS,
+            int data_timeout_milliseconds=DATA_TIMEOUT_MILLISECONDS,
+            const std::string& password=std::string(""),
+            ReadPolicy read_policy = RP_ONLEY_MASTER
+            ) throw (CRedisException);
     ~CRedisClient();
 
+    // Returns true if parameter nodes of ctor is composed of two or more nodes,
+    // or false when only a node for standlone mode.
     bool cluster_mode() const;
-    void set_retry(int retry_times, int retry_sleep_milliseconds);
 
 public:
-    // Get all nodes information of redis cluster,
-    // available only in the cluster mode, standalone mode unavailable
-    // which - The node IP and node port which returns nodes information
-    int list_nodes(std::vector<struct NodeInfo>* nodes_info, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    int list_nodes(std::vector<struct NodeInfo>* nodes_info) throw (CRedisException);
 
-    // Try to clear all data in cluster
-    // To clear only a node, set ctor's parameter `nodes` to a single node for standalone mode
-    void flushall(std::vector<std::pair<std::string, std::string> >* results) throw (CRedisException);
-
-    // key value
-    bool key_type(const std::string& key, std::string* key_type, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    bool exists(const std::string& key, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    bool expire(const std::string& key, uint32_t seconds, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-
-    // Evaluate scripts using the Lua interpreter built
-    const RedisReplyHelper eval(const std::string& key, const std::string& lua_scripts, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    const RedisReplyHelper eval(const std::string& key, const std::string& lua_scripts, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    const RedisReplyHelper evalsha(const std::string& key, const std::string& sha1, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-
-    // Success returns the remaining time to live of a key that has a timeout
-    // Returns -2 if the key does not exist
-    // Returns -1 if the key exists but has no associated expire
-    int ttl(const std::string& key, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    void set(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    bool setnx(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    void setex(const std::string& key, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    bool setnxex(const std::string& key, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    bool get(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int64_t mget(const std::vector<std::string>& keys, std::vector<std::string>* values,
-        std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    void mset(const std::map<std::string, std::string>& kv_map,
-        std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    bool del(const std::string& key, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int64_t incrby(const std::string& key, int64_t increment, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-
-    // incrby and expire
-    // If incrby return value equal to expired_increment, then set expired seconds for key with the given seconds
-    // In general, expired_increment should be equal to increment.
+    // NOT SUPPORT CLUSTER
     //
-    // example (100 seconds):
-    // incrby(key, 10, 10, 100);
-    int64_t incrby(const std::string& key, int64_t increment, int64_t expired_increment, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    // Remove all keys from all databases.
+    //
+    // The time-complexity for this operation is O(N), N being the number of keys in all existing databases.
+    void flushall() throw (CRedisException);
 
-    // Return the cursor, not support cluster mode
-    int64_t scan(int64_t cursor, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int64_t scan(int64_t cursor, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int64_t scan(int64_t cursor, const std::string& pattern, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int64_t scan(int64_t cursor, const std::string& pattern, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+public: // KV
+    // Set a key's time to live in seconds.
+    // Time complexity: O(1)
+    // Returns true if the timeout was set, or false when key does not exist.
+    bool expire(const std::string& key, uint32_t seconds, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
-    // list
-    int llen(const std::string& key, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    bool lpop(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int lpush(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int lpush(const std::string& key, const std::vector<std::string>& values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int lrange(const std::string& key, int64_t start, int64_t end, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    bool ltrim(const std::string& key, int64_t start, int64_t end, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    bool rpop(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int rpush(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int rpush(const std::string& key, const std::vector<std::string>& values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int rpushx(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    // Determine if a key exists.
+    // Time complexity: O(1)
+    // Returns true if the key exists, or false when the key does not exist.
+    bool exists(const std::string& key, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
-    // hash
-    bool hdel(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int hmdel(const std::string& key, const std::vector<std::string>& fields, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    bool hexists(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int hlen(const std::string& key, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    bool hset(const std::string& key, const std::string& field, const std::string& value, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    bool hsetex(const std::string& key, const std::string& field, const std::string& value, uint32_t timeout_seconds, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    bool hsetnx(const std::string& key, const std::string& field, const std::string& value, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    bool hsetnxex(const std::string& key, const std::string& field, const std::string& value, uint32_t timeout_seconds, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    bool hget(const std::string& key, const std::string& field, std::string* value, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int64_t hincrby(const std::string& key, const std::string& field, int64_t increment, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    void hmincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values=NULL, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    void hmset(const std::string& key, const std::map<std::string, std::string>& map, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int hmget(const std::string& key, const std::vector<std::string>& fields, std::map<std::string, std::string>* map, bool keep_null=false, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int hgetall(const std::string& key, std::map<std::string, std::string>* map, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int hstrlen(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int hkeys(const std::string& key, std::vector<std::string>* fields, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int hvals(const std::string& key, std::vector<std::string>* vals, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    // Time complexity:
+    // O(N) where N is the number of keys that will be removed.
+    // When a key to remove holds a value other than a string,
+    // the individual complexity for this key is O(M) where M is the number of elements in the list, set, sorted set or hash.
+    // Removing a single key that holds a string value is O(1).
+    //
+    // Returns true, or false when key does not exist.
+    bool del(const std::string& key, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
-    // Returns the cursor
-    int64_t hscan(const std::string& key, int64_t cursor, std::map<std::string, std::string>* map, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int64_t hscan(const std::string& key, int64_t cursor, int count, std::map<std::string, std::string>* map, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int64_t hscan(const std::string& key, int64_t cursor, const std::string& pattern, std::map<std::string, std::string>* map, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int64_t hscan(const std::string& key, int64_t cursor, const std::string& pattern, int count, std::map<std::string, std::string>* map, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    // Get the value of a key
+    // Time complexity: O(1)
+    // Returns false if key does not exist.
+    bool get(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
-    // set
+    // Set the string value of a key.
+    // Time complexity: O(1)
+    void set(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Set the value of a key, only if the does not exist.
+    // Time complexity: O(1)
+    // Returns true if the key was set, or false the key was not set.
+    bool setnx(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
+
+    // Set the value and expiration of a key.
+    // Time complexity: O(1)
+    void setex(const std::string& key, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    bool setnxex(const std::string& key, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
+
+    // Get the values of all the given keys.
+    //
+    // Time complexity:
+    // O(N) where N is the number of keys to retrieve.
+    //
+    // For every key that does not hold a string value or does not exist, the value will be empty string value.
+    //
+    // Returns the number of values.
+    int mget(const std::vector<std::string>& keys, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Set multiple keys to multiple values.
+    //
+    // In cluster mode, mset guaranteed atomicity, or may partially success.
+    //
+    // Time complexity:
+    // O(N) where N is the number of keys to set.
+    int mset(const std::map<std::string, std::string>& kv_map, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Increment the integer value of a key by the given value.
+    // Time complexity: O(1)
+    // Returns the value of key after the increment.
+    int64_t incrby(const std::string& key, int64_t increment, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
+    int64_t incrby(const std::string& key, int64_t increment, int64_t expired_increment, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
+
+    // Determine the type stored at key.
+    // Time complexity: O(1)
+    bool key_type(const std::string& key, std::string* key_type, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Get the time to live for a key
+    //
+    // Time complexity: O(1)
+    // Returns the remaining time to live of a key that has a timeout.
+    int64_t ttl(const std::string& key, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // NOT SUPPORTED CLUSTER
+    //
+    // Incrementally iterate sorted sets elements and associated scores.
+    //
+    // Time complexity:
+    // O(1) for every call. O(N) for a complete iteration,
+    // including enough command calls for the cursor to return back to 0. N is the number of elements inside the collection.
+    //
+    // Returns an updated cursor that the user needs to use as the cursor argument in the next call.
+    int64_t scan(int64_t cursor, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int64_t scan(int64_t cursor, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int64_t scan(int64_t cursor, const std::string& pattern, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int64_t scan(int64_t cursor, const std::string& pattern, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Execute a Lua script server side.
+    //
+    // Time complexity: Depends on the script that is executed.
+    const RedisReplyHelper eval(bool is_read_command, int excepted_reply_type, const std::string& key, const std::string& lua_scripts, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
+    const RedisReplyHelper eval(bool is_read_command, int excepted_reply_type, const std::string& key, const std::string& lua_scripts, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
+    const RedisReplyHelper eval(const std::string& key, const std::string& lua_scripts, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
+    const RedisReplyHelper eval(const std::string& key, const std::string& lua_scripts, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
+    const RedisReplyHelper evalsha(bool is_read_command, const std::string& key, const std::string& sha1, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
+    const RedisReplyHelper evalsha(const std::string& key, const std::string& sha1, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
+
+public: // HASH
+    // Delete a hash field.
+    // Time complexity: O(1)
+    bool hdel(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Delete one or more hash fields.
+    // Time complexity: O(N) where N is the number of fields to be removed.
+    // Returns the number of fields that were removed from the hash, not including specified but non existing fields.
+    int hmdel(const std::string& key, const std::vector<std::string>& fields, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Determinte if a hash field exists.
+    // Time complexity: O(1)
+    // Returns true if the hash contains field, or false when the hash does not contain field, or key does not exist.
+    bool hexists(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Get the number of fields in a hash
+    // Time complexity: O(1)
+    // Returns number of fields in the hash, or 0 when key does not exist.
+    int hlen(const std::string& key, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Set the string value of a hash field.
+    // Time complexity: O(1)
+    // Returns true if field is a new field in the hash and value was set, or false.
+    bool hset(const std::string& key, const std::string& field, const std::string& value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    bool hsetex(const std::string& key, const std::string& field, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Set the value of a hash field, only if the field does not exists.
+    //
+    // Time complexity: O(1)
+    // Returns true if field is a new field in the hash and value was set,
+    // or field already exists in the hash and no operation was performed.
+    bool hsetnx(const std::string& key, const std::string& field, const std::string& value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
+    bool hsetnxex(const std::string& key, const std::string& field, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
+
+    // Time complexity: O(1)
+    // Returns true if exists, or false when field is not present in the hash or key does not exist.
+    bool hget(const std::string& key, const std::string& field, std::string* value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Increment the integer value of a hash field by the given number.
+    //
+    // Time complexity: O(1)
+    // Returns the value at field after the increment operation.
+    int64_t hincrby(const std::string& key, const std::string& field, int64_t increment, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
+    void hmincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values=NULL, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
+
+    // Set multiple hash fields to multiple values.
+    // Time complexity: O(N) where N is the number of fields being set.
+    void hmset(const std::string& key, const std::map<std::string, std::string>& map, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Get the values of all the given hash fields.
+    // Time complexity: O(N) where N is the number of fields being requested.
+    int hmget(const std::string& key, const std::vector<std::string>& fields, std::map<std::string, std::string>* map, bool keep_null=false, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Get all the fields and values in a hash.
+    // Time complexity: O(N) where N is the size of the hash.
+    int hgetall(const std::string& key, std::map<std::string, std::string>* map, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Time complexity: O(1)
+    //
+    // Returns the string length of the value associated with field,
+    // or zero when field is not present in the hash or key does not exist at all.
+    int hstrlen(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Get all the fields in a hash.
+    // Time complexity: O(N) where N is the size of the hash.
+    int hkeys(const std::string& key, std::vector<std::string>* fields, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Get all the values in a hash.
+    // Time complexity: O(N) where N is the size of the hash.
+    int hvals(const std::string& key, std::vector<std::string>* vals, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Incrementally iterate hash fields and associated values.
+    //
+    // Time complexity:
+    // O(1) for every call. O(N) for a complete iteration,
+    // including enough command calls for the cursor to return back to 0. N is the number of elements inside the collection..
+    //
+    // Returns an updated cursor that the user needs to use as the cursor argument in the next call.
+    int64_t hscan(const std::string& key, int64_t cursor, std::map<std::string, std::string>* map, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int64_t hscan(const std::string& key, int64_t cursor, int count, std::map<std::string, std::string>* map, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int64_t hscan(const std::string& key, int64_t cursor, const std::string& pattern, std::map<std::string, std::string>* map, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int64_t hscan(const std::string& key, int64_t cursor, const std::string& pattern, int count, std::map<std::string, std::string>* map, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+public: // LIST
+    // Get the length of a list
+    // Time complexity: O(1)
+    int llen(const std::string& key, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Remove and get the first element in a list.
+    // Time complexity: O(1)
+    bool lpop(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Prepend a value to a list.
+    // Time complexity: O(1)
+    int lpush(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Prepend one or multiple values to a list.
+    // Time complexity: O(1)
+    int lpush(const std::string& key, const std::vector<std::string>& values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Get a range of elements from a list.
+    //
+    // Time complexity:
+    // O(S+N) where S is the distance of start offset from HEAD for small lists,
+    // from nearest end (HEAD or TAIL) for large lists;
+    // and N is the number of elements in the specified range.
+    //
+    // Returns the number of elements in the specified range.
+    int lrange(const std::string& key, int64_t start, int64_t end, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Trim a list to the specified range.
+    // Time complexity:
+    // O(N) where N is the number of elements to be removed by the operation.
+    void ltrim(const std::string& key, int64_t start, int64_t end, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Remove and get the last element in a list.
+    // Time complexity: O(1)
+    bool rpop(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Append a value to a list.
+    // Time complexity: O(1)
+    // Returns the length of the list after the push operation.
+    int rpush(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Append one or multiple values to a list.
+    // Time complexity: O(1)
+    // Returns the length of the list after the push operation.
+    int rpush(const std::string& key, const std::vector<std::string>& values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Inserts value at the tail of the list stored at key,
+    // only if key already exists and holds a list. In contrary to RPUSH,
+    // no operation will be performed when key does not yet exist.
+    //
+    // Time complexity: O(1)
+    //
+    // Returns the length of the list after the push operation.
+    int rpushx(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
+
+public: // SET
     // Returns the number of elements that were added to the set,
     // not including all the elements already present into the set.
-    int sadd(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int sadd(const std::string& key, const std::vector<std::string>& values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    int sadd(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int sadd(const std::string& key, const std::vector<std::string>& values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
     // Returns the cardinality (number of elements) of the set, or 0 if key does not exist.
-    int scard(const std::string& key, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    bool sismember(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int smembers(const std::string& key, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    bool spop(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int spop(const std::string& key, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    int scard(const std::string& key, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    bool sismember(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int smembers(const std::string& key, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
-    // Returns the number of random members
-    int srandmember(const std::string& key, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    // Removes and returns a random elements from the set value store at key.
+    // Time complexity: O(1)
+    // Returns true if key exists, or false when key does not exist.
+    bool spop(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
+    // Removes and returns one or more random elements from the set value store at key.
+    // Time complexity: O(1)
+    // Returns the number of removed elements.
+    int spop(const std::string& key, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Returns true if key exists, or false when key does not exist.
+    bool srandmember(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    // Returns number of values, or 0 when key does not exist.
+    int srandmember(const std::string& key, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Remove a member from a set.
+    // Time complexity: O(1)
     // Returns the number of members that were removed from the set, not including non existing members.
-    int srem(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int srem(const std::string& key, const std::vector<std::string>& values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    int srem(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
-    // Returns the cursor
-    int64_t sscan(const std::string& key, int64_t cursor, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int64_t sscan(const std::string& key, int64_t cursor, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int64_t sscan(const std::string& key, int64_t cursor, const std::string& pattern, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int64_t sscan(const std::string& key, int64_t cursor, const std::string& pattern, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    // Remove one or more members from a set.
+    // Time complexity: O(N) where N is the number of members to be removed.
+    // Returns the number of members that were removed from the set, not including non existing members.
+    int srem(const std::string& key, const std::vector<std::string>& values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
-    // sort set
-    int zrem(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int zrem(const std::string& key, const std::vector<std::string>& fields, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int zadd(const std::string& key, const std::string& field, int64_t score, ZADDFLAG flag=Z_NS, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int zadd(const std::string& key, const std::map<std::string, int64_t>& map, ZADDFLAG flag=Z_NS, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int64_t zcard(const std::string& key, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int64_t zcount(const std::string& key, int64_t min, int64_t max , std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int64_t zincrby(const std::string& key, const std::string& field, int64_t increment, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    // Incrementally iterate set elements.
+    //
+    // Time complexity:
+    // O(1) for every call. O(N) for a complete iteration,
+    // including enough command calls for the cursor to return back to 0. N is the number of elements inside the collection..
+    //
+    // Returns an updated cursor that the user needs to use as the cursor argument in the next call.
+    int64_t sscan(const std::string& key, int64_t cursor, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int64_t sscan(const std::string& key, int64_t cursor, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int64_t sscan(const std::string& key, int64_t cursor, const std::string& pattern, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int64_t sscan(const std::string& key, int64_t cursor, const std::string& pattern, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
-    // Both start and stop are zero-based indexes, where 0 is the first element, 1 is the next element and so on.
-    // They can also be negative numbers indicating offsets from the end of the sorted set,
-    // with -1 being the last element of the sorted set, -2 the penultimate element and so on.
-    // Return number of elements
-    int zrange(const std::string& key, int64_t start, int64_t end, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int zrevrange(const std::string& key, int64_t start, int64_t end, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+public: // ZSET
+    // Removes the specified members from the sorted set stored at key. Non existing members are ignored.
+    //
+    // Time complexity:
+    // O(M*log(N)) with N being the number of elements in the sorted set and M the number of elements to be removed.
+    //
+    // Returns the number of members removed from the sorted set, not including non existing members.
+    int zrem(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int zrem(const std::string& key, const std::vector<std::string>& fields, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
-    // Returns all the elements in the sorted set at key with a score between min and max (including elements with score equal to min or max).
-    int zrangebyscore(const std::string& key, int64_t min, int64_t max, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int zrevrangebyscore(const std::string& key, int64_t min, int64_t max, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    // Adds all the specified members with the specified scores to the sorted set stored at key.
+    // If key does not exist, a new sorted set with the specified members as sole members is created,
+    // like if the sorted set was empty.
+    //
+    // Time complexity:
+    // O(log(N)) for each item added, where N is the number of elements in the sorted set.
+    //
+    // Returns The number of elements added to the sorted sets,
+    // not including elements already existing for which the score was updated.
+    int zadd(const std::string& key, const std::string& field, int64_t score, ZADDFLAG flag=Z_NS, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int zadd(const std::string& key, const std::map<std::string, int64_t>& map, ZADDFLAG flag=Z_NS, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
-    // The optional LIMIT argument can be used to only get a range of the matching elements (similar to SELECT LIMIT offset, count in SQL).
-    // Keep in mind that if offset is large, the sorted set needs to be traversed for offset elements before getting to the elements to return,
-    // which can add up to O(N) time complexity.
-    int zrangebyscore(const std::string& key, int64_t min, int64_t max, int64_t offset, int64_t count, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int zrevrangebyscore(const std::string& key, int64_t max, int64_t min, int64_t offset, int64_t count, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    // Get the number of members in a sorted set.
+    // Time complexity: O(1)
+    // Returns the sorted set cardinality (number of elements) of the sorted set stored at key.
+    int64_t zcard(const std::string& key, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
-    // Add command
-    int zremrangebyrank(const std::string& key, int64_t start, int64_t end, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    // Count the members in a sorted set with scores within the given values.
+    //
+    // Time complexity:
+    // O(log(N)) with N being the number of elements in the sorted set.
+    // Returns the number of elements in the sorted set at key with a score between min and max.
+    int64_t zcount(const std::string& key, int64_t min, int64_t max , std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
+    // Increment the score of a member in a sorted set.
+    //
+    // Time complexity:
+    // O(log(N)) where N is the number of elements in the sorted set.
+    int64_t zincrby(const std::string& key, const std::string& field, int64_t increment, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
+
+    // Return a range of members in a sorted set by index.
+    //
+    // Time complexity:
+    // O(log(N)+M) with N being the number of elements in the sorted set and M the number of elements returned.
+    int zrange(const std::string& key, int64_t start, int64_t end, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Return a range of members in a sorted set by index, with scores ordered from high to low.
+    //
+    // Time complexity:
+    // O(log(N)+M) with N being the number of elements in the sorted set and M the number of elements returned.
+    int zrevrange(const std::string& key, int64_t start, int64_t end, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Return a range of members in a sorted set by score.
+    //
+    // Time complexity:
+    // O(log(N)+M) with N being the number of elements in the sorted set and M the number of elements being returned.
+    // If M is constant (e.g. always asking for the first 10 elements with LIMIT), you can consider it O(log(N)).
+    int zrangebyscore(const std::string& key, int64_t min, int64_t max, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Return a range of members in a sorted set by score, with scores ordered from higth to low.
+    int zrevrangebyscore(const std::string& key, int64_t min, int64_t max, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    int zrangebyscore(const std::string& key, int64_t min, int64_t max, int64_t offset, int64_t count, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int zrevrangebyscore(const std::string& key, int64_t max, int64_t min, int64_t offset, int64_t count, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Time complexity:
+    // O(log(N)+M) with N being the number of elements in the sorted set and M the number of elements removed by the operation.
+    int zremrangebyrank(const std::string& key, int64_t start, int64_t end, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // Determine the index of a member in a sorted set.
+    // Time complexity: O(log(N))
     // Return -1 if field not exists
-    int zrank(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int zrevrank(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int64_t zscore(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    int zrank(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
-    // Returns the cursor
-    int64_t zscan(const std::string& key, int64_t cursor, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int64_t zscan(const std::string& key, int64_t cursor, int count, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int64_t zscan(const std::string& key, int64_t cursor, const std::string& pattern, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-    int64_t zscan(const std::string& key, int64_t cursor, const std::string& pattern, int count, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
+    // Determine the index of a member in a sorted set, with scores ordered from high to low.
+    int zrevrank(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
-    // raw command, binary unsafe
-    const redisReply* redis_command(int excepted_reply_type, std::pair<std::string, uint16_t>* which, const std::string* key, const char* command, const std::string& command_string) throw (CRedisException);
-    // raw command, binary safe
-    const redisReply* redis_command(int excepted_reply_type, std::pair<std::string, uint16_t>* which, const std::string* key, const char* command, int argc, const char* argv[], const size_t* argv_len) throw (CRedisException);
+    // Get the score associated with the given memer in a sorted set.
+    // Time complexity: O(1)
+    // Return -1 if field not exists
+    int64_t zscore(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
-private:
-    const redisReply* redis_command(int excepted_reply_type, std::pair<std::string, uint16_t>* which, const std::string* key, const char* command, const std::string& command_string, int argc, const char* argv[], const size_t* argv_len) throw (CRedisException);
-    int64_t redis_command(int excepted_reply_type, struct ParamInfo* param_info) throw (CRedisException);
-    int calc_argc(const struct ParamInfo* param_info) const;
+    // Incrementally iterate sorted sets elements and associated scores.
+    //
+    // Time complexity:
+    // O(1) for every call. O(N) for a complete iteration,
+    // including enough command calls for the cursor to return back to 0. N is the number of elements inside the collection..
+    //
+    // Returns an updated cursor that the user needs to use as the cursor argument in the next call.
+    int64_t zscan(const std::string& key, int64_t cursor, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int64_t zscan(const std::string& key, int64_t cursor, int count, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int64_t zscan(const std::string& key, int64_t cursor, const std::string& pattern, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int64_t zscan(const std::string& key, int64_t cursor, const std::string& pattern, int count, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
-private:
-    // eval_command EVAL or EVALSHA
-    // lua_script_or_sha1 lua script or sha1 string
-    const RedisReplyHelper do_eval(const char* eval_command, const std::string& key, const std::string& lua_script_or_sha1, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which=NULL) throw (CRedisException);
-
-private:
-    void parse_nodes() throw (CRedisException);
-    void init() throw (CRedisException);
-    redisContext* get_redis_context(unsigned int slot, std::pair<std::string, uint16_t>* node) throw (CRedisException);
-    void choose_node(int seed_factor, std::pair<std::string, uint16_t>* node) const;
-    redisContext* connect_node(int* errcode, std::string* errmsg, std::pair<std::string, uint16_t>* node) const;
+public:
+    // Standlone: key should be empty
+    // Cluse mode: key used to locate node
+    const RedisReplyHelper redis_command(bool is_read_command, int retry_times, int excepted_reply_type, const std::string& key, const CCommandArgs& command_args, std::pair<std::string, uint16_t>* which);
 
 private:
-    void clear();
-    void clear_redis_contexts();
-    void clear_slots();
-    void retry_sleep() const;
-    void reset_redis_context(unsigned int slot);
+    void init();
+    void init_standlone();
+    void init_cluster();
 
 private:
-    bool _cluster_mode;
-    std::string _password;
+    void free_slots_info();
+    void update_slot_info(unsigned int slot, const std::pair<std::string, uint16_t>& node);
+
+private:
+    void free_redis_nodes();
+    redisContext* connect_redis_node(int i, const std::pair<std::string, uint16_t>& node, int* errcode, std::string* errmsg, std::string* raw_errmsg) const;
+    void close_redis_node(struct RedisNode*& redis_node);
+    struct RedisNode* find_redis_node(const std::pair<std::string, uint16_t>& node);
+    struct RedisNode* get_redis_node(unsigned int slot, bool is_read_command, bool* is_node_of_slot);
+    struct RedisNode* add_redis_node(const std::pair<std::string, uint16_t>& node, redisContext* redis_context);
+    bool get_nodes_info(std::vector<struct NodeInfo>* nodes_info, int* errcode, std::string* errmsg, std::string* raw_errmsg, int i, redisContext* redis_context, const std::pair<std::string, uint16_t>& node);
+
+private:
+    // Called by: redis_command
+    void extract_errtype(const redisReply* redis_reply, std::string* errtype);
+
+    // Called by: get,hget,key_type,lpop,rpop,srandmember
+    bool get_value(const redisReply* redis_reply, std::string* value);
+
+    // Called by: hkeys,hvals,lrange,mget,scan,smembers,spop,srandmember,sscan
+    int get_values(const redisReply* redis_reply, std::vector<std::string>* values);
+
+    // Called by: zrange & zrevrange & zrangebyscore & zrevrangebyscore & zscan
+    int get_values(const redisReply* redis_reply, std::vector<std::pair<std::string, int64_t> >* vec, bool withscores);
+
+    // Called by: hgetall & hscan
+    int get_values(const redisReply* redis_reply, std::map<std::string, std::string>* map);
+
+    // Called by: hmget
+    int get_values(const redisReply* redis_reply, const std::vector<std::string>& fields, bool keep_null, std::map<std::string, std::string>* map);
+
+    // Called by: hmincrby
+    int get_values(const redisReply* redis_reply, std::vector<int64_t>* values);
+
+private:
     std::string _nodes_string;
     int _connect_timeout_milliseconds;
-    int _data_timeout_milliseconds; // read & write timeout
+    int _data_timeout_milliseconds;
     int _retry_times;
     int _retry_sleep_milliseconds;
-    redisContext* _redis_context; // Standalone mode
+    std::string _password;
+    ReadPolicy _read_policy;
 
-private: // Cluster mode
-    std::map<std::pair<uint32_t, uint16_t>, redisContext*> _redis_contexts; // Key is node (IP&port)
-    std::vector<std::pair<std::string, uint16_t> > _nodes;
-    std::vector<struct SlotInfo*> _slots;
+private:
+    std::map<std::pair<std::string, uint16_t>, struct RedisNode*> _redis_contexts;
+    std::vector<std::pair<std::string, uint16_t> > _nodes; // first is IP, second is port
+    std::vector<struct NodeInfo> _nodes_info;
+    std::vector<struct SlotInfo*> _slots_info; // subscript is slot
 };
 
 } // namespace r3c {

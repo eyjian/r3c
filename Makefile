@@ -37,16 +37,16 @@ STLIB_MAKE_CMD=ar rcs
 all: $(STLIBNAME) $(CMD) $(TEST)
 
 # Deps (use make dep to generate this)
-crc16.o: crc16.cpp
 sha1.o: sha1.cpp
+utils.o: utils.cpp utils.h
 r3c.o: r3c.cpp r3c.h
-r3c_cmd.o: r3c_cmd.cpp r3c.h
-r3c_test.o: r3c_test.cpp r3c.h
+r3c_cmd.o: r3c_cmd.cpp r3c.h utils.cpp
+r3c_test.o: r3c_test.cpp r3c.h utils.cpp
 
 %.o: %.cpp
 	$(CXX) -c $< $(REAL_CPPFLAGS)
 
-$(STLIBNAME): crc16.o sha1.o r3c.o
+$(STLIBNAME): sha1.o utils.o r3c.o
 	rm -f $@;$(STLIB_MAKE_CMD) $@ $^
 
 $(CMD): r3c_cmd.o $(STLIBNAME)
