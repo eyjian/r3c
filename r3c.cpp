@@ -1561,6 +1561,30 @@ int64_t CRedisClient::sscan(const std::string& key, int64_t cursor, const std::s
     return static_cast<int64_t>(atoll(redis_reply->element[0]->str));
 }
 
+int64_t CRedisClient::sscan(const std::string& key, int64_t cursor, const std::string& pattern, int count, std::set<std::string>* values, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+{
+    // SSCAN key cursor [MATCH pattern] [COUNT count]
+    CCommandArgs cmd_args;
+    cmd_args.add_arg("SSCAN");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(cursor);
+    if (!pattern.empty())
+    {
+        cmd_args.add_arg("MATCH");
+        cmd_args.add_arg(pattern);
+    }
+    if (count > 0)
+    {
+        cmd_args.add_arg("COUNT");
+        cmd_args.add_arg(count);
+    }
+    cmd_args.final();
+
+    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
+    get_values(redis_reply->element[1], values);
+    return static_cast<int64_t>(atoll(redis_reply->element[0]->str));
+}
+
 //
 // ZSET
 //
@@ -2673,6 +2697,26 @@ int CRedisClient::get_values(const redisReply* redis_reply, std::vector<std::str
             if (value_reply->type != REDIS_REPLY_NIL)
             {
                 value.assign(value_reply->str, value_reply->len);
+            }
+        }
+    }
+    return static_cast<int>(redis_reply->elements);
+}
+
+int CRedisClient::get_values(const redisReply* redis_reply, std::set<std::string>* values)
+{
+    values->clear();
+
+    if (redis_reply->elements > 0)
+    {
+        for (size_t i=0; i<redis_reply->elements; ++i)
+        {
+            const struct redisReply* value_reply = redis_reply->element[i];
+
+            if (value_reply->type != REDIS_REPLY_NIL)
+            {
+                const std::string v(value_reply->str, value_reply->len);
+                values->insert(v);
             }
         }
     }

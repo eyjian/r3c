@@ -91,6 +91,8 @@ static void test_hsetnxex(const std::string& redis_cluster_nodes);
 ////////////////////////////////////////////////////////////////////////////
 // SET
 static void test_set(const std::string& redis_cluster_nodes);
+static void test_sscan1(const std::string& redis_cluster_nodes);
+static void test_sscan2(const std::string& redis_cluster_nodes);
 
 ////////////////////////////////////////////////////////////////////////////
 // SORTED SET
@@ -169,6 +171,8 @@ int main(int argc, char* argv[])
     ////////////////////////////////////////////////////////////////////////////
     // SET
     test_set(redis_cluster_nodes);
+    test_sscan1(redis_cluster_nodes);
+    test_sscan2(redis_cluster_nodes);
 
     ////////////////////////////////////////////////////////////////////////////
     // SORTED SET
@@ -2002,6 +2006,164 @@ void test_set(const std::string& redis_cluster_nodes)
                 ERROR_PRINT("%s", "sismember");
                 return;
             }
+        }
+
+        rc.del(key);
+        SUCCESS_PRINT("%s", "OK");
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        ERROR_PRINT("ERROR: %s", ex.str().c_str());
+    }
+}
+
+void test_sscan1(const std::string& redis_cluster_nodes)
+{
+    TIPS_PRINT();
+
+    try
+    {
+        r3c::CRedisClient rc(redis_cluster_nodes);
+        const std::string key = "r3c_kk";
+        std::string pattern;
+        int count = 0;
+        int64_t cursor = 0;
+        int64_t n = 0;
+        std::vector<std::string> values;
+
+        rc.del(key);
+        rc.sadd(key, "v11");
+        rc.sadd(key, "v21");
+        rc.sadd(key, "v31");
+        rc.sadd(key, "v41");
+        rc.sadd(key, "v51");
+
+        n = rc.sscan(key, cursor, pattern, count, &values);
+        if (n != 0)
+        {
+            ERROR_PRINT("sscan: %" PRId64, n);
+            rc.del(key);
+            return;
+        }
+        if (values.size() != 5)
+        {
+            ERROR_PRINT("sscan: %zd", values.size());
+            rc.del(key);
+            return;
+        }
+
+        for (std::vector<std::string>::size_type i=0; i<values.size(); ++i)
+        {
+            const std::string& value = values[i];
+            if ((value != "v11") &&
+                (value != "v21") &&
+                (value != "v31") &&
+                (value != "v41") &&
+                (value != "v51"))
+            {
+                ERROR_PRINT("sscan: %s", value.c_str());
+                rc.del(key);
+                return;
+            }
+        }
+
+        values.clear();
+        pattern = "v3*";
+        n = rc.sscan(key, cursor, pattern, count, &values);
+        if (n != 0)
+        {
+            ERROR_PRINT("sscan: %" PRId64, n);
+            rc.del(key);
+            return;
+        }
+        if (values.size() != 1)
+        {
+            ERROR_PRINT("sscan: %" PRId64, n);
+            rc.del(key);
+            return;
+        }
+        if (values[0] != "v31")
+        {
+            ERROR_PRINT("sscan: %s", values[0].c_str());
+            rc.del(key);
+            return;
+        }
+
+        rc.del(key);
+        SUCCESS_PRINT("%s", "OK");
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        ERROR_PRINT("ERROR: %s", ex.str().c_str());
+    }
+}
+
+void test_sscan2(const std::string& redis_cluster_nodes)
+{
+    TIPS_PRINT();
+
+    try
+    {
+        r3c::CRedisClient rc(redis_cluster_nodes);
+        const std::string key = "r3c_kk";
+        std::string pattern;
+        int count = 0;
+        int64_t cursor = 0;
+        int64_t n = 0;
+        std::set<std::string> values;
+
+        rc.del(key);
+        rc.sadd(key, "v11");
+        rc.sadd(key, "v21");
+        rc.sadd(key, "v31");
+        rc.sadd(key, "v41");
+        rc.sadd(key, "v51");
+
+        n = rc.sscan(key, cursor, pattern, count, &values);
+        if (n != 0)
+        {
+            ERROR_PRINT("sscan: %" PRId64, n);
+            rc.del(key);
+            return;
+        }
+        if (values.size() != 5)
+        {
+            ERROR_PRINT("sscan: %zd", values.size());
+            rc.del(key);
+            return;
+        }
+
+        if ((values.count("v11") != 1) ||
+            (values.count("v21") != 1) ||
+            (values.count("v31") != 1) ||
+            (values.count("v41") != 1) ||
+            (values.count("v51") != 1))
+        {
+            ERROR_PRINT("%s", "sscan error");
+            rc.del(key);
+            return;
+        }
+
+        values.clear();
+        pattern = "v3*";
+        n = rc.sscan(key, cursor, pattern, count, &values);
+        if (n != 0)
+        {
+            ERROR_PRINT("sscan: %" PRId64, n);
+            rc.del(key);
+            return;
+        }
+        if (values.size() != 1)
+        {
+            ERROR_PRINT("sscan: %" PRId64, n);
+            rc.del(key);
+            return;
+        }
+        if (values.count("v31") != 1)
+        {
+            ERROR_PRINT("%s", "sscan error");
+            rc.del(key);
+            return;
         }
 
         rc.del(key);

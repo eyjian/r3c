@@ -5,6 +5,7 @@
 #include <inttypes.h>
 #include <map>
 #include <ostream>
+#include <set>
 #include <sstream>
 #include <stdint.h>
 #include <string>
@@ -413,6 +414,9 @@ public: // KV
     int64_t scan(int64_t cursor, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
     int64_t scan(int64_t cursor, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
     int64_t scan(int64_t cursor, const std::string& pattern, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // If pattern is empty, then not using MATCH,
+    // If count is 0, then not using COUNT
     int64_t scan(int64_t cursor, const std::string& pattern, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
     // Execute a Lua script server side.
@@ -510,6 +514,9 @@ public: // HASH
     int64_t hscan(const std::string& key, int64_t cursor, std::map<std::string, std::string>* map, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
     int64_t hscan(const std::string& key, int64_t cursor, int count, std::map<std::string, std::string>* map, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
     int64_t hscan(const std::string& key, int64_t cursor, const std::string& pattern, std::map<std::string, std::string>* map, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // If pattern is empty, then not using MATCH,
+    // If count is 0, then not using COUNT
     int64_t hscan(const std::string& key, int64_t cursor, const std::string& pattern, int count, std::map<std::string, std::string>* map, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
 public: // LIST
@@ -613,7 +620,11 @@ public: // SET
     int64_t sscan(const std::string& key, int64_t cursor, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
     int64_t sscan(const std::string& key, int64_t cursor, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
     int64_t sscan(const std::string& key, int64_t cursor, const std::string& pattern, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // If pattern is empty, then not using MATCH,
+    // If count is 0, then not using COUNT
     int64_t sscan(const std::string& key, int64_t cursor, const std::string& pattern, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int64_t sscan(const std::string& key, int64_t cursor, const std::string& pattern, int count, std::set<std::string>* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
 public: // ZSET
     // Removes the specified members from the sorted set stored at key. Non existing members are ignored.
@@ -727,6 +738,9 @@ public: // ZSET
     int64_t zscan(const std::string& key, int64_t cursor, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
     int64_t zscan(const std::string& key, int64_t cursor, int count, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
     int64_t zscan(const std::string& key, int64_t cursor, const std::string& pattern, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+
+    // If pattern is empty, then not using MATCH,
+    // If count is 0, then not using COUNT
     int64_t zscan(const std::string& key, int64_t cursor, const std::string& pattern, int count, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
 public:
@@ -761,6 +775,9 @@ private:
 
     // Called by: hkeys,hvals,lrange,mget,scan,smembers,spop,srandmember,sscan
     int get_values(const redisReply* redis_reply, std::vector<std::string>* values);
+
+    // Called by: sscan
+    int get_values(const redisReply* redis_reply, std::set<std::string>* values);
 
     // Called by: zrange & zrevrange & zrangebyscore & zrevrangebyscore & zscan
     int get_values(const redisReply* redis_reply, std::vector<std::pair<std::string, int64_t> >* vec, bool withscores);
