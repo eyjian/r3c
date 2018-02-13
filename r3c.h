@@ -380,7 +380,16 @@ public: // KV
     // Time complexity: O(1)
     // Returns the value of key after the increment.
     int64_t incrby(const std::string& key, int64_t increment, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
+
+    // Atomically increment and expire a key with given seconds.
+    // Expiration is set only if the value returned by incrby is equal to expired_increment.
+    //
+    // e.g.,
+    // incrby(key, 1, 1, 10);
     int64_t incrby(const std::string& key, int64_t increment, int64_t expired_increment, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
+
+    // Same as incrby(key, increment, increment, expired_seconds, which, retry_times)
+    int64_t incrby(const std::string& key, int64_t increment, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
 
     // Determine the type stored at key.
     // Time complexity: O(1)
@@ -424,6 +433,7 @@ public: // HASH
     // Delete one or more hash fields.
     // Time complexity: O(N) where N is the number of fields to be removed.
     // Returns the number of fields that were removed from the hash, not including specified but non existing fields.
+    int hdel(const std::string& key, const std::vector<std::string>& fields, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
     int hmdel(const std::string& key, const std::vector<std::string>& fields, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
     // Determinte if a hash field exists.
@@ -459,14 +469,17 @@ public: // HASH
     // Time complexity: O(1)
     // Returns the value at field after the increment operation.
     int64_t hincrby(const std::string& key, const std::string& field, int64_t increment, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
+    void hincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values=NULL, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
     void hmincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values=NULL, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
 
     // Set multiple hash fields to multiple values.
     // Time complexity: O(N) where N is the number of fields being set.
+    void hset(const std::string& key, const std::map<std::string, std::string>& map, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
     void hmset(const std::string& key, const std::map<std::string, std::string>& map, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
     // Get the values of all the given hash fields.
     // Time complexity: O(N) where N is the number of fields being requested.
+    int hget(const std::string& key, const std::vector<std::string>& fields, std::map<std::string, std::string>* map, bool keep_null=false, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
     int hmget(const std::string& key, const std::vector<std::string>& fields, std::map<std::string, std::string>* map, bool keep_null=false, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
     // Get all the fields and values in a hash.

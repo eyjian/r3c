@@ -675,6 +675,12 @@ int64_t CRedisClient::incrby(const std::string& key, int64_t increment, int64_t 
     return static_cast<int64_t>(redis_reply->integer);
 }
 
+int64_t CRedisClient::incrby(const std::string& key, int64_t increment, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+{
+    const int64_t expired_increment = increment;
+    return incrby(key, increment, expired_increment, expired_seconds, which, retry_times);
+}
+
 bool CRedisClient::key_type(const std::string& key, std::string* key_type, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
 {
     CCommandArgs cmd_args;
@@ -865,6 +871,11 @@ bool CRedisClient::hdel(const std::string& key, const std::string& field, std::p
     return 1 == redis_reply->integer;
 }
 
+int CRedisClient::hdel(const std::string& key, const std::vector<std::string>& fields, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+{
+    return hmdel(key, fields, which, retry_times);
+}
+
 int CRedisClient::hmdel(const std::string& key, const std::vector<std::string>& fields, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
 {
     CCommandArgs cmd_args;
@@ -996,6 +1007,11 @@ int64_t CRedisClient::hincrby(const std::string& key, const std::string& field, 
     return static_cast<int64_t>(redis_reply->integer);
 }
 
+void CRedisClient::hincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+{
+    hmincrby(key, increments, values, which, retry_times);
+}
+
 void CRedisClient::hmincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
 {
     const std::string lua_scripts = format_string(
@@ -1012,6 +1028,11 @@ void CRedisClient::hmincrby(const std::string& key, const std::vector<std::pair<
     get_values(redis_reply.get(), values);
 }
 
+void CRedisClient::hset(const std::string& key, const std::map<std::string, std::string>& map, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+{
+    hmset(key, map, which, retry_times);
+}
+
 // Time complexity: O(N) where N is the number of fields being set.
 // HMSET key field value [field value ...]
 void CRedisClient::hmset(const std::string& key, const std::map<std::string, std::string>& map, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
@@ -1024,6 +1045,11 @@ void CRedisClient::hmset(const std::string& key, const std::map<std::string, std
 
     // Simple string reply
     const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_STATUS, key, cmd_args, which);
+}
+
+int CRedisClient::hget(const std::string& key, const std::vector<std::string>& fields, std::map<std::string, std::string>* map, bool keep_null, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+{
+    return hmget(key, fields, map, keep_null, which, retry_times);
 }
 
 // Time complexity: O(N) where N is the number of fields being requested.

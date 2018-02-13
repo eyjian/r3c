@@ -874,6 +874,142 @@ void test_incrby(const std::string& redis_cluster_nodes)
             return;
         }
 
+        // Test:
+        // incrby(key, increment, expired_seconds, which, retry_times)
+        value.clear();
+        rc.del(key);
+        n = rc.incrby(key, 2018, 2);
+        if (n != 2018)
+        {
+            ERROR_PRINT("incrby ERROR5: %" PRId64, n);
+            return;
+        }
+        if (!rc.get(key, &value))
+        {
+            ERROR_PRINT("%s", "incrby ERROR6");
+            return;
+        }
+        if (value != "2018")
+        {
+            ERROR_PRINT("incrby ERROR7: %s", value.c_str());
+            return;
+        }
+        if (!rc.exists(key))
+        {
+            ERROR_PRINT("%s", "incrby ERROR8");
+            return;
+        }
+
+        sleep(3);
+        if (rc.exists(key))
+        {
+            ERROR_PRINT("%s", "incrby ERROR9");
+            return;
+        }
+
+        value.clear();
+
+        // Test:
+        // incrby(key, increment, expired_increment, expired_seconds, which, retry_times)
+        n = rc.incrby(key, 2020, 2020, 2);
+        if (n != 2020)
+        {
+            ERROR_PRINT("incrby ERROR10: %" PRId64, n);
+            return;
+        }
+        if (!rc.get(key, &value))
+        {
+            ERROR_PRINT("%s", "incrby ERROR11");
+            return;
+        }
+        if (value != "2020")
+        {
+            ERROR_PRINT("incrby ERROR12: %s", value.c_str());
+            return;
+        }
+
+        value.clear();
+        sleep(3);
+        if (rc.get(key, &value))
+        {
+            ERROR_PRINT("incrby ERROR13: %s", value.c_str());
+            return;
+        }
+        if (rc.exists(key))
+        {
+            ERROR_PRINT("%s", "incrby ERROR14");
+            return;
+        }
+
+        value.clear();
+
+        // Test:
+        // incrby(key, increment, expired_increment, expired_seconds, which, retry_times)
+        // 此重载版本的incrby，只有incrby返回的值等于expired_increment时，才会设置过期。
+        n = rc.incrby(key, 2000, 2018, 2);
+        if (n != 2000)
+        {
+            ERROR_PRINT("incrby ERROR15: %" PRId64, n);
+            return;
+        }
+        if (!rc.get(key, &value))
+        {
+            ERROR_PRINT("%s", "incrby ERROR16");
+            return;
+        }
+        if (value != "2000")
+        {
+            ERROR_PRINT("incrby ERROR17: %s", value.c_str());
+            return;
+        }
+
+        sleep(3);
+        value.clear();
+        if (!rc.get(key, &value))
+        {
+            ERROR_PRINT("%s", "incrby ERROR18");
+            return;
+        }
+        if (value != "2000")
+        {
+            ERROR_PRINT("incrby ERROR19: %s", value.c_str());
+            return;
+        }
+
+        n = rc.incrby(key, 10, 2018, 2);
+        sleep(3);
+        value.clear();
+        if (n != 2010)
+        {
+            ERROR_PRINT("incrby ERROR20: %" PRId64, n);
+            return;
+        }
+        if (!rc.get(key, &value))
+        {
+            ERROR_PRINT("%s", "incrby ERROR21");
+            return;
+        }
+        if (value != "2010")
+        {
+            ERROR_PRINT("incrby ERROR22: %s", value.c_str());
+            return;
+        }
+
+        n = rc.incrby(key, 8, 2018, 2);
+        if (n != 2018)
+        {
+            ERROR_PRINT("incrby ERROR23: %" PRId64, n);
+            return;
+        }
+
+        sleep(3);
+        value.clear();
+        if (rc.get(key, &value))
+        {
+            ERROR_PRINT("incrby ERROR24: %s", value.c_str());
+            return;
+        }
+
         SUCCESS_PRINT("%s", "OK");
     }
     catch (r3c::CRedisException& ex)
