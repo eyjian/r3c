@@ -1738,7 +1738,7 @@ int CRedisClient::zrangebyscore(const std::string& key, int64_t min, int64_t max
 // If M is constant (e.g. always asking for the first 10 elements with LIMIT), you can consider it O(log(N)).
 //
 // ZREVRANGEBYSCORE key max min [WITHSCORES] [LIMIT offset count]
-int CRedisClient::zrevrangebyscore(const std::string& key, int64_t min, int64_t max, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+int CRedisClient::zrevrangebyscore(const std::string& key, int64_t max, int64_t min, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("ZREVRANGEBYSCORE");

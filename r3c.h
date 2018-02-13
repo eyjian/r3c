@@ -654,17 +654,37 @@ public: // ZSET
     // O(log(N)+M) with N being the number of elements in the sorted set and M the number of elements returned.
     int zrevrange(const std::string& key, int64_t start, int64_t end, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
-    // Return a range of members in a sorted set by score.
+    // Get all the elements in the sorted set at key with a score between min and max
+    // (including elements with score equal to min or max).
+    // The elements are considered to be ordered from low to high scores.
+    //
+    // The elements having the same score are returned in lexicographical order
+    // (this follows from a property of the sorted set implementation in Redis and does not involve further computation).
     //
     // Time complexity:
     // O(log(N)+M) with N being the number of elements in the sorted set and M the number of elements being returned.
     // If M is constant (e.g. always asking for the first 10 elements with LIMIT), you can consider it O(log(N)).
+    //
+    // Return the number of elements with a score between min and max (including elements with score equal to min or max).
     int zrangebyscore(const std::string& key, int64_t min, int64_t max, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
-    // Return a range of members in a sorted set by score, with scores ordered from higth to low.
-    int zrevrangebyscore(const std::string& key, int64_t min, int64_t max, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    // Get all the elements in the sorted set at key with a score between max and min
+    // (including elements with score equal to max or min).
+    // In contrary to the default ordering of sorted sets,
+    // for this command the elements are considered to be ordered from high to low scores.
+    //
+    // The elements having the same score are returned in reverse lexicographical order.
+    //
+    // Time complexity:
+    // O(log(N)+M) with N being the number of elements in the sorted set and M the number of elements being returned.
+    // If M is constant (e.g. always asking for the first 10 elements with LIMIT), you can consider it O(log(N)).
+    //
+    // Return the number of elements with a score between max and min (including elements with score equal to max or min).
+    int zrevrangebyscore(const std::string& key, int64_t max, int64_t min, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
+    // Return a range of members in a sorted set by score with scores ordered from low to high.
     int zrangebyscore(const std::string& key, int64_t min, int64_t max, int64_t offset, int64_t count, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    // Return a range of members in a sorted set by score with scores ordered from high to low.
     int zrevrangebyscore(const std::string& key, int64_t max, int64_t min, int64_t offset, int64_t count, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
     // Time complexity:

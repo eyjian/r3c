@@ -1104,19 +1104,19 @@ int main(int argc, char* argv[])
             }
 
             i = 0;
-            min = atol(argv[4]);
             max = atol(argv[3]);
+            min = atol(argv[4]);
             std::vector<std::pair<std::string, int64_t> > vec;
 
             if (5 == argc)
             {
-                ret = redis_client.zrevrangebyscore(key, min, max, true, &vec, &which_node);
+                ret = redis_client.zrevrangebyscore(key, max, min, true, &vec, &which_node);
             }
             else
             {
                 offset = atol(argv[5]);
                 count = atol(argv[6]);
-                ret = redis_client.zrevrangebyscore(key, min, max, offset, count, true, &vec, &which_node);
+                ret = redis_client.zrevrangebyscore(key, max, min, offset, count, true, &vec, &which_node);
             }
             fprintf(stdout, "number: %d\n", ret);
             for (std::vector<std::pair<std::string, int64_t> >::iterator iter=vec.begin(); iter!=vec.end(); ++iter,++i)

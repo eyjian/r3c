@@ -2253,7 +2253,7 @@ void test_zrevrange(const std::string& redis_cluster_nodes)
 
         // without score
         values.clear();
-        count = rc.zrevrangebyscore(key, 2, 4, false, &values);
+        count = rc.zrevrangebyscore(key, 4, 2, false, &values);
         if ((count != 2) || (values.size() != 2))
             ERROR_PRINT("zrevrangebyscore error: %d/%zd", count, values.size());
         if ((values[0].first != "f6") || (values[0].second != 0) ||
@@ -2262,7 +2262,7 @@ void test_zrevrange(const std::string& redis_cluster_nodes)
 
         // with score
         values.clear();
-        count = rc.zrevrangebyscore(key, 2, 4, true, &values);
+        count = rc.zrevrangebyscore(key, 4, 2, true, &values);
         if ((count != 2) || (values.size() != 2))
             ERROR_PRINT("zrevrangebyscore error: %d/%zd", count, values.size());
         if ((values[0].first != "f6") || (values[0].second != 4) ||
@@ -2339,7 +2339,7 @@ void test_zrevrangebyscore(const std::string& redis_cluster_nodes)
         rc.expire(key, 60);
 
         std::vector<std::pair<std::string, int64_t> > vec;
-        rc.zrevrangebyscore(key, 0, 3, true, &vec);
+        rc.zrevrangebyscore(key, 3, 0, true, &vec);
         if (vec.size() != 4)
         {
             ERROR_PRINT("size eror: %zd\n", vec.size());
