@@ -711,8 +711,17 @@ public: // ZSET
     // Return a range of members in a sorted set by score with scores ordered from high to low.
     int zrevrangebyscore(const std::string& key, int64_t max, int64_t min, int64_t offset, int64_t count, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
+    // Removes all elements in the sorted set stored at key with rank between start and stop.
+    // Both start and stop are 0 -based indexes with 0 being the element with the lowest score.
+    // These indexes can be negative numbers, where they indicate offsets starting at the element with the highest score.
+    // For example:
+    // -1 is the element with the highest score,
+    // -2 the element with the second highest score and so forth.
+    //
     // Time complexity:
     // O(log(N)+M) with N being the number of elements in the sorted set and M the number of elements removed by the operation.
+    //
+    // Return the number of elements removed.
     int zremrangebyrank(const std::string& key, int64_t start, int64_t end, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
     // Determine the index of a member in a sorted set.

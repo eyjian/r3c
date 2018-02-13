@@ -102,6 +102,7 @@ static void test_zrevrange(const std::string& redis_cluster_nodes);
 static void test_zrangebyscore(const std::string& redis_cluster_nodes);
 static void test_zrevrangebyscore(const std::string& redis_cluster_nodes);
 static void test_zrem(const std::string& redis_cluster_nodes);
+static void test_zremrangebyrank(const std::string& redis_cluster_nodes);
 
 static void my_log_write(const char* format, ...)
 {
@@ -182,6 +183,7 @@ int main(int argc, char* argv[])
     test_zrangebyscore(redis_cluster_nodes);
     test_zrevrangebyscore(redis_cluster_nodes);
     test_zrem(redis_cluster_nodes);
+    test_zremrangebyrank(redis_cluster_nodes);
 
     ////////////////////////////////////////////////////////////////////////////
     // MISC
@@ -2710,6 +2712,121 @@ void test_zrem(const std::string& redis_cluster_nodes)
             return;
         }
 
+        SUCCESS_PRINT("%s", "OK");
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        ERROR_PRINT("ERROR: %s", ex.str().c_str());
+    }
+}
+
+void test_zremrangebyrank(const std::string& redis_cluster_nodes)
+{
+    TIPS_PRINT();
+
+    try
+    {
+        int count = -1;
+        r3c::CRedisClient rc(redis_cluster_nodes);
+        const std::string key = "r3c_kk";
+        int64_t start;
+        int64_t end;
+        int64_t score = 0;
+        rc.del(key);
+
+        std::map<std::string, int64_t> map;
+        map["a"] = 1; // 0
+        map["b"] = 2; // 1
+        map["c"] = 3; // 2
+        map["d"] = 4;
+        map["e"] = 5;
+        map["f"] = 6;
+        map["g"] = 7;
+        count = rc.zadd(key, map);
+        if (count != 7)
+        {
+            ERROR_PRINT("zadd error: %d", count);
+            return;
+        }
+
+        score = rc.zscore(key, "c");
+        if (score != 3)
+        {
+            ERROR_PRINT("zadd error: %" PRId64, score);
+            rc.del(key);
+            return;
+        }
+
+        // rank值从0开始，[2,2]相当于删除c
+        start = 2;
+        end = 2;
+        count = rc.zremrangebyrank(key, start, end);
+        if (count != 1)
+        {
+            ERROR_PRINT("zremrangebyrank error: %d", count);
+            rc.del(key);
+            return;
+        }
+
+        score = rc.zscore(key, "c");
+        if (score != -1)
+        {
+            ERROR_PRINT("zremrangebyrank error: %" PRId64, score);
+            rc.del(key);
+            return;
+        }
+
+        score = rc.zscore(key, "d");
+        if (score != 4)
+        {
+            ERROR_PRINT("zadd error: %" PRId64, score);
+            rc.del(key);
+            return;
+        }
+        score = rc.zscore(key, "e");
+        if (score != 5)
+        {
+            ERROR_PRINT("zadd error: %" PRId64, score);
+            rc.del(key);
+            return;
+        }
+
+        start = 2;
+        end = 3;
+        count = rc.zremrangebyrank(key, start, end);
+        if (count != 2)
+        {
+            ERROR_PRINT("zremrangebyrank error: %d", count);
+            rc.del(key);
+            return;
+        }
+
+        score = rc.zscore(key, "d");
+        if (score != -1)
+        {
+            ERROR_PRINT("zremrangebyrank error: %" PRId64, score);
+            rc.del(key);
+            return;
+        }
+        score = rc.zscore(key, "e");
+        if (score != -1)
+        {
+            ERROR_PRINT("zremrangebyrank error: %" PRId64, score);
+            rc.del(key);
+            return;
+        }
+
+        start = 8;
+        end = 9;
+        count = rc.zremrangebyrank(key, start, end);
+        if (count != 0)
+        {
+            ERROR_PRINT("zremrangebyrank error: %d", count);
+            rc.del(key);
+            return;
+        }
+
+        rc.del(key);
         SUCCESS_PRINT("%s", "OK");
     }
     catch (r3c::CRedisException& ex)
