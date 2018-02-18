@@ -223,14 +223,32 @@ private:
     mutable const redisReply* _redis_reply;
 };
 
+struct ErrorInfo
+{
+    std::string raw_errmsg;
+    std::string errmsg;
+    std::string errtype; // The type of error, such as: ERR, MOVED, WRONGTYPE, ...
+    int errcode;
+
+    ErrorInfo()
+        : errcode(0)
+    {
+    }
+
+    ErrorInfo(const std::string& raw_errmsg_, const std::string& errmsg_, const std::string& errtype_, int errcode_)
+        : raw_errmsg(raw_errmsg_), errmsg(errmsg_), errtype(errtype_), errcode(errcode_)
+    {
+    }
+};
+
 class CRedisException: public std::exception
 {
 public:
     // key maybe a binary value
-    CRedisException(int errcode, const std::string& errmsg, const std::string& raw_errmsg, const std::string& errtype, const char* file, int line, const std::string& node_ip=std::string("-"), uint16_t node_port=0, const std::string& command=std::string(""), const std::string& key=std::string("")) throw ();
+    CRedisException(const struct ErrorInfo& errinfo, const char* file, int line, const std::string& node_ip=std::string("-"), uint16_t node_port=0, const std::string& command=std::string(""), const std::string& key=std::string("")) throw ();
     virtual ~CRedisException() throw () {}
     virtual const char* what() const throw ();
-    int errcode() const { return _errcode; }
+    int errcode() const { return _errinfo.errcode; }
     std::string str() const throw ();
 
     const char* file() const throw () { return _file.c_str(); }
@@ -239,14 +257,12 @@ public:
     uint16_t node_port() const throw () { return _node_port; }
     const std::string& command() const throw() { return _command; }
     const std::string& key() const throw() { return _key; }
-    const std::string& errtype() const throw () { return _errtype; }
-    const std::string& raw_errmsg() const throw () { return _raw_errmsg; }
+    const std::string& errtype() const throw () { return _errinfo.errtype; }
+    const std::string& raw_errmsg() const throw () { return _errinfo.raw_errmsg; }
+    const ErrorInfo& get_errinfo() const throw() { return _errinfo; }
 
 private:
-    const int _errcode;
-    const std::string _errmsg;
-    const std::string _raw_errmsg;
-    const std::string _errtype; // The type of error, such as: ERR, MOVED, WRONGTYPE, ...
+    const ErrorInfo _errinfo;
     const std::string _file;
     const int _line;
     const std::string _node_ip;
@@ -768,12 +784,12 @@ private:
 
 private:
     void free_redis_nodes();
-    redisContext* connect_redis_node(int i, const std::pair<std::string, uint16_t>& node, int* errcode, std::string* errmsg, std::string* raw_errmsg) const;
+    redisContext* connect_redis_node(int i, const std::pair<std::string, uint16_t>& node, struct ErrorInfo* errinfo) const;
     void close_redis_node(struct RedisNode*& redis_node);
     struct RedisNode* find_redis_node(const std::pair<std::string, uint16_t>& node);
     struct RedisNode* get_redis_node(unsigned int slot, bool is_read_command, bool* is_node_of_slot);
     struct RedisNode* add_redis_node(const std::pair<std::string, uint16_t>& node, redisContext* redis_context);
-    bool get_nodes_info(std::vector<struct NodeInfo>* nodes_info, int* errcode, std::string* errmsg, std::string* raw_errmsg, int i, redisContext* redis_context, const std::pair<std::string, uint16_t>& node);
+    bool get_nodes_info(std::vector<struct NodeInfo>* nodes_info, struct ErrorInfo* errinfo, int i, redisContext* redis_context, const std::pair<std::string, uint16_t>& node);
 
 private:
     // Called by: redis_command
