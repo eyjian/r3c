@@ -666,7 +666,7 @@ int64_t CRedisClient::incrby(const std::string& key, int64_t increment, std::pai
 
 int64_t CRedisClient::incrby(const std::string& key, int64_t increment, int64_t expired_increment, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
 {
-    const std::string lua_scripts = format_string(
+    const std::string& lua_scripts = format_string(
             "local n; n=redis.call('incrby','%s','%" PRId64"'); if (n==%" PRId64") then redis.call('expire', '%s', '%u') end; return n;",
             key.c_str(), increment, expired_increment, key.c_str(), expired_seconds);
     const RedisReplyHelper redis_reply = eval(false, REDIS_REPLY_INTEGER, key, lua_scripts, which, retry_times);
@@ -939,7 +939,7 @@ bool CRedisClient::hset(const std::string& key, const std::string& field, const 
 
 bool CRedisClient::hsetex(const std::string& key, const std::string& field, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
 {
-    const std::string lua_scripts = format_string(
+    const std::string& lua_scripts = format_string(
             "local n; n=redis.call('hset','%s','%s','%s'); if (n>0) then redis.call('expire', '%s', '%u') end; return n;",
             key.c_str(), field.c_str(), value.c_str(), key.c_str(), expired_seconds);
     const RedisReplyHelper redis_reply = eval(false, REDIS_REPLY_INTEGER, key, lua_scripts, which, retry_times);
@@ -966,7 +966,7 @@ bool CRedisClient::hsetnx(const std::string& key, const std::string& field, cons
 
 bool CRedisClient::hsetnxex(const std::string& key, const std::string& field, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
 {
-    const std::string lua_scripts = format_string(
+    const std::string& lua_scripts = format_string(
             "local n; n=redis.call('hsetnx','%s','%s','%s'); if (n>0) then redis.call('expire', '%s', '%u') end; return n;",
             key.c_str(), field.c_str(), value.c_str(), key.c_str(), expired_seconds);
     const RedisReplyHelper redis_reply = eval(false, REDIS_REPLY_INTEGER, key, lua_scripts, which, retry_times);
@@ -1012,7 +1012,7 @@ void CRedisClient::hincrby(const std::string& key, const std::vector<std::pair<s
 
 void CRedisClient::hmincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
 {
-    const std::string lua_scripts = format_string(
+    const std::string& lua_scripts = format_string(
             "local j=1;local results={};for i=1,#ARGV,2 do local f=ARGV[i];local v=ARGV[i+1];results[j]=redis.call('hincrby','%s',f,v);j=j+1; end;return results;",
             key.c_str());
     std::vector<std::string> parameters(2*increments.size());
