@@ -933,7 +933,7 @@ bool CRedisClient::hset(const std::string& key, const std::string& field, const 
     // Integer reply, specifically:
     // 1 if field is a new field in the hash and value was set.
     // 0 if field already exists in the hash and the value was updated.
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return 1 == redis_reply->integer;
 }
 
@@ -1042,7 +1042,7 @@ void CRedisClient::hmset(const std::string& key, const std::map<std::string, std
     cmd_args.final();
 
     // Simple string reply
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_STATUS, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_STATUS, key, cmd_args, which);
 }
 
 int CRedisClient::hget(const std::string& key, const std::vector<std::string>& fields, std::map<std::string, std::string>* map, bool keep_null, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
