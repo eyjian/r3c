@@ -790,6 +790,7 @@ private:
     struct RedisNode* get_redis_node(unsigned int slot, bool is_read_command, bool* is_node_of_slot);
     struct RedisNode* add_redis_node(const std::pair<std::string, uint16_t>& node, redisContext* redis_context);
     bool get_nodes_info(std::vector<struct NodeInfo>* nodes_info, struct ErrorInfo* errinfo, int i, redisContext* redis_context, const std::pair<std::string, uint16_t>& node);
+    bool get_slave_nodes(redisContext* redis_context, std::vector<std::pair<std::string, uint16_t> >* nodes);
 
 private:
     // Called by: redis_command

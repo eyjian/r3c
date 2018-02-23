@@ -2630,6 +2630,62 @@ bool CRedisClient::get_nodes_info(std::vector<struct NodeInfo>* nodes_info, stru
     return !nodes_info->empty();
 }
 
+bool CRedisClient::get_slave_nodes(redisContext* redis_context, std::vector<std::pair<std::string, uint16_t> >* nodes)
+{
+    const RedisReplyHelper redis_reply = (redisReply*)redisCommand(redis_context, "%s", "INFO Replication");
+
+    if (!redis_reply || (redis_reply->type!=REDIS_REPLY_STRING))
+    {
+        return false;
+    }
+    else
+    {
+        nodes->clear();
+
+        /*
+         * # Replication
+         * role:master
+         * connected_slaves:1
+         * slave0:ip=10.49.126.98,port=1380,state=online,offset=12309344,lag=0
+         * master_repl_offset:12309344
+         * repl_backlog_active:1
+         * repl_backlog_size:1048576
+         * repl_backlog_first_byte_offset:11260769
+         * repl_backlog_histlen:1048576
+         */
+        std::vector<std::string> lines;
+        const int num_lines = split(&lines, std::string(redis_reply->str), std::string("\n"));
+        for (int row=0; row<num_lines; ++row)
+        {
+            const std::string& line = lines[row];
+
+            if ((line.size() >= sizeof("slave0:ip=1.2.3.4,port=2,state=?,offset=1,lag=0")-1) &&
+                (0 == strncmp(line.c_str(), "slave", sizeof("slave")-1)))
+            {
+                const std::string::size_type first_equal_pos = line.find('=');
+                const std::string::size_type first_comma_pos = line.find(',');
+
+                if ((first_equal_pos != std::string::npos) &&
+                    (first_comma_pos != std::string::npos))
+                {
+                    const std::string::size_type second_equal_pos = line.find('=', first_comma_pos+1);
+                    const std::string::size_type second_comma_pos = line.find(',', first_comma_pos+1);
+
+                    if ((second_equal_pos != std::string::npos) &&
+                        (second_comma_pos != std::string::npos))
+                    {
+                        const std::string& ip_str = line.substr(first_equal_pos+1, first_comma_pos-first_equal_pos-1);
+                        const std::string& port_str = line.substr(second_equal_pos+1, second_comma_pos-second_equal_pos-1);
+                        nodes->push_back(std::make_pair(ip_str, (uint16_t)atoi(port_str.c_str())));
+                    }
+                }
+            }
+        }
+
+        return !nodes->empty();
+    }
+}
+
 // Extract error type, such as ERR, MOVED, WRONGTYPE, ...
 void CRedisClient::extract_errtype(const redisReply* redis_reply, std::string* errtype)
 {
