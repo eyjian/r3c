@@ -1,3 +1,5 @@
+R3C的QQ交流群：722564954，欢迎反馈问题和参与开发。
+
 Redis Cluster C++ Client, based on hiredis, support password and standalone, it's easy to make and use, not depends on C++11 or later.
 r3c::CRedisClient is not thread safe, you can use __thread to create a object of r3c::CRedisClient for every thread.
 
