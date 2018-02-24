@@ -239,6 +239,14 @@ struct ErrorInfo
         : raw_errmsg(raw_errmsg_), errmsg(errmsg_), errtype(errtype_), errcode(errcode_)
     {
     }
+
+    void clear()
+    {
+        errcode = 0;
+        errtype.clear();
+        errmsg.clear();
+        raw_errmsg.clear();
+    }
 };
 
 class CRedisException: public std::exception
@@ -784,10 +792,10 @@ private:
 
 private:
     void free_redis_nodes();
-    redisContext* connect_redis_node(int i, const std::pair<std::string, uint16_t>& node, struct ErrorInfo* errinfo) const;
+    redisContext* connect_redis_node(const std::pair<std::string, uint16_t>& node, struct ErrorInfo* errinfo) const;
     void close_redis_node(struct RedisNode*& redis_node);
     struct RedisNode* find_redis_node(const std::pair<std::string, uint16_t>& node);
-    struct RedisNode* get_redis_node(unsigned int slot, bool is_read_command, bool* is_node_of_slot);
+    struct RedisNode* get_redis_node(unsigned int slot, bool is_read_command, bool* is_node_of_slot, struct ErrorInfo* errinfo);
     struct RedisNode* add_redis_node(const std::pair<std::string, uint16_t>& node, redisContext* redis_context);
     bool get_nodes_info(std::vector<struct NodeInfo>* nodes_info, struct ErrorInfo* errinfo, int i, redisContext* redis_context, const std::pair<std::string, uint16_t>& node);
     bool get_slave_nodes(redisContext* redis_context, std::vector<std::pair<std::string, uint16_t> >* nodes);

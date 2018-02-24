@@ -1995,19 +1995,17 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, int ret
     if (key.empty() && cluster_mode())
     {
         // 集群模式必须指定key
+        errinfo.errcode = ERROR_ZERO_KEY;
         errinfo.raw_errmsg = "key not set in cluster mode";
         errinfo.errmsg = format_string("[%s:%d] %s", __FILE__, __LINE__, errinfo.raw_errmsg.c_str());
-        errinfo.errcode = ERROR_ZERO_KEY;
         THROW_REDIS_EXCEPTION(errinfo);
     }
     for (int rt=0; (rt<retry_times+1)||(-1==retry_times)||to_retry; ++rt)
     {
         bool is_node_of_slot;
 
-        errinfo.errcode = 0;
-        errinfo.errtype.clear();
         to_retry = false;
-        redis_node = get_redis_node(slot, is_read_command, &is_node_of_slot);
+        redis_node = get_redis_node(slot, is_read_command, &is_node_of_slot, &errinfo);
         redisContext* redis_context = redis_node->context;
 
         if (which != NULL)
@@ -2017,10 +2015,6 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, int ret
         if (NULL == redis_context)
         {
             // NOT RETRY
-            errinfo.errcode = ERROR_CONNECT_REDIS;
-            errinfo.errmsg = format_string("[%s:%d][COMMAND:%s] failed to connect %s:%d\n", __FILE__, __LINE__, command_args.get_command(), redis_node->ip_and_port.first.c_str(), redis_node->ip_and_port.second);
-            errinfo.raw_errmsg = format_string("failed to connect %s:%d", redis_node->ip_and_port.first.c_str(), redis_node->ip_and_port.second);
-            (*g_error_log)("%s\n", errinfo.errmsg.c_str());
             break;
         }
 
@@ -2054,8 +2048,8 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, int ret
                 else
                 {
                     errinfo.errcode = ERROR_UNEXCEPTED_REPLY_TYPE;
-                    errinfo.errmsg = format_string("[%s:%d][COMMAND:%s] unexcepted reply type(%d) from %s:%d\n", __FILE__, __LINE__, command_args.get_command(), redis_reply->type, redis_node->ip_and_port.first.c_str(), redis_node->ip_and_port.second);
                     errinfo.raw_errmsg = format_string("unexcepted reply type(%d) from %s:%d", redis_reply->type, redis_node->ip_and_port.first.c_str(), redis_node->ip_and_port.second);
+                    errinfo.errmsg = format_string("[%s:%d][COMMAND:%s] %s\n", __FILE__, __LINE__, command_args.get_command(), errinfo.raw_errmsg.c_str());
                     (*g_error_log)("%s\n", errinfo.errmsg.c_str());
                     redis_reply.free();
                 }
@@ -2069,8 +2063,8 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, int ret
                 extract_errtype(redis_reply.get(), &errinfo.errtype);
 
                 errinfo.errcode = ERROR_COMMAND;
-                errinfo.errmsg = format_string("[%s:%d][COMMAND:%s] %s", __FILE__, __LINE__, command_args.get_command(), redis_reply->str);
                 errinfo.raw_errmsg = redis_reply->str;
+                errinfo.errmsg = format_string("[%s:%d][COMMAND:%s] %s", __FILE__, __LINE__, command_args.get_command(), errinfo.raw_errmsg.c_str());
                 (*g_error_log)("%s\n", errinfo.errmsg.c_str());
 
                 to_retry = is_moved_error(errinfo.errtype);
@@ -2133,8 +2127,8 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, int ret
                 // NOT RETRY
 
                 errinfo.errcode = ERROR_COMMAND;
-                errinfo.errmsg = format_string("[%s:%d][COMMAND:%s] (err:%d)%s", __FILE__, __LINE__, command_args.get_command(), redis_errcode, redis_errmsg.c_str());
-                errinfo.raw_errmsg = redis_errmsg.c_str();
+                errinfo.raw_errmsg = format_string("(%d)%s", redis_errcode, redis_errmsg.c_str());
+                errinfo.errmsg = format_string("[%s:%d][COMMAND:%s] %s", __FILE__, __LINE__, command_args.get_command(), errinfo.raw_errmsg.c_str());
                 (*g_error_log)("%s\n", errinfo.errmsg.c_str());
                 break;
             }
@@ -2150,8 +2144,8 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, int ret
                 // 如果同时大量主备切换，
                 // 可导致所有重试均失败（errno为EAGAIN或EWOULDBLOCK），
                 // 解决办法：增加重试次数或延长重试间隔时长。
-                errinfo.errmsg = format_string("[%s:%d][COMMAND:%s] (errno:%d,err:%d,rt:%d/%d)%s", __FILE__, __LINE__, command_args.get_command(), errinfo.errcode, redis_errcode, rt, retry_times, redis_errmsg.c_str());
-                errinfo.raw_errmsg = redis_errmsg.c_str();
+                errinfo.raw_errmsg = format_string("(errcode:%d/%d,retry:%d/%d)%s", errinfo.errcode, redis_errcode, rt, retry_times, redis_errmsg.c_str());
+                errinfo.errmsg = format_string("[%s:%d][COMMAND:%s] %s", __FILE__, __LINE__, command_args.get_command(), errinfo.raw_errmsg.c_str());
                 (*g_error_log)("%s\n", errinfo.errmsg.c_str());
                 millisleep(RETRY_SLEEP_MILLISECONDS);
                 continue;
@@ -2204,7 +2198,7 @@ void CRedisClient::init_standlone()
         const std::pair<std::string, uint16_t>& node = _nodes[0];
         struct ErrorInfo errinfo;
 
-        redisContext* redis_context = connect_redis_node(-1, node, &errinfo);
+        redisContext* redis_context = connect_redis_node(node, &errinfo);
         if (NULL == redis_context)
         {
             THROW_REDIS_EXCEPTION_WITH_NODE(errinfo, node.first, node.second);
@@ -2234,7 +2228,7 @@ void CRedisClient::init_cluster()
     {
         const std::pair<std::string, uint16_t>& node = _nodes[i];
 
-        redisContext* redis_context = connect_redis_node(i, node, &errinfo);
+        redisContext* redis_context = connect_redis_node(node, &errinfo);
         if (redis_context != NULL)
         {
             // _nodes[A] may be the same as _nodes[B]
@@ -2294,7 +2288,7 @@ void CRedisClient::update_slot_info(unsigned int slot, const std::pair<std::stri
     redis_node->ip_and_port = node;
     if (NULL == redis_node->context)
     {
-        redis_node->context = connect_redis_node(-1, node, &errinfo);
+        redis_node->context = connect_redis_node(node, &errinfo);
 
         if (NULL == redis_node->context)
         {
@@ -2320,14 +2314,11 @@ void CRedisClient::free_redis_nodes()
     _redis_contexts.clear();
 }
 
-redisContext* CRedisClient::connect_redis_node(int i, const std::pair<std::string, uint16_t>& node, struct ErrorInfo* errinfo) const
+redisContext* CRedisClient::connect_redis_node(const std::pair<std::string, uint16_t>& node, struct ErrorInfo* errinfo) const
 {
     redisContext* redis_context = NULL;
 
-    errinfo->errcode = 0;
-    errinfo->errmsg = "SUCCESS";
-    errinfo->raw_errmsg = "SUCCESS";
-
+    errinfo->clear();
     if (_connect_timeout_milliseconds <= 0)
     {
         redis_context = redisConnect(node.first.c_str(), node.second);
@@ -2343,10 +2334,10 @@ redisContext* CRedisClient::connect_redis_node(int i, const std::pair<std::strin
     if (NULL == redis_context)
     {
         // can't allocate redis context
-        (*g_error_log)("[i:%d][%s:%d][%s:%d] Can't allocate redis context\n", i, __FILE__, __LINE__, node.first.c_str(), node.second);
         errinfo->errcode = ERROR_REDIS_CONTEXT;
-        errinfo->errmsg = format_string("[%s:%d] %s", __FILE__, __LINE__, "can't allocate redis context");
         errinfo->raw_errmsg = "can't allocate redis context";
+        errinfo->errmsg = format_string("[%s:%d][%s:%d] %s", __FILE__, __LINE__, node.first.c_str(), node.second, errinfo->raw_errmsg.c_str());
+        (*g_error_log)("%s\n", errinfo->errmsg.c_str());
     }
     else if (redis_context->err != 0)
     {
@@ -2354,13 +2345,13 @@ redisContext* CRedisClient::connect_redis_node(int i, const std::pair<std::strin
         // redis_context->errstr
         //
         // Connection refused
-        (*g_error_log)("[i:%d][%s:%d][%s:%d] (errno:%d)(err:%d)%s\n", i, __FILE__, __LINE__, node.first.c_str(), node.second, errno, redis_context->err, redis_context->errstr);
         errinfo->errcode = ERROR_INIT_REDIS_CONN;
-        if (REDIS_ERR_IO == redis_context->err)
-            errinfo->errmsg = format_string("[%s:%d] (errno:%d,err:%d)%s", __FILE__, __LINE__, errno, redis_context->err, redis_context->errstr);
-        else
-            errinfo->errmsg = format_string("[%s:%d] (err:%d)%s", __FILE__, __LINE__, redis_context->err, redis_context->errstr);
         errinfo->raw_errmsg = redis_context->errstr;
+        if (REDIS_ERR_IO == redis_context->err)
+            errinfo->errmsg = format_string("[%s:%d][%s:%d] (errno:%d,err:%d)%s", __FILE__, __LINE__, node.first.c_str(), node.second, errno, redis_context->err, errinfo->raw_errmsg.c_str());
+        else
+            errinfo->errmsg = format_string("[%s:%d][%s:%d] (err:%d)%s", __FILE__, __LINE__, node.first.c_str(), node.second, redis_context->err, errinfo->raw_errmsg.c_str());
+        (*g_error_log)("%s\n", errinfo->errmsg.c_str());
         redisFree(redis_context);
         redis_context = NULL;
     }
@@ -2376,8 +2367,9 @@ redisContext* CRedisClient::connect_redis_node(int i, const std::pair<std::strin
             {
                 // REDIS_ERR_IO == redis_context->err
                 errinfo->errcode = ERROR_INIT_REDIS_CONN;
-                errinfo->errmsg = format_string("[%s:%d] (errno:%d,err:%d)%s", __FILE__, __LINE__, errno, redis_context->err, redis_context->errstr);
                 errinfo->raw_errmsg = redis_context->errstr;
+                errinfo->errmsg = format_string("[%s:%d][%s:%d] (errno:%d,err:%d)%s", __FILE__, __LINE__, node.first.c_str(), node.second, errno, redis_context->err, errinfo->raw_errmsg.c_str());
+                (*g_error_log)("%s\n", errinfo->errmsg.c_str());
                 redisFree(redis_context);
                 redis_context = NULL;
             }
@@ -2394,10 +2386,10 @@ redisContext* CRedisClient::connect_redis_node(int i, const std::pair<std::strin
             else
             {
                 // Authorization failed
-                (*g_error_log)("[i:%d][%s:%d][%s:%d] Authorization failed\n", i, __FILE__, __LINE__, node.first.c_str(), node.second);
                 errinfo->errcode = ERROR_REDIS_AUTH;
-                errinfo->errmsg = format_string("[%s:%d] %s", __FILE__, __LINE__, "authorization failed");
                 errinfo->raw_errmsg = "authorization failed";
+                errinfo->errmsg = format_string("[%s:%d][%s:%d] %s", __FILE__, __LINE__, node.first.c_str(), node.second, errinfo->raw_errmsg.c_str());
+                (*g_error_log)("%s\n", errinfo->errmsg.c_str());
                 redisFree(redis_context);
                 redis_context = NULL;
             }
@@ -2429,14 +2421,14 @@ struct RedisNode* CRedisClient::find_redis_node(const std::pair<std::string, uin
     return redis_node;
 }
 
-struct RedisNode* CRedisClient::get_redis_node(unsigned int slot, bool is_read_command, bool* is_node_of_slot)
+struct RedisNode* CRedisClient::get_redis_node(unsigned int slot, bool is_read_command, bool* is_node_of_slot, struct ErrorInfo* errinfo)
 {
     struct RedisNode* redis_node = NULL;
     struct SlotInfo* slot_info = _slots_info[slot];
 
     if (NULL == slot_info->master_node)
     {
-        // first
+        // 对应的slot还未初始化
         *is_node_of_slot = false;
 
         (*g_debug_log)("[%s:%d] slot(%d) without any node\n", __FILE__, __LINE__, slot);
@@ -2449,9 +2441,25 @@ struct RedisNode* CRedisClient::get_redis_node(unsigned int slot, bool is_read_c
                 break;
             }
         }
+
+        if (NULL == redis_node->context)
+        {
+            (*g_debug_log)("[%s:%d] without any node\n", __FILE__, __LINE__, slot);
+
+            for (std::map<std::pair<std::string, uint16_t>, struct RedisNode*>::iterator iter=_redis_contexts.begin(); iter!=_redis_contexts.end(); ++iter)
+            {
+                redis_node = iter->second;
+                redis_node->context = connect_redis_node(redis_node->ip_and_port, errinfo);
+                if (redis_node->context != NULL)
+                {
+                    break;
+                }
+            }
+        }
     }
     else
     {
+        // 对应的slot已初始化过
         *is_node_of_slot = true;
 
         if (!is_read_command)
@@ -2471,13 +2479,7 @@ struct RedisNode* CRedisClient::get_redis_node(unsigned int slot, bool is_read_c
 
         if (NULL == redis_node->context)
         {
-            struct ErrorInfo errinfo;
-
-            redis_node->context = connect_redis_node(-1, redis_node->ip_and_port, &errinfo);
-            if (NULL == redis_node->context)
-            {
-                (*g_error_log)("[%s:%d] can not connect %s:%d:(%d)%s\n", __FILE__, __LINE__, redis_node->ip_and_port.first.c_str(), redis_node->ip_and_port.second, errinfo.errcode, errinfo.errmsg.c_str());
-            }
+            redis_node->context = connect_redis_node(redis_node->ip_and_port, errinfo);
         }
     }
 
@@ -2514,10 +2516,7 @@ bool CRedisClient::get_nodes_info(std::vector<struct NodeInfo>* nodes_info, stru
 {
     const RedisReplyHelper redis_reply = (redisReply*)redisCommand(redis_context, "CLUSTER NODES");
 
-    errinfo->errcode = 0;
-    errinfo->errmsg = "SUCCESS";
-    errinfo->raw_errmsg = "SUCCESS";
-
+    errinfo->clear();
     if (!redis_reply)
     {
         (*g_error_log)("[i:%d][%s:%d][%s:%d] redisCommand failed\n", i, __FILE__, __LINE__, node.first.c_str(), node.second);
@@ -2573,9 +2572,7 @@ bool CRedisClient::get_nodes_info(std::vector<struct NodeInfo>* nodes_info, stru
             if (0 == num_tokens)
             {
                 // Over
-                errinfo->errcode = 0;
-                errinfo->errmsg = "SUCCESS";
-                errinfo->raw_errmsg = "SUCCESS";
+                errinfo->clear();
                 break;
             }
             else if (num_tokens < 8)
