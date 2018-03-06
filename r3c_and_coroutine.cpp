@@ -1,3 +1,11 @@
+// Compile example:
+// g++ -g -o r3c_and_coroutine r3c_and_coroutine.cpp -I/usr/local/libco/include -I/usr/local/r3c/include -I/usr/local/hiredis/include /usr/local/r3c/libr3c.a /usr/local/hiredis/lib/libhiredis.a /usr/local/libco/lib/libcolib.a -ldl -pthread
+//
+// Run example (Standlone redis):
+// r3c_and_coroutine 3 127.0.0.1:6379
+//
+// Run example (Redis cluster):
+// r3c_and_coroutine 3 127.0.0.1:6379,127.0.0.1:6380
 #include <libco/co_routine.h> // a coroutine library powered by tencent (https://github.com/Tencent/libco)
 #include <stdio.h>
 #include <stdlib.h>
