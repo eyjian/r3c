@@ -1,4 +1,4 @@
-#include <libco/co_routine.h> // a coroutine library powered by tencent
+#include <libco/co_routine.h> // a coroutine library powered by tencent (https://github.com/Tencent/libco)
 #include <stdio.h>
 #include <stdlib.h>
 #include "r3c.h"
