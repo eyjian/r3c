@@ -800,10 +800,10 @@ private:
     bool get_nodes_info(std::vector<struct NodeInfo>* nodes_info, struct ErrorInfo* errinfo, int i, redisContext* redis_context, const std::pair<std::string, uint16_t>& node);
     bool get_slave_nodes(redisContext* redis_context, std::vector<std::pair<std::string, uint16_t> >* nodes);
 
-private:
     // Called by: redis_command
     void extract_errtype(const redisReply* redis_reply, std::string* errtype);
 
+public:
     // Called by: get,hget,key_type,lpop,rpop,srandmember
     bool get_value(const redisReply* redis_reply, std::string* value);
 
