@@ -789,6 +789,7 @@ private:
 
 private:
     void free_slots_info();
+    void reset_slots_info(unsigned int slot);
     void update_slot_info(unsigned int slot, const std::pair<std::string, uint16_t>& node);
 
 private:

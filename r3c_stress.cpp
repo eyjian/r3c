@@ -3,6 +3,9 @@
 #include <stdio.h>
 #include <vector>
 
+// 可用于测试异常时接口的正确性，
+// 比如集群中节点挂掉，或节点挂起等异常情况
+
 // argv[1] redis nodes
 // argv[2] number of keys
 // argv[3] number of cycles
@@ -11,12 +14,12 @@ int main(int argc, char* argv[])
     if (argc != 4)
     {
         fprintf(stderr, "Usage: %s <redis nodes> <number of keys> <number of cycles>\n", argv[0]);
-        fprintf(stderr, "Example: %s 192.168.1.61:6379,192.168.1.62:6379 10 1000000\n", argv[0]);
+        fprintf(stderr, "Example: %s 192.168.1.61:6379,192.168.1.62:6379 100 1000000\n", argv[0]);
         exit(1);
     }
     else
     {
-        const int retry_times = 3;
+        const int retry_times = 30;
         const uint32_t expired_seconds = 3600*24;
         const std::string& redis_nodes = argv[1];
         const int num_keys = atoi(argv[2]);

@@ -2186,6 +2186,14 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, int ret
                 //    to_retry = true;
                 //if ((ECONNRESET==errinfo.errcode) || (EINPROGRESS==errinfo.errcode))
                 //    to_retry = true;
+                if (REDIS_ERR_IO == redis_errcode)
+                {
+                    if ((EAGAIN == errinfo.errcode) || (EWOULDBLOCK == errinfo.errcode))
+                    {
+                        // EAGAIN时，可能已经发生了主备切换，因此这种情况下最好重置slot；如果不重置，该连接永远发现不了已切换。
+                        reset_slots_info(slot);
+                    }
+                }
                 if (_retry_sleep_milliseconds > 0)
                     millisleep(_retry_sleep_milliseconds);
                 continue;
@@ -2295,6 +2303,13 @@ void CRedisClient::free_slots_info()
     }
 
     _slots_info.clear();
+}
+
+void CRedisClient::reset_slots_info(unsigned int slot)
+{
+    struct SlotInfo* slot_info = _slots_info[slot];
+    if (slot_info != NULL)
+        slot_info->master_node = NULL;
 }
 
 void CRedisClient::update_slot_info(unsigned int slot, const std::pair<std::string, uint16_t>& node)
