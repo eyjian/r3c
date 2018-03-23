@@ -19,7 +19,7 @@ int main(int argc, char* argv[])
     }
     else
     {
-        const int retry_times = 30;
+        const int retry_times = r3c::RETRY_TIMES;
         const uint32_t expired_seconds = 3600*24;
         const std::string& redis_nodes = argv[1];
         const int num_keys = atoi(argv[2]);
@@ -45,7 +45,7 @@ int main(int argc, char* argv[])
                 for (std::vector<std::string>::size_type j=0; j<keys.size(); ++j)
                 {
                     const std::string& key = keys[j];
-                    redis.incrby(key, 1, expired_seconds, NULL, retry_times);
+                    redis.incrby(key, 1, expired_seconds, NULL, retry_times, true);
                 }
             }
 

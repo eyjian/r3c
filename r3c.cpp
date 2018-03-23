@@ -429,7 +429,7 @@ void CRedisClient::flushall() throw (CRedisException)
     cmd_args.final();
 
     // Simple string reply
-    redis_command(false, retry_times, REDIS_REPLY_STATUS, key, cmd_args, NULL);
+    redis_command(false, true, retry_times, REDIS_REPLY_STATUS, key, cmd_args, NULL);
 }
 
 //
@@ -438,7 +438,7 @@ void CRedisClient::flushall() throw (CRedisException)
 
 // Time complexity: O(1)
 // EXPIRE key seconds
-bool CRedisClient::expire(const std::string& key, uint32_t seconds, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+bool CRedisClient::expire(const std::string& key, uint32_t seconds, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("EXPIRE");
@@ -449,7 +449,7 @@ bool CRedisClient::expire(const std::string& key, uint32_t seconds, std::pair<st
     // Integer reply, specifically:
     // 1 if the timeout was set.
     // 0 if key does not exist.
-    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, force_retry, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return 1 == redis_reply->integer;
 }
 
@@ -465,7 +465,7 @@ bool CRedisClient::exists(const std::string& key, std::pair<std::string, uint16_
     // Integer reply, specifically:
     // 1 if the key exists.
     // 0 if the key does not exist.
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return 1 == redis_reply->integer;
 }
 
@@ -474,7 +474,7 @@ bool CRedisClient::exists(const std::string& key, std::pair<std::string, uint16_
 // When a key to remove holds a value other than a string,
 // the individual complexity for this key is O(M) where M is the number of elements in the list, set, sorted set or hash.
 // Removing a single key that holds a string value is O(1).
-bool CRedisClient::del(const std::string& key, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+bool CRedisClient::del(const std::string& key, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("DEL");
@@ -483,7 +483,7 @@ bool CRedisClient::del(const std::string& key, std::pair<std::string, uint16_t>*
 
     // Integer reply:
     // The number of keys that were removed.
-    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, force_retry, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return 1 == redis_reply->integer;
 }
 
@@ -498,13 +498,13 @@ bool CRedisClient::get(const std::string& key, std::string* value, std::pair<std
 
     // Bulk string reply:
     // the value of key, or nil when key does not exist.
-    RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_STRING, key, cmd_args, which);
+    RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_STRING, key, cmd_args, which);
     return get_value(redis_reply.get(), value);
 }
 
 // SET key value [EX seconds] [PX milliseconds] [NX|XX]
 // Time complexity: O(1)
-void CRedisClient::set(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+void CRedisClient::set(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("SET");
@@ -517,12 +517,12 @@ void CRedisClient::set(const std::string& key, const std::string& value, std::pa
     // because the user specified the NX or XX option but the condition was not met.
     //
     // OK: redis_reply->str
-    redis_command(false, retry_times, REDIS_REPLY_STATUS, key, cmd_args, which);
+    redis_command(false, force_retry, retry_times, REDIS_REPLY_STATUS, key, cmd_args, which);
 }
 
 // Time complexity: O(1)
 // SETNX key value
-bool CRedisClient::setnx(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+bool CRedisClient::setnx(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("SETNX");
@@ -533,13 +533,13 @@ bool CRedisClient::setnx(const std::string& key, const std::string& value, std::
     // Integer reply, specifically:
     // 1 if the key exists.
     // 0 if the key does not exist.
-    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, force_retry, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return 1 == redis_reply->integer;
 }
 
 // Time complexity: O(1)
 // SETEX key seconds value
-void CRedisClient::setex(const std::string& key, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+void CRedisClient::setex(const std::string& key, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("SETEX");
@@ -551,10 +551,10 @@ void CRedisClient::setex(const std::string& key, const std::string& value, uint3
     // Simple string reply
     //
     // OK: redis_reply->str
-    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_STATUS, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, force_retry, retry_times, REDIS_REPLY_STATUS, key, cmd_args, which);
 }
 
-bool CRedisClient::setnxex(const std::string& key, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+bool CRedisClient::setnxex(const std::string& key, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("SET");
@@ -570,7 +570,7 @@ bool CRedisClient::setnxex(const std::string& key, const std::string& value, uin
     // because the user specified the NX or XX option but the condition was not met.
     //
     // OK: redis_reply->str
-    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_STATUS, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, force_retry, retry_times, REDIS_REPLY_STATUS, key, cmd_args, which);
     return redis_reply->type != REDIS_REPLY_NIL;
 }
 
@@ -593,7 +593,7 @@ int CRedisClient::mget(const std::vector<std::string>& keys, std::vector<std::st
         //
         // For every key that does not hold a string value or does not exist,
         // the special value nil is returned. Because of this, the operation never fails.
-        const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
+        const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
         return get_values(redis_reply.get(), values);
     }
     else
@@ -622,7 +622,7 @@ int CRedisClient::mget(const std::vector<std::string>& keys, std::vector<std::st
 // Time complexity:
 // O(N) where N is the number of keys to set.
 // MSET key value [key value ...]
-int CRedisClient::mset(const std::map<std::string, std::string>& kv_map, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+int CRedisClient::mset(const std::map<std::string, std::string>& kv_map, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     int success = 0;
 
@@ -636,7 +636,7 @@ int CRedisClient::mset(const std::map<std::string, std::string>& kv_map, std::pa
 
         // Simple string reply:
         // always OK since MSET can't fail.
-        redis_command(false, retry_times, REDIS_REPLY_STATUS, key, cmd_args, which);
+        redis_command(false, force_retry, retry_times, REDIS_REPLY_STATUS, key, cmd_args, which);
         success = static_cast<int>(kv_map.size());
     }
     else
@@ -655,7 +655,7 @@ int CRedisClient::mset(const std::map<std::string, std::string>& kv_map, std::pa
 
 // Time complexity: O(1)
 // INCRBY key increment
-int64_t CRedisClient::incrby(const std::string& key, int64_t increment, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+int64_t CRedisClient::incrby(const std::string& key, int64_t increment, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("INCRBY");
@@ -665,23 +665,23 @@ int64_t CRedisClient::incrby(const std::string& key, int64_t increment, std::pai
 
     // Integer reply:
     // the value of key after the increment
-    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, force_retry, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return redis_reply->integer;
 }
 
-int64_t CRedisClient::incrby(const std::string& key, int64_t increment, int64_t expired_increment, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+int64_t CRedisClient::incrby(const std::string& key, int64_t increment, int64_t expired_increment, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     const std::string& lua_scripts = format_string(
             "local n; n=redis.call('incrby','%s','%" PRId64"'); if (n==%" PRId64") then redis.call('expire', '%s', '%u') end; return n;",
             key.c_str(), increment, expired_increment, key.c_str(), expired_seconds);
-    const RedisReplyHelper redis_reply = eval(false, REDIS_REPLY_INTEGER, key, lua_scripts, which, retry_times);
+    const RedisReplyHelper redis_reply = eval(false, REDIS_REPLY_INTEGER, key, lua_scripts, which, retry_times, force_retry);
     return static_cast<int64_t>(redis_reply->integer);
 }
 
-int64_t CRedisClient::incrby(const std::string& key, int64_t increment, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+int64_t CRedisClient::incrby(const std::string& key, int64_t increment, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     const int64_t expired_increment = increment;
-    return incrby(key, increment, expired_increment, expired_seconds, which, retry_times);
+    return incrby(key, increment, expired_increment, expired_seconds, which, retry_times, force_retry);
 }
 
 bool CRedisClient::key_type(const std::string& key, std::string* key_type, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
@@ -693,7 +693,7 @@ bool CRedisClient::key_type(const std::string& key, std::string* key_type, std::
 
     // Simple string reply:
     // type of key, or none when key does not exist.
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_STATUS, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_STATUS, key, cmd_args, which);
     return get_value(redis_reply.get(), key_type);
 }
 
@@ -706,7 +706,7 @@ int64_t CRedisClient::ttl(const std::string& key, std::pair<std::string, uint16_
 
     // Integer reply:
     // TTL in seconds, or a negative value in order to signal an error
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return redis_reply->integer;
 }
 
@@ -780,7 +780,7 @@ int64_t CRedisClient::scan(int64_t cursor, const std::string& pattern, int count
     // $9 = {type = 1, integer = 0, len = 2, str = 0x63e880 "k3", elements = 0, element = 0x0}
     // (gdb) p *redis_reply->element[1]->element[2]
     // $10 = {type = 1, integer = 0, len = 2, str = 0x63e8e0 "k1", elements = 0, element = 0x0}
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
     get_values(redis_reply->element[1], values);
     return static_cast<int64_t>(atoll(redis_reply->element[0]->str));
 }
@@ -795,7 +795,7 @@ int64_t CRedisClient::scan(int64_t cursor, const std::string& pattern, int count
 // e.g.
 // eval("r3c_k1", "local v=redis.call('set','r3c_k1','123');return v;");
 // eval("r3c_k1", "local v=redis.call('get','r3c_k1');return v;");
-const RedisReplyHelper CRedisClient::eval(bool is_read_command, int excepted_reply_type, const std::string& key, const std::string& lua_scripts, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+const RedisReplyHelper CRedisClient::eval(bool is_read_command, int excepted_reply_type, const std::string& key, const std::string& lua_scripts, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     const int numkeys = 1;
     CCommandArgs cmd_args;
@@ -806,10 +806,10 @@ const RedisReplyHelper CRedisClient::eval(bool is_read_command, int excepted_rep
     cmd_args.add_arg(key);
     cmd_args.final();
 
-    return redis_command(is_read_command, retry_times, excepted_reply_type, key, cmd_args, which);
+    return redis_command(is_read_command, force_retry, retry_times, excepted_reply_type, key, cmd_args, which);
 }
 
-const RedisReplyHelper CRedisClient::eval(bool is_read_command, int excepted_reply_type, const std::string& key, const std::string& lua_scripts, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+const RedisReplyHelper CRedisClient::eval(bool is_read_command, int excepted_reply_type, const std::string& key, const std::string& lua_scripts, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     const int numkeys = 1;
     CCommandArgs cmd_args;
@@ -821,20 +821,20 @@ const RedisReplyHelper CRedisClient::eval(bool is_read_command, int excepted_rep
     cmd_args.add_args(parameters);
     cmd_args.final();
 
-    return redis_command(is_read_command, retry_times, excepted_reply_type, key, cmd_args, which);
+    return redis_command(is_read_command, force_retry, retry_times, excepted_reply_type, key, cmd_args, which);
 }
 
-const RedisReplyHelper CRedisClient::eval(const std::string& key, const std::string& lua_scripts, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+const RedisReplyHelper CRedisClient::eval(const std::string& key, const std::string& lua_scripts, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
-    return eval(false, REDIS_REPLY_NIL, key, lua_scripts, which, retry_times);
+    return eval(false, REDIS_REPLY_NIL, key, lua_scripts, which, retry_times, force_retry);
 }
 
-const RedisReplyHelper CRedisClient::eval(const std::string& key, const std::string& lua_scripts, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+const RedisReplyHelper CRedisClient::eval(const std::string& key, const std::string& lua_scripts, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
-    return eval(false, REDIS_REPLY_NIL, key, lua_scripts, parameters, which, retry_times);
+    return eval(false, REDIS_REPLY_NIL, key, lua_scripts, parameters, which, retry_times, force_retry);
 }
 
-const RedisReplyHelper CRedisClient::evalsha(bool is_read_command, const std::string& key, const std::string& sha1, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+const RedisReplyHelper CRedisClient::evalsha(bool is_read_command, const std::string& key, const std::string& sha1, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     const int numkeys = 1;
     CCommandArgs cmd_args;
@@ -846,12 +846,12 @@ const RedisReplyHelper CRedisClient::evalsha(bool is_read_command, const std::st
     cmd_args.add_args(parameters);
     cmd_args.final();
 
-    return redis_command(is_read_command, retry_times, REDIS_REPLY_NIL, key, cmd_args, which);
+    return redis_command(is_read_command, force_retry, retry_times, REDIS_REPLY_NIL, key, cmd_args, which);
 }
 
-const RedisReplyHelper CRedisClient::evalsha(const std::string& key, const std::string& sha1, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+const RedisReplyHelper CRedisClient::evalsha(const std::string& key, const std::string& sha1, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
-    return evalsha(false, key, sha1, parameters, which, retry_times);
+    return evalsha(false, key, sha1, parameters, which, retry_times, force_retry);
 }
 
 //
@@ -860,7 +860,7 @@ const RedisReplyHelper CRedisClient::evalsha(const std::string& key, const std::
 
 // Time complexity: O(N) where N is the number of fields to be removed.
 // HDEL key field [field ...]
-bool CRedisClient::hdel(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+bool CRedisClient::hdel(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("HDEL");
@@ -870,16 +870,16 @@ bool CRedisClient::hdel(const std::string& key, const std::string& field, std::p
 
     // Integer reply:
     // the number of fields that were removed from the hash, not including specified but non existing fields.
-    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, force_retry, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return 1 == redis_reply->integer;
 }
 
-int CRedisClient::hdel(const std::string& key, const std::vector<std::string>& fields, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+int CRedisClient::hdel(const std::string& key, const std::vector<std::string>& fields, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
-    return hmdel(key, fields, which, retry_times);
+    return hmdel(key, fields, which, retry_times, force_retry);
 }
 
-int CRedisClient::hmdel(const std::string& key, const std::vector<std::string>& fields, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+int CRedisClient::hmdel(const std::string& key, const std::vector<std::string>& fields, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("HDEL");
@@ -889,7 +889,7 @@ int CRedisClient::hmdel(const std::string& key, const std::vector<std::string>& 
 
     // Integer reply:
     // the number of fields that were removed from the hash, not including specified but non existing fields.
-    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, force_retry, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return static_cast<int>(redis_reply->integer);
 }
 
@@ -906,7 +906,7 @@ bool CRedisClient::hexists(const std::string& key, const std::string& field, std
     // Integer reply, specifically:
     // 1 if the hash contains field.
     // 0 if the hash does not contain field, or key does not exist.
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return 1 == redis_reply->integer;
 }
 
@@ -920,13 +920,13 @@ int CRedisClient::hlen(const std::string& key, std::pair<std::string, uint16_t>*
     cmd_args.final();
 
     // Integer reply: number of fields in the hash, or 0 when key does not exist.
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return static_cast<int>(redis_reply->integer);
 }
 
 // Time complexity: O(1)
 // HSET key field value
-bool CRedisClient::hset(const std::string& key, const std::string& field, const std::string& value, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+bool CRedisClient::hset(const std::string& key, const std::string& field, const std::string& value, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("HSET");
@@ -938,22 +938,22 @@ bool CRedisClient::hset(const std::string& key, const std::string& field, const 
     // Integer reply, specifically:
     // 1 if field is a new field in the hash and value was set.
     // 0 if field already exists in the hash and the value was updated.
-    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, force_retry, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return 1 == redis_reply->integer;
 }
 
-bool CRedisClient::hsetex(const std::string& key, const std::string& field, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+bool CRedisClient::hsetex(const std::string& key, const std::string& field, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     const std::string& lua_scripts = format_string(
             "local n; n=redis.call('hset','%s','%s','%s'); if (n>0) then redis.call('expire', '%s', '%u') end; return n;",
             key.c_str(), field.c_str(), value.c_str(), key.c_str(), expired_seconds);
-    const RedisReplyHelper redis_reply = eval(false, REDIS_REPLY_INTEGER, key, lua_scripts, which, retry_times);
+    const RedisReplyHelper redis_reply = eval(false, REDIS_REPLY_INTEGER, key, lua_scripts, which, retry_times, force_retry);
     return 1 == redis_reply->integer;
 }
 
 // HSETNX key field value
 // Time complexity: O(1)
-bool CRedisClient::hsetnx(const std::string& key, const std::string& field, const std::string& value, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+bool CRedisClient::hsetnx(const std::string& key, const std::string& field, const std::string& value, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("HSETNX");
@@ -965,16 +965,16 @@ bool CRedisClient::hsetnx(const std::string& key, const std::string& field, cons
     // Integer reply, specifically:
     // 1 if field is a new field in the hash and value was set.
     // 0 if field already exists in the hash and no operation was performed.
-    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, force_retry, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return 1 == redis_reply->integer;
 }
 
-bool CRedisClient::hsetnxex(const std::string& key, const std::string& field, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+bool CRedisClient::hsetnxex(const std::string& key, const std::string& field, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     const std::string& lua_scripts = format_string(
             "local n; n=redis.call('hsetnx','%s','%s','%s'); if (n>0) then redis.call('expire', '%s', '%u') end; return n;",
             key.c_str(), field.c_str(), value.c_str(), key.c_str(), expired_seconds);
-    const RedisReplyHelper redis_reply = eval(false, REDIS_REPLY_INTEGER, key, lua_scripts, which, retry_times);
+    const RedisReplyHelper redis_reply = eval(false, REDIS_REPLY_INTEGER, key, lua_scripts, which, retry_times, force_retry);
     return 1 == redis_reply->integer;
 }
 
@@ -990,13 +990,13 @@ bool CRedisClient::hget(const std::string& key, const std::string& field, std::s
 
     // Bulk string reply:
     // the value associated with field, or nil when field is not present in the hash or key does not exist.
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_STRING, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_STRING, key, cmd_args, which);
     return get_value(redis_reply.get(), value);
 }
 
 // Time complexity: O(1)
 // HINCRBY key field increment
-int64_t CRedisClient::hincrby(const std::string& key, const std::string& field, int64_t increment, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+int64_t CRedisClient::hincrby(const std::string& key, const std::string& field, int64_t increment, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("HINCRBY");
@@ -1006,16 +1006,16 @@ int64_t CRedisClient::hincrby(const std::string& key, const std::string& field, 
     cmd_args.final();
 
     // Integer reply: the value at field after the increment operation.
-    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, force_retry, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return static_cast<int64_t>(redis_reply->integer);
 }
 
-void CRedisClient::hincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+void CRedisClient::hincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
-    hmincrby(key, increments, values, which, retry_times);
+    hmincrby(key, increments, values, which, retry_times, force_retry);
 }
 
-void CRedisClient::hmincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+void CRedisClient::hmincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     const std::string& lua_scripts = format_string(
             "local j=1;local results={};for i=1,#ARGV,2 do local f=ARGV[i];local v=ARGV[i+1];results[j]=redis.call('hincrby','%s',f,v);j=j+1; end;return results;",
@@ -1027,18 +1027,18 @@ void CRedisClient::hmincrby(const std::string& key, const std::vector<std::pair<
         parameters[j] = increment.first;
         parameters[j+1] = any2string(increment.second);
     }
-    const RedisReplyHelper redis_reply = eval(false, REDIS_REPLY_ARRAY, key, lua_scripts, parameters, which, retry_times);
+    const RedisReplyHelper redis_reply = eval(false, REDIS_REPLY_ARRAY, key, lua_scripts, parameters, which, retry_times, force_retry);
     get_values(redis_reply.get(), values);
 }
 
-void CRedisClient::hset(const std::string& key, const std::map<std::string, std::string>& map, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+void CRedisClient::hset(const std::string& key, const std::map<std::string, std::string>& map, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
-    hmset(key, map, which, retry_times);
+    hmset(key, map, which, retry_times, force_retry);
 }
 
 // Time complexity: O(N) where N is the number of fields being set.
 // HMSET key field value [field value ...]
-void CRedisClient::hmset(const std::string& key, const std::map<std::string, std::string>& map, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+void CRedisClient::hmset(const std::string& key, const std::map<std::string, std::string>& map, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("HMSET");
@@ -1047,7 +1047,7 @@ void CRedisClient::hmset(const std::string& key, const std::map<std::string, std
     cmd_args.final();
 
     // Simple string reply
-    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_STATUS, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, force_retry, retry_times, REDIS_REPLY_STATUS, key, cmd_args, which);
 }
 
 int CRedisClient::hget(const std::string& key, const std::vector<std::string>& fields, std::map<std::string, std::string>* map, bool keep_null, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
@@ -1067,7 +1067,7 @@ int CRedisClient::hmget(const std::string& key, const std::vector<std::string>& 
 
     // Array reply:
     // list of values associated with the given fields, in the same order as they are requested.
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
     return get_values(redis_reply.get(), fields, keep_null, map);
 }
 
@@ -1082,7 +1082,7 @@ int CRedisClient::hgetall(const std::string& key, std::map<std::string, std::str
 
     // Array reply:
     // list of fields and their values stored in the hash, or an empty list when key does not exist.
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
     return get_values(redis_reply.get(), map);
 }
 
@@ -1099,7 +1099,7 @@ int CRedisClient::hstrlen(const std::string& key, const std::string& field, std:
     // Integer reply:
     // the string length of the value associated with field,
     // or zero when field is not present in the hash or key does not exist at all.
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return static_cast<int>(redis_reply->integer);
 }
 
@@ -1114,7 +1114,7 @@ int CRedisClient::hkeys(const std::string& key, std::vector<std::string>* fields
 
     // Array reply:
     // list of fields in the hash, or an empty list when key does not exist.
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
     return get_values(redis_reply.get(), fields);
 }
 
@@ -1129,7 +1129,7 @@ int CRedisClient::hvals(const std::string& key, std::vector<std::string>* vals, 
 
     // Array reply:
     // list of values in the hash, or an empty list when key does not exist.
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
     return get_values(redis_reply.get(), vals);
 }
 
@@ -1185,7 +1185,7 @@ int64_t CRedisClient::hscan(const std::string& key, int64_t cursor, const std::s
     // $6 = {type = 1, integer = 0, len = 2, str = 0x6419b0 "f2", elements = 0, element = 0x0}
     // (gdb) p *redis_reply->element[1]->element[3]
     // $7 = {type = 1, integer = 0, len = 2, str = 0x641a10 "v2", elements = 0, element = 0x0}
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
     get_values(redis_reply->element[1], map);
     return static_cast<int64_t>(atoll(redis_reply->element[0]->str));
 }
@@ -1204,13 +1204,13 @@ int CRedisClient::llen(const std::string& key, std::pair<std::string, uint16_t>*
     cmd_args.final();
 
     // Integer reply: the length of the list at key.
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return static_cast<int>(redis_reply->integer);
 }
 
 // Time complexity: O(1)
 // LPOP key
-bool CRedisClient::lpop(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+bool CRedisClient::lpop(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("LPOP");
@@ -1218,13 +1218,13 @@ bool CRedisClient::lpop(const std::string& key, std::string* value, std::pair<st
     cmd_args.final();
 
     // Bulk string reply: the value of the first element, or nil when key does not exist.
-    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_STRING, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, force_retry, retry_times, REDIS_REPLY_STRING, key, cmd_args, which);
     return get_value(redis_reply.get(), value);
 }
 
 // Time complexity: O(1)
 // LPUSH key value [value ...]
-int CRedisClient::lpush(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+int CRedisClient::lpush(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("LPUSH");
@@ -1233,13 +1233,13 @@ int CRedisClient::lpush(const std::string& key, const std::string& value, std::p
     cmd_args.final();
 
     // Integer reply: the length of the list after the push operations.
-    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, force_retry, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return static_cast<int>(redis_reply->integer);
 }
 
 // Time complexity: O(1)
 // LPUSH key value [value ...]
-int CRedisClient::lpush(const std::string& key, const std::vector<std::string>& values, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+int CRedisClient::lpush(const std::string& key, const std::vector<std::string>& values, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("LPUSH");
@@ -1248,7 +1248,7 @@ int CRedisClient::lpush(const std::string& key, const std::vector<std::string>& 
     cmd_args.final();
 
     // Integer reply: the length of the list after the push operations.
-    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, force_retry, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return static_cast<int>(redis_reply->integer);
 }
 
@@ -1268,7 +1268,7 @@ int CRedisClient::lrange(const std::string& key, int64_t start, int64_t end, std
     cmd_args.final();
 
     // Array reply: list of elements in the specified range.
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
     return get_values(redis_reply.get(), values);
 }
 
@@ -1276,7 +1276,7 @@ int CRedisClient::lrange(const std::string& key, int64_t start, int64_t end, std
 // O(N) where N is the number of elements to be removed by the operation.
 //
 // LTRIM key start stop
-void CRedisClient::ltrim(const std::string& key, int64_t start, int64_t end, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+void CRedisClient::ltrim(const std::string& key, int64_t start, int64_t end, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("LTRIM");
@@ -1286,12 +1286,12 @@ void CRedisClient::ltrim(const std::string& key, int64_t start, int64_t end, std
     cmd_args.final();
 
     // Simple string reply
-    redis_command(false, retry_times, REDIS_REPLY_STATUS, key, cmd_args, which);
+    redis_command(false, force_retry, retry_times, REDIS_REPLY_STATUS, key, cmd_args, which);
 }
 
 // Time complexity: O(1)
 // RPOP key
-bool CRedisClient::rpop(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+bool CRedisClient::rpop(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("RPOP");
@@ -1299,12 +1299,12 @@ bool CRedisClient::rpop(const std::string& key, std::string* value, std::pair<st
     cmd_args.final();
 
     // Bulk string reply: the value of the last element, or nil when key does not exist.
-    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_STRING, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, force_retry, retry_times, REDIS_REPLY_STRING, key, cmd_args, which);
     return get_value(redis_reply.get(), value);
 }
 
 // Time complexity: O(1)
-int CRedisClient::rpush(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+int CRedisClient::rpush(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("RPUSH");
@@ -1313,12 +1313,12 @@ int CRedisClient::rpush(const std::string& key, const std::string& value, std::p
     cmd_args.final();
 
     // Integer reply: the length of the list after the push operation.
-    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, force_retry, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return static_cast<int>(redis_reply->integer);
 }
 
 // Time complexity: O(1)
-int CRedisClient::rpush(const std::string& key, const std::vector<std::string>& values, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+int CRedisClient::rpush(const std::string& key, const std::vector<std::string>& values, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("RPUSH");
@@ -1327,12 +1327,12 @@ int CRedisClient::rpush(const std::string& key, const std::vector<std::string>& 
     cmd_args.final();
 
     // Integer reply: the length of the list after the push operation.
-    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, force_retry, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return static_cast<int>(redis_reply->integer);
 }
 
 // Time complexity: O(1)
-int CRedisClient::rpushx(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+int CRedisClient::rpushx(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("RPUSHX");
@@ -1342,7 +1342,7 @@ int CRedisClient::rpushx(const std::string& key, const std::string& value, std::
 
     // Integer reply:
     // the length of the list after the push operation.
-    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, force_retry, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return static_cast<int>(redis_reply->integer);
 }
 
@@ -1352,7 +1352,7 @@ int CRedisClient::rpushx(const std::string& key, const std::string& value, std::
 
 // Time complexity:
 //  O(1) for each element added, so O(N) to add N elements when the command is called with multiple arguments.
-int CRedisClient::sadd(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+int CRedisClient::sadd(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("SADD");
@@ -1362,12 +1362,12 @@ int CRedisClient::sadd(const std::string& key, const std::string& value, std::pa
 
     // Integer reply: the number of elements that were added to the set,
     // not including all the elements already present into the set.
-    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, force_retry, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return static_cast<int>(redis_reply->integer);
 }
 
 //  O(1) for each element added, so O(N) to add N elements when the command is called with multiple arguments.
-int CRedisClient::sadd(const std::string& key, const std::vector<std::string>& values, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+int CRedisClient::sadd(const std::string& key, const std::vector<std::string>& values, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("SADD");
@@ -1377,7 +1377,7 @@ int CRedisClient::sadd(const std::string& key, const std::vector<std::string>& v
 
     // Integer reply: the number of elements that were added to the set,
     // not including all the elements already present into the set.
-    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, force_retry, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return static_cast<int>(redis_reply->integer);
 }
 
@@ -1390,7 +1390,7 @@ int CRedisClient::scard(const std::string& key, std::pair<std::string, uint16_t>
     cmd_args.final();
 
     // Integer reply: the cardinality (number of elements) of the set, or 0 if key does not exist.
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return static_cast<int>(redis_reply->integer);
 }
 
@@ -1406,7 +1406,7 @@ bool CRedisClient::sismember(const std::string& key, const std::string& value, s
     // Integer reply, specifically:
     // 1 if the element is a member of the set.
     // 0 if the element is not a member of the set, or if key does not exist.
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return 1 == redis_reply->integer;
 }
 
@@ -1420,15 +1420,15 @@ int CRedisClient::smembers(const std::string& key, std::vector<std::string>* val
 
     // Array reply:
     // all elements of the set.
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
     return get_values(redis_reply.get(), values);
 }
 
 // Time complexity: O(1)
-bool CRedisClient::spop(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+bool CRedisClient::spop(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     std::vector<std::string> values;
-    const int n = spop(key, 1, &values, which, retry_times);
+    const int n = spop(key, 1, &values, which, retry_times, force_retry);
     if (n > 0)
     {
         *value = value[0];
@@ -1437,7 +1437,7 @@ bool CRedisClient::spop(const std::string& key, std::string* value, std::pair<st
 }
 
 // Time complexity: O(1)
-int CRedisClient::spop(const std::string& key, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+int CRedisClient::spop(const std::string& key, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("SPOP");
@@ -1447,7 +1447,7 @@ int CRedisClient::spop(const std::string& key, int count, std::vector<std::strin
 
     // Bulk string reply:
     // the removed element, or nil when key does not exist.
-    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, force_retry, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
     return get_values(redis_reply.get(), values);
 }
 
@@ -1462,7 +1462,7 @@ bool CRedisClient::srandmember(const std::string& key, std::string* value, std::
     // Bulk string reply:
     // without the additional count argument the command returns a Bulk Reply with the randomly selected element,
     // or nil when key does not exist.
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_STRING, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_STRING, key, cmd_args, which);
     return get_value(redis_reply.get(), value);
 }
 
@@ -1478,12 +1478,12 @@ int CRedisClient::srandmember(const std::string& key, int count, std::vector<std
     // Array reply:
     // when the additional count argument is passed the command returns an array of elements,
     // or an empty array when key does not exist.
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
     return get_values(redis_reply.get(), values);
 }
 
 // Time complexity: O(N) where N is the number of members to be removed.
-int CRedisClient::srem(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+int CRedisClient::srem(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("SREM");
@@ -1493,11 +1493,11 @@ int CRedisClient::srem(const std::string& key, const std::string& value, std::pa
 
     // Integer reply: the number of members that were removed from the set,
     // not including non existing members.
-    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, force_retry, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return static_cast<int>(redis_reply->integer);
 }
 
-int CRedisClient::srem(const std::string& key, const std::vector<std::string>& values, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+int CRedisClient::srem(const std::string& key, const std::vector<std::string>& values, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("SREM");
@@ -1507,7 +1507,7 @@ int CRedisClient::srem(const std::string& key, const std::vector<std::string>& v
 
     // Integer reply: the number of members that were removed from the set,
     // not including non existing members.
-    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, force_retry, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return static_cast<int>(redis_reply->integer);
 }
 
@@ -1559,7 +1559,7 @@ int64_t CRedisClient::sscan(const std::string& key, int64_t cursor, const std::s
     // $6 = {type = 1, integer = 0, len = 5, str = 0x6419d0 "f1055", elements = 0, element = 0x0}
     // (gdb) p *redis_reply->element[1]->element[1]
     // $7 = {type = 1, integer = 0, len = 5, str = 0x641a30 "f6368", elements = 0, element = 0x0}
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
     get_values(redis_reply->element[1], values);
     return static_cast<int64_t>(atoll(redis_reply->element[0]->str));
 }
@@ -1583,7 +1583,7 @@ int64_t CRedisClient::sscan(const std::string& key, int64_t cursor, const std::s
     }
     cmd_args.final();
 
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
     get_values(redis_reply->element[1], values);
     return static_cast<int64_t>(atoll(redis_reply->element[0]->str));
 }
@@ -1596,7 +1596,7 @@ int64_t CRedisClient::sscan(const std::string& key, int64_t cursor, const std::s
 // O(M*log(N)) with N being the number of elements in the sorted set and M the number of elements to be removed.
 //
 // ZREM key member [member ...]
-int CRedisClient::zrem(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+int CRedisClient::zrem(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("ZREM");
@@ -1606,13 +1606,13 @@ int CRedisClient::zrem(const std::string& key, const std::string& field, std::pa
 
     // Integer reply, specifically:
     // The number of members removed from the sorted set, not including non existing members.
-    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, force_retry, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return static_cast<int>(redis_reply->integer);
 }
 
 // Time complexity:
 // O(M*log(N)) with N being the number of elements in the sorted set and M the number of elements to be removed.
-int CRedisClient::zrem(const std::string& key, const std::vector<std::string>& fields, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+int CRedisClient::zrem(const std::string& key, const std::vector<std::string>& fields, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("ZREM");
@@ -1622,7 +1622,7 @@ int CRedisClient::zrem(const std::string& key, const std::vector<std::string>& f
 
     // Integer reply, specifically:
     // The number of members removed from the sorted set, not including non existing members.
-    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, force_retry, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return static_cast<int>(redis_reply->integer);
 }
 
@@ -1630,14 +1630,14 @@ int CRedisClient::zrem(const std::string& key, const std::vector<std::string>& f
 // O(log(N)) for each item added, where N is the number of elements in the sorted set.
 //
 // ZADD key [NX|XX] [CH] [INCR] score member [score member ...]
-int CRedisClient::zadd(const std::string& key, const std::string& field, int64_t score, ZADDFLAG flag, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+int CRedisClient::zadd(const std::string& key, const std::string& field, int64_t score, ZADDFLAG flag, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     std::map<std::string, int64_t> map;
     map[field] = score;
-    return zadd(key, map, flag, which, retry_times);
+    return zadd(key, map, flag, which, retry_times, force_retry);
 }
 
-int CRedisClient::zadd(const std::string& key, const std::map<std::string, int64_t>& map, ZADDFLAG flag, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+int CRedisClient::zadd(const std::string& key, const std::map<std::string, int64_t>& map, ZADDFLAG flag, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     const std::string& flag_str = zaddflag2str(flag);
     CCommandArgs cmd_args;
@@ -1656,7 +1656,7 @@ int CRedisClient::zadd(const std::string& key, const std::map<std::string, int64
     //
     // If the INCR option is specified, the return value will be Bulk string reply:
     // the new score of member (a double precision floating point number), represented as string.
-    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, force_retry, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return static_cast<int>(redis_reply->integer);
 }
 
@@ -1670,7 +1670,7 @@ int64_t CRedisClient::zcard(const std::string& key, std::pair<std::string, uint1
 
     // Integer reply:
     // the cardinality (number of elements) of the sorted set, or 0 if key does not exist.
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return static_cast<int64_t>(redis_reply->integer);
 }
 
@@ -1689,7 +1689,7 @@ int64_t CRedisClient::zcount(const std::string& key, int64_t min, int64_t max , 
 
     // Integer reply:
     // the number of elements in the specified score range.
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return static_cast<int64_t>(redis_reply->integer);
 }
 
@@ -1697,7 +1697,7 @@ int64_t CRedisClient::zcount(const std::string& key, int64_t min, int64_t max , 
 // O(log(N)) where N is the number of elements in the sorted set.
 //
 // ZINCRBY key increment member
-int64_t CRedisClient::zincrby(const std::string& key, const std::string& field, int64_t increment, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+int64_t CRedisClient::zincrby(const std::string& key, const std::string& field, int64_t increment, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("ZINCRBY");
@@ -1711,7 +1711,7 @@ int64_t CRedisClient::zincrby(const std::string& key, const std::string& field, 
     //
     // (gdb) p *redis_reply._redis_reply
     // $4 = {type = 1, integer = 0, len = 2, str = 0x647860 "10", elements = 0, element = 0x0}
-    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_STRING, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, force_retry, retry_times, REDIS_REPLY_STRING, key, cmd_args, which);
     return static_cast<int64_t>(atoll(redis_reply->str));
 }
 
@@ -1735,7 +1735,7 @@ int CRedisClient::zrange(const std::string& key, int64_t start, int64_t end, boo
 
     // Array reply:
     // list of elements in the specified range (optionally with their scores, in case the WITHSCORES option is given).
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
     return get_values(redis_reply.get(), vec, withscores);
 }
 
@@ -1758,7 +1758,7 @@ int CRedisClient::zrevrange(const std::string& key, int64_t start, int64_t end, 
 
     // Array reply:
     // list of elements in the specified range (optionally with their scores, in case the WITHSCORES option is given).
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
     return get_values(redis_reply.get(), vec, withscores);
 }
 
@@ -1782,7 +1782,7 @@ int CRedisClient::zrangebyscore(const std::string& key, int64_t min, int64_t max
 
     // Array reply:
     // list of elements in the specified score range (optionally with their scores).
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
     return get_values(redis_reply.get(), vec, withscores);
 }
 
@@ -1806,7 +1806,7 @@ int CRedisClient::zrevrangebyscore(const std::string& key, int64_t max, int64_t 
 
     // Array reply:
     // list of elements in the specified score range (optionally with their scores).
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
     return get_values(redis_reply.get(), vec, withscores);
 }
 
@@ -1829,7 +1829,7 @@ int CRedisClient::zrangebyscore(const std::string& key, int64_t min, int64_t max
 
     // Array reply:
     // list of elements in the specified score range (optionally with their scores).
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
     return get_values(redis_reply.get(), vec, withscores);
 }
 
@@ -1852,7 +1852,7 @@ int CRedisClient::zrevrangebyscore(const std::string& key, int64_t max, int64_t 
 
     // Array reply:
     // list of elements in the specified score range (optionally with their scores).
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
     return get_values(redis_reply.get(), vec, withscores);
 }
 
@@ -1860,7 +1860,7 @@ int CRedisClient::zrevrangebyscore(const std::string& key, int64_t max, int64_t 
 // O(log(N)+M) with N being the number of elements in the sorted set and M the number of elements removed by the operation.
 //
 // ZREMRANGEBYRANK key start stop
-int CRedisClient::zremrangebyrank(const std::string& key, int64_t start, int64_t end, std::pair<std::string, uint16_t>* which, int retry_times) throw (CRedisException)
+int CRedisClient::zremrangebyrank(const std::string& key, int64_t start, int64_t end, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
     CCommandArgs cmd_args;
     cmd_args.add_arg("ZREMRANGEBYRANK");
@@ -1871,7 +1871,7 @@ int CRedisClient::zremrangebyrank(const std::string& key, int64_t start, int64_t
 
     // Integer reply:
     // the number of elements removed.
-    const RedisReplyHelper redis_reply = redis_command(false, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, force_retry, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     return static_cast<int>(redis_reply->integer);
 }
 
@@ -1888,7 +1888,7 @@ int CRedisClient::zrank(const std::string& key, const std::string& field, std::p
 
     // If member exists in the sorted set, Integer reply: the rank of member.
     // If member does not exist in the sorted set or key does not exist, Bulk string reply: nil.
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     if (REDIS_REPLY_NIL == redis_reply->type)
     {
         return -1;
@@ -1909,7 +1909,7 @@ int CRedisClient::zrevrank(const std::string& key, const std::string& field, std
 
     // If member exists in the sorted set, Integer reply: the rank of member.
     // If member does not exist in the sorted set or key does not exist, Bulk string reply: nil.
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_INTEGER, key, cmd_args, which);
     if (REDIS_REPLY_NIL == redis_reply->type)
     {
         return -1;
@@ -1933,7 +1933,7 @@ int64_t CRedisClient::zscore(const std::string& key, const std::string& field, s
     // Bulk string reply:
     // the score of member (a double precision floating point number), represented as string.
     // If member does not exist in the sorted set, or key does not exist, nil is returned.
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_STRING, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_STRING, key, cmd_args, which);
     if (REDIS_REPLY_NIL == redis_reply->type)
     {
         return -1;
@@ -1982,12 +1982,12 @@ int64_t CRedisClient::zscan(const std::string& key, int64_t cursor, const std::s
     }
     cmd_args.final();
 
-    const RedisReplyHelper redis_reply = redis_command(true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, true, retry_times, REDIS_REPLY_ARRAY, key, cmd_args, which);
     get_values(redis_reply->element[1], values, true);
     return static_cast<int64_t>(atoll(redis_reply->element[0]->str));
 }
 
-const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, int retry_times, int excepted_reply_type, const std::string& key, const CCommandArgs& command_args, std::pair<std::string, uint16_t>* which)
+const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, bool force_retry, int retry_times, int excepted_reply_type, const std::string& key, const CCommandArgs& command_args, std::pair<std::string, uint16_t>* which)
 {
     //(*g_debug_log)("[%s:%d] COMMAND: %s\n", __FILE__, __LINE__, command_args.get_command());
 
@@ -2020,6 +2020,7 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, int ret
         }
         if (NULL == redis_context)
         {
+            reset_slots_info(slot);
             if (_retry_sleep_milliseconds > 0)
                 millisleep(_retry_sleep_milliseconds);
             continue; // RETRY
@@ -2099,8 +2100,6 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, int ret
                 else if (is_clusterdown_error(errinfo.errtype))
                 {
                     redis_reply.free();
-                    //if (REDIS_ERR_EOF == redis_errcode)
-                    //    to_retry = true;
                     if (_retry_sleep_milliseconds > 0)
                         millisleep(_retry_sleep_milliseconds);
                     continue;
@@ -2182,18 +2181,23 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, int ret
                 errinfo.errmsg = format_string("[%s:%d][COMMAND:%s] (RETRY:%d/%d)%s", __FILE__, __LINE__, command_args.get_command(), rt, retry_times_, errinfo.raw_errmsg.c_str());
                 (*g_error_log)("%s\n", errinfo.errmsg.c_str());
 
-                //if (REDIS_ERR_EOF == redis_errcode)
-                //    to_retry = true;
-                //if ((ECONNRESET==errinfo.errcode) || (EINPROGRESS==errinfo.errcode))
-                //    to_retry = true;
                 if (REDIS_ERR_IO == redis_errcode)
                 {
-                    if ((EAGAIN == errinfo.errcode) || (EWOULDBLOCK == errinfo.errcode))
+                    if ((EAGAIN == errinfo.errcode)
+                     || (EWOULDBLOCK == errinfo.errcode))
                     {
-                        // EAGAIN时，可能已经发生了主备切换，因此这种情况下最好重置slot；如果不重置，该连接永远发现不了已切换。
+                        // EAGAIN时，可能已经发生了主备切换，
+                        // 因此这种情况下最好重置slot；如果不重置，该连接永远发现不了已切换。
                         reset_slots_info(slot);
+
+                        // 写命令，如果遇到EAGAIN时，写命令可能已成功的，也可能未成功，对于incryby类命令应当由业务决定是否重试
+                        if (!is_read_command && !force_retry)
+                        {
+                            break;
+                        }
                     }
                 }
+
                 if (_retry_sleep_milliseconds > 0)
                     millisleep(_retry_sleep_milliseconds);
                 continue;

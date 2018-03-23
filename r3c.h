@@ -53,8 +53,9 @@ enum ReadPolicy
 // Consts
 enum
 {
-    RETRY_TIMES = 30,                    // Default value
-    RETRY_SLEEP_MILLISECONDS = 101,      // Default value, sleep 101ms to retry
+    // CLUSTERDOWN need more than 6s
+    RETRY_TIMES = 80,                    // Default value
+    RETRY_SLEEP_MILLISECONDS = 100,      // Default value, sleep 101ms to retry
     CONNECT_TIMEOUT_MILLISECONDS = 1000, // Connect timeout milliseconds
     DATA_TIMEOUT_MILLISECONDS = 1000     // Read and write socket timeout milliseconds
 };
@@ -349,7 +350,7 @@ public: // KV
     // Set a key's time to live in seconds.
     // Time complexity: O(1)
     // Returns true if the timeout was set, or false when key does not exist.
-    bool expire(const std::string& key, uint32_t seconds, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    bool expire(const std::string& key, uint32_t seconds, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
 
     // Determine if a key exists.
     // Time complexity: O(1)
@@ -363,7 +364,7 @@ public: // KV
     // Removing a single key that holds a string value is O(1).
     //
     // Returns true, or false when key does not exist.
-    bool del(const std::string& key, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    bool del(const std::string& key, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
 
     // Get the value of a key
     // Time complexity: O(1)
@@ -372,17 +373,17 @@ public: // KV
 
     // Set the string value of a key.
     // Time complexity: O(1)
-    void set(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    void set(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
 
     // Set the value of a key, only if the does not exist.
     // Time complexity: O(1)
     // Returns true if the key was set, or false the key was not set.
-    bool setnx(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
+    bool setnx(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
 
     // Set the value and expiration of a key.
     // Time complexity: O(1)
-    void setex(const std::string& key, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
-    bool setnxex(const std::string& key, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
+    void setex(const std::string& key, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
+    bool setnxex(const std::string& key, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
 
     // Get the values of all the given keys.
     //
@@ -400,22 +401,22 @@ public: // KV
     //
     // Time complexity:
     // O(N) where N is the number of keys to set.
-    int mset(const std::map<std::string, std::string>& kv_map, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int mset(const std::map<std::string, std::string>& kv_map, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
 
     // Increment the integer value of a key by the given value.
     // Time complexity: O(1)
     // Returns the value of key after the increment.
-    int64_t incrby(const std::string& key, int64_t increment, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
+    int64_t incrby(const std::string& key, int64_t increment, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
 
     // Atomically increment and expire a key with given seconds.
     // Expiration is set only if the value returned by incrby is equal to expired_increment.
     //
     // e.g.,
     // incrby(key, 1, 1, 10);
-    int64_t incrby(const std::string& key, int64_t increment, int64_t expired_increment, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
+    int64_t incrby(const std::string& key, int64_t increment, int64_t expired_increment, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
 
     // Same as incrby(key, increment, increment, expired_seconds, which, retry_times)
-    int64_t incrby(const std::string& key, int64_t increment, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
+    int64_t incrby(const std::string& key, int64_t increment, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
 
     // Determine the type stored at key.
     // Time complexity: O(1)
@@ -447,23 +448,23 @@ public: // KV
     // Execute a Lua script server side.
     //
     // Time complexity: Depends on the script that is executed.
-    const RedisReplyHelper eval(bool is_read_command, int excepted_reply_type, const std::string& key, const std::string& lua_scripts, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
-    const RedisReplyHelper eval(bool is_read_command, int excepted_reply_type, const std::string& key, const std::string& lua_scripts, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
-    const RedisReplyHelper eval(const std::string& key, const std::string& lua_scripts, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
-    const RedisReplyHelper eval(const std::string& key, const std::string& lua_scripts, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
-    const RedisReplyHelper evalsha(bool is_read_command, const std::string& key, const std::string& sha1, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
-    const RedisReplyHelper evalsha(const std::string& key, const std::string& sha1, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
+    const RedisReplyHelper eval(bool is_read_command, int excepted_reply_type, const std::string& key, const std::string& lua_scripts, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
+    const RedisReplyHelper eval(bool is_read_command, int excepted_reply_type, const std::string& key, const std::string& lua_scripts, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
+    const RedisReplyHelper eval(const std::string& key, const std::string& lua_scripts, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
+    const RedisReplyHelper eval(const std::string& key, const std::string& lua_scripts, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
+    const RedisReplyHelper evalsha(bool is_read_command, const std::string& key, const std::string& sha1, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
+    const RedisReplyHelper evalsha(const std::string& key, const std::string& sha1, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
 
 public: // HASH
     // Delete a hash field.
     // Time complexity: O(1)
-    bool hdel(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    bool hdel(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
 
     // Delete one or more hash fields.
     // Time complexity: O(N) where N is the number of fields to be removed.
     // Returns the number of fields that were removed from the hash, not including specified but non existing fields.
-    int hdel(const std::string& key, const std::vector<std::string>& fields, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
-    int hmdel(const std::string& key, const std::vector<std::string>& fields, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int hdel(const std::string& key, const std::vector<std::string>& fields, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
+    int hmdel(const std::string& key, const std::vector<std::string>& fields, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
 
     // Determinte if a hash field exists.
     // Time complexity: O(1)
@@ -478,16 +479,16 @@ public: // HASH
     // Set the string value of a hash field.
     // Time complexity: O(1)
     // Returns true if field is a new field in the hash and value was set, or false.
-    bool hset(const std::string& key, const std::string& field, const std::string& value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
-    bool hsetex(const std::string& key, const std::string& field, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    bool hset(const std::string& key, const std::string& field, const std::string& value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
+    bool hsetex(const std::string& key, const std::string& field, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
 
     // Set the value of a hash field, only if the field does not exists.
     //
     // Time complexity: O(1)
     // Returns true if field is a new field in the hash and value was set,
     // or field already exists in the hash and no operation was performed.
-    bool hsetnx(const std::string& key, const std::string& field, const std::string& value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
-    bool hsetnxex(const std::string& key, const std::string& field, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
+    bool hsetnx(const std::string& key, const std::string& field, const std::string& value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
+    bool hsetnxex(const std::string& key, const std::string& field, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
 
     // Time complexity: O(1)
     // Returns true if exists, or false when field is not present in the hash or key does not exist.
@@ -497,14 +498,14 @@ public: // HASH
     //
     // Time complexity: O(1)
     // Returns the value at field after the increment operation.
-    int64_t hincrby(const std::string& key, const std::string& field, int64_t increment, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
-    void hincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values=NULL, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
-    void hmincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values=NULL, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
+    int64_t hincrby(const std::string& key, const std::string& field, int64_t increment, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
+    void hincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values=NULL, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
+    void hmincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values=NULL, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
 
     // Set multiple hash fields to multiple values.
     // Time complexity: O(N) where N is the number of fields being set.
-    void hset(const std::string& key, const std::map<std::string, std::string>& map, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
-    void hmset(const std::string& key, const std::map<std::string, std::string>& map, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    void hset(const std::string& key, const std::map<std::string, std::string>& map, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
+    void hmset(const std::string& key, const std::map<std::string, std::string>& map, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
 
     // Get the values of all the given hash fields.
     // Time complexity: O(N) where N is the number of fields being requested.
@@ -551,15 +552,15 @@ public: // LIST
 
     // Remove and get the first element in a list.
     // Time complexity: O(1)
-    bool lpop(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    bool lpop(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
 
     // Prepend a value to a list.
     // Time complexity: O(1)
-    int lpush(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int lpush(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
 
     // Prepend one or multiple values to a list.
     // Time complexity: O(1)
-    int lpush(const std::string& key, const std::vector<std::string>& values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int lpush(const std::string& key, const std::vector<std::string>& values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
 
     // Get a range of elements from a list.
     //
@@ -574,21 +575,21 @@ public: // LIST
     // Trim a list to the specified range.
     // Time complexity:
     // O(N) where N is the number of elements to be removed by the operation.
-    void ltrim(const std::string& key, int64_t start, int64_t end, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    void ltrim(const std::string& key, int64_t start, int64_t end, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
 
     // Remove and get the last element in a list.
     // Time complexity: O(1)
-    bool rpop(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    bool rpop(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
 
     // Append a value to a list.
     // Time complexity: O(1)
     // Returns the length of the list after the push operation.
-    int rpush(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int rpush(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
 
     // Append one or multiple values to a list.
     // Time complexity: O(1)
     // Returns the length of the list after the push operation.
-    int rpush(const std::string& key, const std::vector<std::string>& values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int rpush(const std::string& key, const std::vector<std::string>& values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
 
     // Inserts value at the tail of the list stored at key,
     // only if key already exists and holds a list. In contrary to RPUSH,
@@ -597,13 +598,13 @@ public: // LIST
     // Time complexity: O(1)
     //
     // Returns the length of the list after the push operation.
-    int rpushx(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
+    int rpushx(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
 
 public: // SET
     // Returns the number of elements that were added to the set,
     // not including all the elements already present into the set.
-    int sadd(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
-    int sadd(const std::string& key, const std::vector<std::string>& values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int sadd(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
+    int sadd(const std::string& key, const std::vector<std::string>& values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
 
     // Returns the cardinality (number of elements) of the set, or 0 if key does not exist.
     int scard(const std::string& key, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
@@ -613,12 +614,12 @@ public: // SET
     // Removes and returns a random elements from the set value store at key.
     // Time complexity: O(1)
     // Returns true if key exists, or false when key does not exist.
-    bool spop(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    bool spop(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
 
     // Removes and returns one or more random elements from the set value store at key.
     // Time complexity: O(1)
     // Returns the number of removed elements.
-    int spop(const std::string& key, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int spop(const std::string& key, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
 
     // Returns true if key exists, or false when key does not exist.
     bool srandmember(const std::string& key, std::string* value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
@@ -628,12 +629,12 @@ public: // SET
     // Remove a member from a set.
     // Time complexity: O(1)
     // Returns the number of members that were removed from the set, not including non existing members.
-    int srem(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int srem(const std::string& key, const std::string& value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
 
     // Remove one or more members from a set.
     // Time complexity: O(N) where N is the number of members to be removed.
     // Returns the number of members that were removed from the set, not including non existing members.
-    int srem(const std::string& key, const std::vector<std::string>& values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int srem(const std::string& key, const std::vector<std::string>& values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
 
     // Incrementally iterate set elements.
     //
@@ -658,8 +659,8 @@ public: // ZSET
     // O(M*log(N)) with N being the number of elements in the sorted set and M the number of elements to be removed.
     //
     // Returns the number of members removed from the sorted set, not including non existing members.
-    int zrem(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
-    int zrem(const std::string& key, const std::vector<std::string>& fields, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int zrem(const std::string& key, const std::string& field, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
+    int zrem(const std::string& key, const std::vector<std::string>& fields, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
 
     // Adds all the specified members with the specified scores to the sorted set stored at key.
     // If key does not exist, a new sorted set with the specified members as sole members is created,
@@ -670,8 +671,8 @@ public: // ZSET
     //
     // Returns The number of elements added to the sorted sets,
     // not including elements already existing for which the score was updated.
-    int zadd(const std::string& key, const std::string& field, int64_t score, ZADDFLAG flag=Z_NS, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
-    int zadd(const std::string& key, const std::map<std::string, int64_t>& map, ZADDFLAG flag=Z_NS, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int zadd(const std::string& key, const std::string& field, int64_t score, ZADDFLAG flag=Z_NS, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
+    int zadd(const std::string& key, const std::map<std::string, int64_t>& map, ZADDFLAG flag=Z_NS, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
 
     // Get the number of members in a sorted set.
     // Time complexity: O(1)
@@ -689,7 +690,7 @@ public: // ZSET
     //
     // Time complexity:
     // O(log(N)) where N is the number of elements in the sorted set.
-    int64_t zincrby(const std::string& key, const std::string& field, int64_t increment, std::pair<std::string, uint16_t>* which=NULL, int retry_times=0) throw (CRedisException);
+    int64_t zincrby(const std::string& key, const std::string& field, int64_t increment, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
 
     // Return a range of members in a sorted set by index.
     //
@@ -747,7 +748,7 @@ public: // ZSET
     // O(log(N)+M) with N being the number of elements in the sorted set and M the number of elements removed by the operation.
     //
     // Return the number of elements removed.
-    int zremrangebyrank(const std::string& key, int64_t start, int64_t end, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
+    int zremrangebyrank(const std::string& key, int64_t start, int64_t end, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
 
     // Determine the index of a member in a sorted set.
     // Time complexity: O(log(N))
@@ -780,7 +781,11 @@ public: // ZSET
 public:
     // Standlone: key should be empty
     // Cluse mode: key used to locate node
-    const RedisReplyHelper redis_command(bool is_read_command, int retry_times, int excepted_reply_type, const std::string& key, const CCommandArgs& command_args, std::pair<std::string, uint16_t>* which);
+    //
+    // Will ignore force_retry if is_read_command is true
+    // If network timeout, the result of write is not uncertain, maybe succes or failure.
+    // Not retry if force_retry is false when is_read_command is false.
+    const RedisReplyHelper redis_command(bool is_read_command, bool force_retry, int retry_times, int excepted_reply_type, const std::string& key, const CCommandArgs& command_args, std::pair<std::string, uint16_t>* which);
 
 private:
     void init();
