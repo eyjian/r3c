@@ -366,6 +366,11 @@ bool is_wrongtype_error(const std::string& errtype)
     return errtype == "WRONGTYPE";
 }
 
+bool is_clusterdown_error(const std::string& errtype)
+{
+    return errtype == "CLUSTERDOWN";
+}
+
 CRedisClient::CRedisClient(const std::string& nodes, int connect_timeout_milliseconds, int data_timeout_milliseconds, const std::string& password, ReadPolicy read_policy) throw (CRedisException)
             : _nodes_string(nodes),
               _connect_timeout_milliseconds(connect_timeout_milliseconds),
@@ -1990,6 +1995,7 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, int ret
     struct RedisNode* redis_node = NULL;
     RedisReplyHelper redis_reply;
     struct ErrorInfo errinfo;
+    int retry_times_ = retry_times;
     bool to_retry;
 
     if (key.empty() && cluster_mode())
@@ -2000,7 +2006,7 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, int ret
         errinfo.errmsg = format_string("[%s:%d] %s", __FILE__, __LINE__, errinfo.raw_errmsg.c_str());
         THROW_REDIS_EXCEPTION(errinfo);
     }
-    for (int rt=0; (rt<retry_times+1)||(-1==retry_times)||to_retry; ++rt)
+    for (int rt=0; (rt<retry_times_+1)||(-1==retry_times_)||to_retry; ++rt)
     {
         bool is_node_of_slot;
 
@@ -2014,8 +2020,9 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, int ret
         }
         if (NULL == redis_context)
         {
-            // NOT RETRY
-            break;
+            if (_retry_sleep_milliseconds > 0)
+                millisleep(_retry_sleep_milliseconds);
+            continue; // RETRY
         }
 
         redis_reply = (redisReply*)redisCommandArgv(redis_context, command_args.get_argc(), command_args.get_argv(), command_args.get_argvlen());
@@ -2049,7 +2056,7 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, int ret
                 {
                     errinfo.errcode = ERROR_UNEXCEPTED_REPLY_TYPE;
                     errinfo.raw_errmsg = format_string("unexcepted reply type(%d) from %s:%d", redis_reply->type, redis_node->ip_and_port.first.c_str(), redis_node->ip_and_port.second);
-                    errinfo.errmsg = format_string("[%s:%d][COMMAND:%s] %s\n", __FILE__, __LINE__, command_args.get_command(), errinfo.raw_errmsg.c_str());
+                    errinfo.errmsg = format_string("[%s:%d][COMMAND:%s] (RETRY:%d/%d)%s\n", __FILE__, __LINE__, command_args.get_command(), rt, retry_times_, errinfo.raw_errmsg.c_str());
                     (*g_error_log)("%s\n", errinfo.errmsg.c_str());
                     redis_reply.free();
                 }
@@ -2060,23 +2067,19 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, int ret
             {
                 // MOVED 6474 127.0.0.1:6380
                 // WRONGTYPE Operation against a key holding the wrong kind of value
+                // CLUSTERDOWN The cluster is down
                 extract_errtype(redis_reply.get(), &errinfo.errtype);
 
                 errinfo.errcode = ERROR_COMMAND;
                 errinfo.raw_errmsg = redis_reply->str;
-                errinfo.errmsg = format_string("[%s:%d][COMMAND:%s] %s", __FILE__, __LINE__, command_args.get_command(), errinfo.raw_errmsg.c_str());
+                errinfo.errmsg = format_string("[%s:%d][COMMAND:%s] (RETRY:%d/%d)%s", __FILE__, __LINE__, command_args.get_command(), rt, retry_times_, errinfo.raw_errmsg.c_str());
                 (*g_error_log)("%s\n", errinfo.errmsg.c_str());
 
-                to_retry = is_moved_error(errinfo.errtype);
-                if (!to_retry)
+                if (is_moved_error(errinfo.errtype))
                 {
-                    // NOT RETRY
-                    redis_reply.free();
-                    break;
-                }
-                else
-                {
-                    // unconditionally RETRY
+                    // MOVED unconditionally RETRY
+                    to_retry = true;
+
                     std::pair<std::string, uint16_t> node;
                     parse_moved_string(redis_reply->str, &node);
                     update_slot_info(slot, node);
@@ -2092,6 +2095,21 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, int ret
                         close_redis_node(redis_node);
                     }
                     continue;
+                }
+                else if (is_clusterdown_error(errinfo.errtype))
+                {
+                    redis_reply.free();
+                    //if (REDIS_ERR_EOF == redis_errcode)
+                    //    to_retry = true;
+                    if (_retry_sleep_milliseconds > 0)
+                        millisleep(_retry_sleep_milliseconds);
+                    continue;
+                }
+                else
+                {
+                    // NOT RETRY
+                    redis_reply.free();
+                    break;
                 }
             }
         }
@@ -2121,6 +2139,8 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, int ret
             // if (c->err)
             //   return REDIS_ERR;
 
+            // REDIS_ERR_IO: 1
+            // REDIS_ERR_EOF: 3
             if ((redis_errcode != REDIS_ERR_IO) &&
                 (redis_errcode != REDIS_ERR_EOF))
             {
@@ -2128,7 +2148,7 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, int ret
 
                 errinfo.errcode = ERROR_COMMAND;
                 errinfo.raw_errmsg = format_string("(%d)%s", redis_errcode, redis_errmsg.c_str());
-                errinfo.errmsg = format_string("[%s:%d][COMMAND:%s] %s", __FILE__, __LINE__, command_args.get_command(), errinfo.raw_errmsg.c_str());
+                errinfo.errmsg = format_string("[%s:%d][COMMAND:%s] (RETRY:%d/%d)%s", __FILE__, __LINE__, command_args.get_command(), rt, retry_times_, errinfo.raw_errmsg.c_str());
                 (*g_error_log)("%s\n", errinfo.errmsg.c_str());
                 break;
             }
@@ -2137,17 +2157,37 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, int ret
                 // RETRY
 
                 // errno:
-                // EINTR
-                // EAGAIN
-                // EWOULDBLOCK
+                // EINTR(4)
+                // EAGAIN(11)
+                // EWOULDBLOCK(11)
+                // EINPROGRESS(115)
+                // ECONNRESET(104)
+
+                // errcode: EINPROGRESS(115)
+                // redis_errcode: REDIS_ERR_EOF(3)
+                // Server closed the connection
+                //
+                // errcode: ECONNRESET(104)
+                // redis_errcode: REDIS_ERR_IO(1)
+                // Connection reset by peer
+                //
+                // errcode: EAGAIN(11)
+                // redis_errcode: REDIS_ERR_IO(1)
+                // Resource temporarily unavailable
 
                 // 如果同时大量主备切换，
                 // 可导致所有重试均失败（errno为EAGAIN或EWOULDBLOCK），
                 // 解决办法：增加重试次数或延长重试间隔时长。
-                errinfo.raw_errmsg = format_string("(errcode:%d/%d,retry:%d/%d)%s", errinfo.errcode, redis_errcode, rt, retry_times, redis_errmsg.c_str());
-                errinfo.errmsg = format_string("[%s:%d][COMMAND:%s] %s", __FILE__, __LINE__, command_args.get_command(), errinfo.raw_errmsg.c_str());
+                errinfo.raw_errmsg = format_string("(errcode:%d/%d)%s", errinfo.errcode, redis_errcode, redis_errmsg.c_str());
+                errinfo.errmsg = format_string("[%s:%d][COMMAND:%s] (RETRY:%d/%d)%s", __FILE__, __LINE__, command_args.get_command(), rt, retry_times_, errinfo.raw_errmsg.c_str());
                 (*g_error_log)("%s\n", errinfo.errmsg.c_str());
-                millisleep(RETRY_SLEEP_MILLISECONDS);
+
+                //if (REDIS_ERR_EOF == redis_errcode)
+                //    to_retry = true;
+                //if ((ECONNRESET==errinfo.errcode) || (EINPROGRESS==errinfo.errcode))
+                //    to_retry = true;
+                if (_retry_sleep_milliseconds > 0)
+                    millisleep(_retry_sleep_milliseconds);
                 continue;
             }
         }

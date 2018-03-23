@@ -53,8 +53,8 @@ enum ReadPolicy
 // Consts
 enum
 {
-    RETRY_TIMES = 3,                     // Default value
-    RETRY_SLEEP_MILLISECONDS = 100,      // Default value, sleep 1000ms to retry
+    RETRY_TIMES = 30,                    // Default value
+    RETRY_SLEEP_MILLISECONDS = 101,      // Default value, sleep 101ms to retry
     CONNECT_TIMEOUT_MILLISECONDS = 1000, // Connect timeout milliseconds
     DATA_TIMEOUT_MILLISECONDS = 1000     // Read and write socket timeout milliseconds
 };
@@ -281,6 +281,7 @@ private:
 
 bool is_moved_error(const std::string& errtype);
 bool is_wrongtype_error(const std::string& errtype);
+bool is_clusterdown_error(const std::string& errtype);
 
 // NOTICE: not thread safe
 // A redis client than support redis cluster
