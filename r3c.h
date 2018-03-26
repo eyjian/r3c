@@ -354,6 +354,7 @@ public:
     // NOTICE:
     // 1) DO NOT use the return values of any command in MULTI & EXEC transaction
     // 2) ALWAYS set retry times to 0 of any command  in MULTI & EXEC transaction
+    // 3) In cluster mode, the keys of all commands should be same in MULTI & EXEC transaction
     void multi(const std::string& key, std::pair<std::string, uint16_t>* which=NULL);
 
     // Executes all previously queued commands in a transaction and restores the connection state to normal.
