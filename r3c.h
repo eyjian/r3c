@@ -349,6 +349,9 @@ public:
 public: // KV
     // Set a key's time to live in seconds.
     // Time complexity: O(1)
+    //
+    // force_retry Not to retry if force_retry is false when error is network timeout.
+    //
     // Returns true if the timeout was set, or false when key does not exist.
     bool expire(const std::string& key, uint32_t seconds, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=true) throw (CRedisException);
 
