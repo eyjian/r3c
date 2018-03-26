@@ -2,6 +2,7 @@
 #include "sha1.h"
 #include <hiredis/hiredis.h>
 #include <ostream>
+#include <poll.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <sys/time.h>
@@ -184,9 +185,14 @@ int get_key_slot(const std::string* key) {
     }
 }
 
-void millisleep(uint32_t milliseconds) {
+void millisleep(int milliseconds)
+{
+#if SLEEP_USE_POLL==1
+    poll(NULL, 0, milliseconds); // 可能被中断提前结束
+#else
     struct timespec ts = { milliseconds / 1000, (milliseconds % 1000) * 1000000 };
     while ((-1 == nanosleep(&ts, &ts)) && (EINTR == errno));
+#endif
 }
 
 std::string format_string(const char* format, ...) {

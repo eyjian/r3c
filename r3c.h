@@ -32,7 +32,7 @@
 
 namespace r3c {
 
-extern void millisleep(uint32_t milliseconds);
+extern void millisleep(int milliseconds);
 extern std::string format_string(const char* format, ...);
 extern int split(std::vector<std::string>* tokens, const std::string& source, const std::string& sep, bool skip_sep=false);
 extern unsigned int get_key_slot(const std::string* key);
@@ -55,7 +55,17 @@ enum
 {
     // CLUSTERDOWN need more than 6s
     RETRY_TIMES = 8,                     // Default value
-    RETRY_SLEEP_MILLISECONDS = 1000,     // Default value, sleep 1000ms to retry
+
+    // Default value, sleep 1000ms to retry
+    //
+    // 如果指定了编译宏SLEEP_USE_POLL的值为1，则sleep基于poll实现，否则基于nanosleep实现
+    // nanosleep为精准的sleep，而poll版本则可能被中断提前结束，
+    // 但如果是在libco中，则建议使用poll版本，否则会挂起调用协程指定时长,
+    // 原因是libco没有对nanosleep做HOOK处理，但HOOK了poll。
+    //
+    // 注意，默认没有定义宏SLEEP_USE_POLL，可手工修改Makefile添加定义。
+    RETRY_SLEEP_MILLISECONDS = 1000,
+
     CONNECT_TIMEOUT_MILLISECONDS = 1000, // Connect timeout milliseconds
     DATA_TIMEOUT_MILLISECONDS = 1000     // Read and write socket timeout milliseconds
 };
@@ -326,8 +336,6 @@ public:
     //
     // In particular, the same nodes is allowed for cluster mode:
     // 127.0.0.1:6379,127.0.0.1:6379
-    //
-    // In coroutine, the value of milliseconds is recommended to set to 0
     CRedisClient(
             const std::string& nodes,
             int connect_timeout_milliseconds=CONNECT_TIMEOUT_MILLISECONDS,

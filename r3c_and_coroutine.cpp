@@ -23,9 +23,9 @@ static void* redis_routine(void* param)
     try
     {
         const int i = *(int*)param;
-        const int connect_timeout_milliseconds = 0;
-        const int data_timeout_milliseconds = 0;
-        const int retry_sleep_milliseconds = 0;
+        const int connect_timeout_milliseconds = 1000;
+        const int data_timeout_milliseconds = 1000;
+        const int retry_sleep_milliseconds = 1000;
         r3c::CRedisClient redis(sg_redis_nodes, connect_timeout_milliseconds, data_timeout_milliseconds, retry_sleep_milliseconds);
 
         for (int j=0; j<NUM_CYCLES; ++j)

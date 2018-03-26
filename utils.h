@@ -23,7 +23,7 @@ extern void null_log_write(const char* UNUSED(format), ...); // Discard log
 extern void r3c_log_write(const char* format, ...); // Ouput log to stdout
 extern std::string strsha1(const std::string& str);
 extern uint16_t crc16(const char *buf, int len);
-extern unsigned int keyHashSlot(const char *key, size_t keylen);
+extern int keyHashSlot(const char *key, size_t keylen);
 extern int parse_nodes(std::vector<std::pair<std::string, uint16_t> >* nodes, const std::string& nodes_string);
 extern bool parse_node_string(const std::string& node_string, std::string* ip, uint16_t* port);
 extern void parse_slot_string(const std::string& slot_string, int* start_slot, int* end_slot);
