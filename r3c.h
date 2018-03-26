@@ -54,8 +54,8 @@ enum ReadPolicy
 enum
 {
     // CLUSTERDOWN need more than 6s
-    RETRY_TIMES = 80,                    // Default value
-    RETRY_SLEEP_MILLISECONDS = 100,      // Default value, sleep 101ms to retry
+    RETRY_TIMES = 8,                     // Default value
+    RETRY_SLEEP_MILLISECONDS = 1000,     // Default value, sleep 1000ms to retry
     CONNECT_TIMEOUT_MILLISECONDS = 1000, // Connect timeout milliseconds
     DATA_TIMEOUT_MILLISECONDS = 1000     // Read and write socket timeout milliseconds
 };
