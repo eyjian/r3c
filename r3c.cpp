@@ -2250,7 +2250,7 @@ void CRedisClient::init_standlone()
         const std::pair<std::string, uint16_t>& node = _nodes[0];
         struct ErrorInfo errinfo;
 
-        redisContext* redis_context = connect_redis_node(node, &errinfo);
+        redisContext* redis_context = connect_redis_node(-1, node, &errinfo);
         if (NULL == redis_context)
         {
             THROW_REDIS_EXCEPTION_WITH_NODE(errinfo, node.first, node.second);
@@ -2280,7 +2280,7 @@ void CRedisClient::init_cluster()
     {
         const std::pair<std::string, uint16_t>& node = _nodes[i];
 
-        redisContext* redis_context = connect_redis_node(node, &errinfo);
+        redisContext* redis_context = connect_redis_node(-1, node, &errinfo);
         if (redis_context != NULL)
         {
             // _nodes[A] may be the same as _nodes[B]
@@ -2347,7 +2347,7 @@ void CRedisClient::update_slot_info(int slot, const std::pair<std::string, uint1
     redis_node->ip_and_port = node;
     if (NULL == redis_node->context)
     {
-        redis_node->context = connect_redis_node(node, &errinfo);
+        redis_node->context = connect_redis_node(slot, node, &errinfo);
 
         if (NULL == redis_node->context)
         {
@@ -2373,7 +2373,7 @@ void CRedisClient::free_redis_nodes()
     _redis_contexts.clear();
 }
 
-redisContext* CRedisClient::connect_redis_node(const std::pair<std::string, uint16_t>& node, struct ErrorInfo* errinfo) const
+redisContext* CRedisClient::connect_redis_node(int slot, const std::pair<std::string, uint16_t>& node, struct ErrorInfo* errinfo) const
 {
     redisContext* redis_context = NULL;
 
@@ -2395,7 +2395,7 @@ redisContext* CRedisClient::connect_redis_node(const std::pair<std::string, uint
         // can't allocate redis context
         errinfo->errcode = ERROR_REDIS_CONTEXT;
         errinfo->raw_errmsg = "can't allocate redis context";
-        errinfo->errmsg = format_string("[%s:%d][%s:%d] %s", __FILE__, __LINE__, node.first.c_str(), node.second, errinfo->raw_errmsg.c_str());
+        errinfo->errmsg = format_string("[%s:%d][%s:%d][SLOT:%d] %s", __FILE__, __LINE__, node.first.c_str(), node.second, slot, errinfo->raw_errmsg.c_str());
         (*g_error_log)("%s\n", errinfo->errmsg.c_str());
     }
     else if (redis_context->err != 0)
@@ -2405,16 +2405,16 @@ redisContext* CRedisClient::connect_redis_node(const std::pair<std::string, uint
         //
         // Connection refused
         //
-        // errno: 99
-        // err: 1
+        // errno: EADDRNOTAVAIL(99)
+        // err: REDIS_ERR_IO(1)
         // Cannot assign requested address
 
         errinfo->errcode = ERROR_INIT_REDIS_CONN;
         errinfo->raw_errmsg = redis_context->errstr;
         if (REDIS_ERR_IO == redis_context->err)
-            errinfo->errmsg = format_string("[%s:%d][%s:%d] (errno:%d,err:%d)%s", __FILE__, __LINE__, node.first.c_str(), node.second, errno, redis_context->err, errinfo->raw_errmsg.c_str());
+            errinfo->errmsg = format_string("[%s:%d][%s:%d][SLOT:%d] (errno:%d,err:%d)%s", __FILE__, __LINE__, node.first.c_str(), node.second, slot, errno, redis_context->err, errinfo->raw_errmsg.c_str());
         else
-            errinfo->errmsg = format_string("[%s:%d][%s:%d] (err:%d)%s", __FILE__, __LINE__, node.first.c_str(), node.second, redis_context->err, errinfo->raw_errmsg.c_str());
+            errinfo->errmsg = format_string("[%s:%d][%s:%d][SLOT:%d] (err:%d)%s", __FILE__, __LINE__, node.first.c_str(), node.second, slot, redis_context->err, errinfo->raw_errmsg.c_str());
         (*g_error_log)("%s\n", errinfo->errmsg.c_str());
         redisFree(redis_context);
         redis_context = NULL;
@@ -2432,7 +2432,7 @@ redisContext* CRedisClient::connect_redis_node(const std::pair<std::string, uint
                 // REDIS_ERR_IO == redis_context->err
                 errinfo->errcode = ERROR_INIT_REDIS_CONN;
                 errinfo->raw_errmsg = redis_context->errstr;
-                errinfo->errmsg = format_string("[%s:%d][%s:%d] (errno:%d,err:%d)%s", __FILE__, __LINE__, node.first.c_str(), node.second, errno, redis_context->err, errinfo->raw_errmsg.c_str());
+                errinfo->errmsg = format_string("[%s:%d][%s:%d][SLOT:%d] (errno:%d,err:%d)%s", __FILE__, __LINE__, node.first.c_str(), node.second, slot, errno, redis_context->err, errinfo->raw_errmsg.c_str());
                 (*g_error_log)("%s\n", errinfo->errmsg.c_str());
                 redisFree(redis_context);
                 redis_context = NULL;
@@ -2452,7 +2452,7 @@ redisContext* CRedisClient::connect_redis_node(const std::pair<std::string, uint
                 // Authorization failed
                 errinfo->errcode = ERROR_REDIS_AUTH;
                 errinfo->raw_errmsg = "authorization failed";
-                errinfo->errmsg = format_string("[%s:%d][%s:%d] %s", __FILE__, __LINE__, node.first.c_str(), node.second, errinfo->raw_errmsg.c_str());
+                errinfo->errmsg = format_string("[%s:%d][%s:%d][SLOT:%d] %s", __FILE__, __LINE__, node.first.c_str(), node.second, slot, errinfo->raw_errmsg.c_str());
                 (*g_error_log)("%s\n", errinfo->errmsg.c_str());
                 redisFree(redis_context);
                 redis_context = NULL;
@@ -2513,7 +2513,7 @@ struct RedisNode* CRedisClient::get_redis_node(int slot, bool is_read_command, b
             for (std::map<std::pair<std::string, uint16_t>, struct RedisNode*>::iterator iter=_redis_contexts.begin(); iter!=_redis_contexts.end(); ++iter)
             {
                 redis_node = iter->second;
-                redis_node->context = connect_redis_node(redis_node->ip_and_port, errinfo);
+                redis_node->context = connect_redis_node(slot, redis_node->ip_and_port, errinfo);
                 if (redis_node->context != NULL)
                 {
                     break;
@@ -2543,7 +2543,7 @@ struct RedisNode* CRedisClient::get_redis_node(int slot, bool is_read_command, b
 
         if (NULL == redis_node->context)
         {
-            redis_node->context = connect_redis_node(redis_node->ip_and_port, errinfo);
+            redis_node->context = connect_redis_node(slot, redis_node->ip_and_port, errinfo);
         }
     }
 

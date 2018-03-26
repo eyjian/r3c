@@ -802,7 +802,7 @@ private:
 
 private:
     void free_redis_nodes();
-    redisContext* connect_redis_node(const std::pair<std::string, uint16_t>& node, struct ErrorInfo* errinfo) const;
+    redisContext* connect_redis_node(int slot, const std::pair<std::string, uint16_t>& node, struct ErrorInfo* errinfo) const;
     void close_redis_node(struct RedisNode*& redis_node);
     struct RedisNode* find_redis_node(const std::pair<std::string, uint16_t>& node);
     struct RedisNode* get_redis_node(int slot, bool is_read_command, bool* is_node_of_slot, struct ErrorInfo* errinfo);
