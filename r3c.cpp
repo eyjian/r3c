@@ -432,6 +432,42 @@ void CRedisClient::flushall() throw (CRedisException)
     redis_command(false, true, retry_times, key, cmd_args, NULL);
 }
 
+void CRedisClient::multi(const std::string& key, std::pair<std::string, uint16_t>* which)
+{
+    const int retry_times = 0;
+    const bool force_retry = false;
+    CCommandArgs cmd_args;
+    cmd_args.set_key(key);
+    cmd_args.add_arg("MULTI");
+    cmd_args.final();
+
+    if (cluster_mode())
+    {
+        // 如果是集群模式，
+        // MULTI必须在目录slot节点上执行
+        // 调用一次ttl的目的是建立slot和目标节点的关系
+        ttl(key);
+    }
+
+    // Simple string reply (REDIS_REPLY_STATUS):
+    // always OK.
+    redis_command(false, force_retry, retry_times, key, cmd_args, which);
+}
+
+const RedisReplyHelper CRedisClient::exec(const std::string& key, std::pair<std::string, uint16_t>* which)
+{
+    const int retry_times = 0;
+    const bool force_retry = false;
+    CCommandArgs cmd_args;
+    cmd_args.set_key(key);
+    cmd_args.add_arg("EXEC");
+    cmd_args.final();
+
+    // Array reply:
+    // each element being the reply to each of the commands in the atomic transaction.
+    return redis_command(false, force_retry, retry_times, key, cmd_args, which);
+}
+
 //
 // KEY/VALUE
 //

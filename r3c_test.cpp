@@ -59,6 +59,9 @@ static void test_slots(const std::string& redis_cluster_nodes);
 // EVAL
 static void test_eval(const std::string& redis_cluster_nodes);
 
+// TRANSACTION (MULTI & EXEC)
+static void test_transaction(const std::string& redis_cluster_nodes);
+
 ////////////////////////////////////////////////////////////////////////////
 // KEY VALUE
 static void test_empty_key(const std::string& redis_cluster_nodes);
@@ -139,6 +142,9 @@ int main(int argc, char* argv[])
     ////////////////////////////////////////////////////////////////////////////
     // EVAL
     test_eval(redis_cluster_nodes);
+
+    // TRANSACTION (MULTI & EXEC)
+    test_transaction(redis_cluster_nodes);
 
     ////////////////////////////////////////////////////////////////////////////
     // KEY VALUE
@@ -344,6 +350,73 @@ void test_eval(const std::string& redis_cluster_nodes)
         }
 
         rc.del(key);
+        SUCCESS_PRINT("%s", "OK");
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        ERROR_PRINT("ERROR: %s", ex.str().c_str());
+    }
+}
+
+void test_transaction(const std::string& redis_cluster_nodes)
+{
+    TIPS_PRINT();
+
+    try
+    {
+        const int retry_times = 0;
+        const bool force_retry = false;
+        std::pair<std::string, uint16_t>* which = NULL;
+        r3c::CRedisClient rc1(redis_cluster_nodes);
+        r3c::CRedisClient rc2(redis_cluster_nodes);
+        r3c::CRedisClient rc3(redis_cluster_nodes);
+        const std::string key = "r3c_kk";
+        std::string value;
+
+        rc3.del(key);
+        rc1.multi(key);
+        rc1.incrby(key, 1, which, retry_times, force_retry);
+        rc1.incrby(key, 3, which, retry_times, force_retry);
+
+        value.clear();
+        if (rc3.get(key, &value))
+        {
+            ERROR_PRINT("%s HAVE VALUE1: %s", key.c_str(), value.c_str());
+            return;
+        }
+        if (!value.empty())
+        {
+            ERROR_PRINT("%s HAVE VALUE2: %s", key.c_str(), value.c_str());
+            return;
+        }
+
+        rc2.incrby(key, 5);
+        value.clear();
+        if (!rc3.get(key, &value))
+        {
+            ERROR_PRINT("%s HAVE NOT VALUE", key.c_str());
+            return;
+        }
+        if (value != "5")
+        {
+            ERROR_PRINT("%s HAVE ERROR VALUE: %s", key.c_str(), value.c_str());
+            return;
+        }
+
+        rc1.exec(key);
+        value.clear();
+        if (!rc3.get(key, &value))
+        {
+            ERROR_PRINT("%s HAVE NOT VALUE", key.c_str());
+            return;
+        }
+        if (value != "9")
+        {
+            ERROR_PRINT("%s HAVE ERROR VALUE: %s", key.c_str(), value.c_str());
+            return;
+        }
+
+        rc3.del(key);
         SUCCESS_PRINT("%s", "OK");
     }
     catch (r3c::CRedisException& ex)

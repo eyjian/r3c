@@ -313,7 +313,10 @@ struct RedisNode;
 struct SlotInfo;
 class CCommandArgs;
 
-// NOTICE: All keys and values can be binary.
+// NOTICE:
+// 1) ALL keys and values can be binary.
+// 2) DO NOT use the return values of any command in MULTI & EXEC transaction
+// 3) ALWAYS set retry times to 0 of any command  in MULTI & EXEC transaction
 class CRedisClient
 {
 public:
@@ -345,6 +348,16 @@ public:
     //
     // The time-complexity for this operation is O(N), N being the number of keys in all existing databases.
     void flushall() throw (CRedisException);
+
+    // Marks the start of a transaction block. Subsequent commands will be queued for atomic execution using EXEC.
+    //
+    // NOTICE:
+    // 1) DO NOT use the return values of any command in MULTI & EXEC transaction
+    // 2) ALWAYS set retry times to 0 of any command  in MULTI & EXEC transaction
+    void multi(const std::string& key, std::pair<std::string, uint16_t>* which=NULL);
+
+    // Executes all previously queued commands in a transaction and restores the connection state to normal.
+    const RedisReplyHelper exec(const std::string& key, std::pair<std::string, uint16_t>* which=NULL);
 
 public: // KV
     // Set a key's time to live in seconds.
