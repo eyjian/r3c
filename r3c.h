@@ -797,15 +797,15 @@ private:
 
 private:
     void free_slots_info();
-    void reset_slots_info(unsigned int slot);
-    void update_slot_info(unsigned int slot, const std::pair<std::string, uint16_t>& node);
+    void reset_slots_info(int slot);
+    void update_slot_info(int slot, const std::pair<std::string, uint16_t>& node);
 
 private:
     void free_redis_nodes();
     redisContext* connect_redis_node(const std::pair<std::string, uint16_t>& node, struct ErrorInfo* errinfo) const;
     void close_redis_node(struct RedisNode*& redis_node);
     struct RedisNode* find_redis_node(const std::pair<std::string, uint16_t>& node);
-    struct RedisNode* get_redis_node(unsigned int slot, bool is_read_command, bool* is_node_of_slot, struct ErrorInfo* errinfo);
+    struct RedisNode* get_redis_node(int slot, bool is_read_command, bool* is_node_of_slot, struct ErrorInfo* errinfo);
     struct RedisNode* add_redis_node(const std::pair<std::string, uint16_t>& node, redisContext* redis_context);
     bool get_nodes_info(std::vector<struct NodeInfo>* nodes_info, struct ErrorInfo* errinfo, int i, redisContext* redis_context, const std::pair<std::string, uint16_t>& node);
     bool get_slave_nodes(redisContext* redis_context, std::vector<std::pair<std::string, uint16_t> >* nodes);

@@ -110,22 +110,22 @@ std::ostream& operator <<(std::ostream& os, const struct NodeInfo& node_info)
     return os;
 }
 
-static void debug_reply(const char* command, const char* key, unsigned int slot, const redisReply* redis_reply, int excepted_reply_type, const std::pair<std::string, uint16_t>& node)
+static void debug_reply(const char* command, const char* key, int slot, const redisReply* redis_reply, int excepted_reply_type, const std::pair<std::string, uint16_t>& node)
 {
     if (REDIS_REPLY_STRING == redis_reply->type)
-        (*g_debug_log)("[%s:%d][STRING][%s][SLOT:%u]["PRINT_COLOR_GREEN"KEY:%s"PRINT_COLOR_NONE"][%s:%d]reply: (%d/%d)%s\n", __FILE__, __LINE__, command, slot, key, node.first.c_str(), node.second, redis_reply->type, excepted_reply_type, redis_reply->str);
+        (*g_debug_log)("[%s:%d][STRING][%s][SLOT:%d]["PRINT_COLOR_GREEN"KEY:%s"PRINT_COLOR_NONE"][%s:%d]reply: (%d/%d)%s\n", __FILE__, __LINE__, command, slot, key, node.first.c_str(), node.second, redis_reply->type, excepted_reply_type, redis_reply->str);
     else if (REDIS_REPLY_INTEGER == redis_reply->type)
-        (*g_debug_log)("[%s:%d][INTEGER][%s][SLOT:%u]["PRINT_COLOR_GREEN"KEY:%s"PRINT_COLOR_NONE"][%s:%d]reply: (%d/%d)%lld\n", __FILE__, __LINE__, command, slot, key, node.first.c_str(), node.second, redis_reply->type, excepted_reply_type, redis_reply->integer);
+        (*g_debug_log)("[%s:%d][INTEGER][%s][SLOT:%d]["PRINT_COLOR_GREEN"KEY:%s"PRINT_COLOR_NONE"][%s:%d]reply: (%d/%d)%lld\n", __FILE__, __LINE__, command, slot, key, node.first.c_str(), node.second, redis_reply->type, excepted_reply_type, redis_reply->integer);
     else if (REDIS_REPLY_ARRAY == redis_reply->type)
-        (*g_debug_log)("[%s:%d][ARRAY][%s][SLOT:%u]["PRINT_COLOR_GREEN"KEY:%s"PRINT_COLOR_NONE"][%s:%d]reply: (%d/%d)%zd\n", __FILE__, __LINE__, command, slot, key, node.first.c_str(), node.second, redis_reply->type, excepted_reply_type, redis_reply->elements);
+        (*g_debug_log)("[%s:%d][ARRAY][%s][SLOT:%d]["PRINT_COLOR_GREEN"KEY:%s"PRINT_COLOR_NONE"][%s:%d]reply: (%d/%d)%zd\n", __FILE__, __LINE__, command, slot, key, node.first.c_str(), node.second, redis_reply->type, excepted_reply_type, redis_reply->elements);
     else if (REDIS_REPLY_NIL == redis_reply->type)
-        (*g_debug_log)("[%s:%d][NIL][%s][SLOT:%u]["PRINT_COLOR_GREEN"KEY:%s"PRINT_COLOR_NONE"][%s:%d]reply: (%d/%d)%s\n", __FILE__, __LINE__, command, slot, key, node.first.c_str(), node.second, redis_reply->type, excepted_reply_type, redis_reply->str);
+        (*g_debug_log)("[%s:%d][NIL][%s][SLOT:%d]["PRINT_COLOR_GREEN"KEY:%s"PRINT_COLOR_NONE"][%s:%d]reply: (%d/%d)%s\n", __FILE__, __LINE__, command, slot, key, node.first.c_str(), node.second, redis_reply->type, excepted_reply_type, redis_reply->str);
     else if (REDIS_REPLY_ERROR == redis_reply->type)
-        (*g_debug_log)("[%s:%d][ERROR][%s][SLOT:%u]["PRINT_COLOR_GREEN"KEY:%s"PRINT_COLOR_NONE"][%s:%d]reply: (%d/%d)(%d)%s\n", __FILE__, __LINE__, command, slot, key, node.first.c_str(), node.second, redis_reply->type, excepted_reply_type, redis_reply->integer, redis_reply->str);
+        (*g_debug_log)("[%s:%d][ERROR][%s][SLOT:%d]["PRINT_COLOR_GREEN"KEY:%s"PRINT_COLOR_NONE"][%s:%d]reply: (%d/%d)(%d)%s\n", __FILE__, __LINE__, command, slot, key, node.first.c_str(), node.second, redis_reply->type, excepted_reply_type, redis_reply->integer, redis_reply->str);
     else if (REDIS_REPLY_STATUS == redis_reply->type)
-        (*g_debug_log)("[%s:%d][STATUS][%s][SLOT:%u]["PRINT_COLOR_GREEN"KEY:%s"PRINT_COLOR_NONE"][%s:%d]reply: (%d/%d)%s\n", __FILE__, __LINE__, command, slot, key, node.first.c_str(), node.second, redis_reply->type, excepted_reply_type, redis_reply->str);
+        (*g_debug_log)("[%s:%d][STATUS][%s][SLOT:%d]["PRINT_COLOR_GREEN"KEY:%s"PRINT_COLOR_NONE"][%s:%d]reply: (%d/%d)%s\n", __FILE__, __LINE__, command, slot, key, node.first.c_str(), node.second, redis_reply->type, excepted_reply_type, redis_reply->str);
     else
-        (*g_debug_log)("[%s:%d][->%d][%s][SLOT:%u]["PRINT_COLOR_GREEN"KEY:%s"PRINT_COLOR_NONE"][%s:%d]reply: (%d/%d)%s\n", __FILE__, __LINE__, redis_reply->type, command, slot, key, node.first.c_str(), node.second, redis_reply->type, excepted_reply_type, redis_reply->str);
+        (*g_debug_log)("[%s:%d][->%d][%s][SLOT:%d]["PRINT_COLOR_GREEN"KEY:%s"PRINT_COLOR_NONE"][%s:%d]reply: (%d/%d)%s\n", __FILE__, __LINE__, redis_reply->type, command, slot, key, node.first.c_str(), node.second, redis_reply->type, excepted_reply_type, redis_reply->str);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1991,7 +1991,7 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, bool fo
 {
     //(*g_debug_log)("[%s:%d] COMMAND: %s\n", __FILE__, __LINE__, command_args.get_command());
 
-    const unsigned int slot = cluster_mode()? get_key_slot(&key): 0;
+    const int slot = cluster_mode()? get_key_slot(&key): 0;
     struct RedisNode* redis_node = NULL;
     RedisReplyHelper redis_reply;
     struct ErrorInfo errinfo;
@@ -2309,14 +2309,14 @@ void CRedisClient::free_slots_info()
     _slots_info.clear();
 }
 
-void CRedisClient::reset_slots_info(unsigned int slot)
+void CRedisClient::reset_slots_info(int slot)
 {
     struct SlotInfo* slot_info = _slots_info[slot];
     if (slot_info != NULL)
         slot_info->master_node = NULL;
 }
 
-void CRedisClient::update_slot_info(unsigned int slot, const std::pair<std::string, uint16_t>& node)
+void CRedisClient::update_slot_info(int slot, const std::pair<std::string, uint16_t>& node)
 {
     struct RedisNode* redis_node;
     struct ErrorInfo errinfo;
@@ -2352,12 +2352,12 @@ void CRedisClient::update_slot_info(unsigned int slot, const std::pair<std::stri
         if (NULL == redis_node->context)
         {
             redis_node->become_slave();
-            (*g_error_log)("[%s:%d] update slot(%u) with %s:%d failed: (%d)%s\n", __FILE__, __LINE__, slot, node.first.c_str(), node.second, errinfo.errcode, errinfo.errmsg.c_str());
+            (*g_error_log)("[%s:%d] update slot(%d) with %s:%d failed: (%d)%s\n", __FILE__, __LINE__, slot, node.first.c_str(), node.second, errinfo.errcode, errinfo.errmsg.c_str());
         }
         else
         {
             redis_node->become_master();
-            (*g_info_log)("[%s:%d] update slot(%u) with %s:%d ok\n", __FILE__, __LINE__, slot, node.first.c_str(), node.second);
+            (*g_info_log)("[%s:%d] update slot(%d) with %s:%d ok\n", __FILE__, __LINE__, slot, node.first.c_str(), node.second);
         }
     }
 }
@@ -2404,6 +2404,11 @@ redisContext* CRedisClient::connect_redis_node(const std::pair<std::string, uint
         // redis_context->errstr
         //
         // Connection refused
+        //
+        // errno: 99
+        // err: 1
+        // Cannot assign requested address
+
         errinfo->errcode = ERROR_INIT_REDIS_CONN;
         errinfo->raw_errmsg = redis_context->errstr;
         if (REDIS_ERR_IO == redis_context->err)
@@ -2480,7 +2485,7 @@ struct RedisNode* CRedisClient::find_redis_node(const std::pair<std::string, uin
     return redis_node;
 }
 
-struct RedisNode* CRedisClient::get_redis_node(unsigned int slot, bool is_read_command, bool* is_node_of_slot, struct ErrorInfo* errinfo)
+struct RedisNode* CRedisClient::get_redis_node(int slot, bool is_read_command, bool* is_node_of_slot, struct ErrorInfo* errinfo)
 {
     struct RedisNode* redis_node = NULL;
     struct SlotInfo* slot_info = _slots_info[slot];
