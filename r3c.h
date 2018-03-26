@@ -451,8 +451,8 @@ public: // KV
     // Execute a Lua script server side.
     //
     // Time complexity: Depends on the script that is executed.
-    const RedisReplyHelper eval(bool is_read_command, int excepted_reply_type, const std::string& key, const std::string& lua_scripts, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
-    const RedisReplyHelper eval(bool is_read_command, int excepted_reply_type, const std::string& key, const std::string& lua_scripts, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
+    const RedisReplyHelper eval(bool is_read_command, const std::string& key, const std::string& lua_scripts, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
+    const RedisReplyHelper eval(bool is_read_command, const std::string& key, const std::string& lua_scripts, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
     const RedisReplyHelper eval(const std::string& key, const std::string& lua_scripts, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
     const RedisReplyHelper eval(const std::string& key, const std::string& lua_scripts, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
     const RedisReplyHelper evalsha(bool is_read_command, const std::string& key, const std::string& sha1, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
@@ -788,7 +788,7 @@ public:
     // Will ignore force_retry if is_read_command is true
     // If network timeout, the result of write is not uncertain, maybe succes or failure.
     // Not retry if force_retry is false when is_read_command is false.
-    const RedisReplyHelper redis_command(bool is_read_command, bool force_retry, int retry_times, int excepted_reply_type, const std::string& key, const CCommandArgs& command_args, std::pair<std::string, uint16_t>* which);
+    const RedisReplyHelper redis_command(bool is_read_command, bool force_retry, int retry_times, const std::string& key, const CCommandArgs& command_args, std::pair<std::string, uint16_t>* which);
 
 private:
     void init();

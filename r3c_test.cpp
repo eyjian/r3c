@@ -495,6 +495,8 @@ void test_key_type(const std::string& redis_cluster_nodes)
             ERROR_PRINT("%s", "SET ERROR");
             return;
         }
+
+        key_type.c_str();
         if (!rc.key_type(key, &key_type))
         {
             ERROR_PRINT("%s", "TYPE ERROR");
@@ -502,7 +504,7 @@ void test_key_type(const std::string& redis_cluster_nodes)
         }
         if (key_type != "string")
         {
-            ERROR_PRINT("%s", "TYPE ERROR");
+            ERROR_PRINT("%s: %s", "TYPE ERROR", key_type.c_str());
             return;
         }
 
