@@ -371,12 +371,12 @@ bool is_clusterdown_error(const std::string& errtype)
     return errtype == "CLUSTERDOWN";
 }
 
-CRedisClient::CRedisClient(const std::string& nodes, int connect_timeout_milliseconds, int data_timeout_milliseconds, const std::string& password, ReadPolicy read_policy) throw (CRedisException)
+CRedisClient::CRedisClient(const std::string& nodes, int connect_timeout_milliseconds, int data_timeout_milliseconds, int retry_sleep_milliseconds, const std::string& password, ReadPolicy read_policy) throw (CRedisException)
             : _nodes_string(nodes),
               _connect_timeout_milliseconds(connect_timeout_milliseconds),
               _data_timeout_milliseconds(data_timeout_milliseconds),
               _retry_times(RETRY_TIMES),
-              _retry_sleep_milliseconds(RETRY_SLEEP_MILLISECONDS),
+              _retry_sleep_milliseconds(retry_sleep_milliseconds),
               _password(password),
               _read_policy(read_policy)
 {

@@ -326,10 +326,13 @@ public:
     //
     // In particular, the same nodes is allowed for cluster mode:
     // 127.0.0.1:6379,127.0.0.1:6379
+    //
+    // In coroutine, the value of milliseconds is recommended to set to 0
     CRedisClient(
             const std::string& nodes,
             int connect_timeout_milliseconds=CONNECT_TIMEOUT_MILLISECONDS,
             int data_timeout_milliseconds=DATA_TIMEOUT_MILLISECONDS,
+            int retry_sleep_milliseconds=RETRY_SLEEP_MILLISECONDS,
             const std::string& password=std::string(""),
             ReadPolicy read_policy = RP_ONLEY_MASTER
             ) throw (CRedisException);

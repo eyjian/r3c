@@ -1,5 +1,5 @@
 // Compile example:
-// g++ -g -o r3c_and_coroutine r3c_and_coroutine.cpp -I/usr/local/libco/include -I/usr/local/r3c/include -I/usr/local/hiredis/include /usr/local/r3c/libr3c.a /usr/local/hiredis/lib/libhiredis.a /usr/local/libco/lib/libcolib.a -ldl -pthread
+// g++ -g -o r3c_and_coroutine r3c_and_coroutine.cpp -I/usr/local/libco/include -I/usr/local/r3c/include -I/usr/local/hiredis/include /usr/local/r3c/lib/libr3c.a /usr/local/hiredis/lib/libhiredis.a /usr/local/libco/lib/libcolib.a -ldl -pthread
 //
 // Run example (Standlone redis):
 // r3c_and_coroutine 3 127.0.0.1:6379
@@ -23,9 +23,10 @@ static void* redis_routine(void* param)
     try
     {
         const int i = *(int*)param;
-        const int connect_timeout_milliseconds = 20000;
-        const int data_timeout_milliseconds = 20000;
-        r3c::CRedisClient redis(sg_redis_nodes);
+        const int connect_timeout_milliseconds = 0;
+        const int data_timeout_milliseconds = 0;
+        const int retry_sleep_milliseconds = 0;
+        r3c::CRedisClient redis(sg_redis_nodes, connect_timeout_milliseconds, data_timeout_milliseconds, retry_sleep_milliseconds);
 
         for (int j=0; j<NUM_CYCLES; ++j)
         {
