@@ -439,6 +439,8 @@ public: // KV
     // Atomically increment and expire a key with given seconds.
     // Expiration is set only if the value returned by incrby is equal to expired_increment.
     //
+    // NOTICE: Not support binary key and binary value.
+    //
     // e.g.,
     // incrby(key, 1, 1, 10);
     int64_t incrby(const std::string& key, int64_t increment, int64_t expired_increment, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
@@ -474,6 +476,8 @@ public: // KV
     int64_t scan(int64_t cursor, const std::string& pattern, int count, std::vector<std::string>* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
     // Execute a Lua script server side.
+    //
+    // NOTICE: Not support binary key and binary value, because eval is implemented by lua script.
     //
     // Time complexity: Depends on the script that is executed.
     const RedisReplyHelper eval(bool is_read_command, const std::string& key, const std::string& lua_scripts, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
@@ -516,6 +520,8 @@ public: // HASH
     // Returns true if field is a new field in the hash and value was set,
     // or field already exists in the hash and no operation was performed.
     bool hsetnx(const std::string& key, const std::string& field, const std::string& value, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
+
+    // NOTICE: Not support binary key and binary value.
     bool hsetnxex(const std::string& key, const std::string& field, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
 
     // Time complexity: O(1)
@@ -527,7 +533,11 @@ public: // HASH
     // Time complexity: O(1)
     // Returns the value at field after the increment operation.
     int64_t hincrby(const std::string& key, const std::string& field, int64_t increment, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
+
+    // NOTICE: Not support binary key and binary value.
     void hincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values=NULL, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
+
+    // NOTICE: Not support binary key and binary value.
     void hmincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values=NULL, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
 
     // Set multiple hash fields to multiple values.
