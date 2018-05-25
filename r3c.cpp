@@ -2202,7 +2202,7 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, bool fo
     RedisReplyHelper redis_reply;
     struct ErrorInfo errinfo;
     int retry_times_ = retry_times;
-    bool to_retry;
+    bool to_retry = false;
 
     if (key.empty() && cluster_mode())
     {
