@@ -372,7 +372,8 @@ bool is_clusterdown_error(const std::string& errtype)
 }
 
 CRedisClient::CRedisClient(const std::string& nodes, int connect_timeout_milliseconds, int data_timeout_milliseconds, int retry_sleep_milliseconds, const std::string& password, ReadPolicy read_policy) throw (CRedisException)
-            : _nodes_string(nodes),
+            : _command_observer(NULL),
+              _nodes_string(nodes),
               _connect_timeout_milliseconds(connect_timeout_milliseconds),
               _data_timeout_milliseconds(data_timeout_milliseconds),
               _retry_times(RETRY_TIMES),
@@ -2232,6 +2233,8 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, bool fo
             continue; // RETRY
         }
 
+        if (_command_observer != NULL)
+            _command_observer->before_command(redis_node->ip_and_port.first, redis_node->ip_and_port.second, command_args.get_command(), is_read_command, command_args.get_argc(), command_args.get_argv(), command_args.get_argvlen());
         redis_reply = (redisReply*)redisCommandArgv(redis_context, command_args.get_argc(), command_args.get_argv(), command_args.get_argvlen());
         if (redis_reply)
         {
@@ -2254,6 +2257,8 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, bool fo
                     }
                 }
 
+                if (_command_observer != NULL)
+                    _command_observer->after_command(0, redis_node->ip_and_port.first, redis_node->ip_and_port.second, command_args.get_command(), redis_reply.get());
                 break;
             }
             else
@@ -2287,6 +2292,9 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, bool fo
                         // redis_node become slave from master
                         close_redis_node(redis_node);
                     }
+
+                    if (_command_observer != NULL)
+                        _command_observer->after_command(1, redis_node->ip_and_port.first, redis_node->ip_and_port.second, command_args.get_command(), redis_reply.get());
                     continue;
                 }
                 else if (is_clusterdown_error(errinfo.errtype))
@@ -2294,12 +2302,18 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, bool fo
                     redis_reply.free();
                     if (_retry_sleep_milliseconds > 0)
                         millisleep(_retry_sleep_milliseconds);
+
+                    if (_command_observer != NULL)
+                        _command_observer->after_command(1, redis_node->ip_and_port.first, redis_node->ip_and_port.second, command_args.get_command(), redis_reply.get());
                     continue;
                 }
                 else
                 {
                     // NOT RETRY
                     redis_reply.free();
+
+                    if (_command_observer != NULL)
+                        _command_observer->after_command(1, redis_node->ip_and_port.first, redis_node->ip_and_port.second, command_args.get_command(), redis_reply.get());
                     break;
                 }
             }
@@ -2341,6 +2355,9 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, bool fo
                 errinfo.raw_errmsg = format_string("(%d)%s", redis_errcode, redis_errmsg.c_str());
                 errinfo.errmsg = format_string("[%s:%d][COMMAND:%s] (RETRY:%d/%d)%s", __FILE__, __LINE__, command_args.get_command(), rt, retry_times_, errinfo.raw_errmsg.c_str());
                 (*g_error_log)("%s\n", errinfo.errmsg.c_str());
+
+                if (_command_observer != NULL)
+                    _command_observer->after_command(1, redis_node->ip_and_port.first, redis_node->ip_and_port.second, command_args.get_command(), redis_reply.get());
                 break;
             }
             else
@@ -2385,13 +2402,22 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, bool fo
                         // 写命令，如果遇到EAGAIN时，写命令可能已成功的，也可能未成功，对于incryby类命令应当由业务决定是否重试
                         if (!is_read_command && !force_retry)
                         {
+                            if (_command_observer != NULL)
+                                _command_observer->after_command(2, redis_node->ip_and_port.first, redis_node->ip_and_port.second, command_args.get_command(), redis_reply.get());
                             break;
                         }
                     }
                 }
 
                 if (_retry_sleep_milliseconds > 0)
+                {
                     millisleep(_retry_sleep_milliseconds);
+                }
+                if (_command_observer != NULL)
+                {
+                    const int result = ((REDIS_ERR_IO == redis_errcode) && ((EAGAIN == errinfo.errcode) || (EWOULDBLOCK == errinfo.errcode)))? 2: 1;
+                    _command_observer->after_command(result, redis_node->ip_and_port.first, redis_node->ip_and_port.second, command_args.get_command(), redis_reply.get());
+                }
                 continue;
             }
         }

@@ -323,6 +323,22 @@ struct RedisNode;
 struct SlotInfo;
 class CCommandArgs;
 
+// Set the hook to monitor command
+//
+// Execute order:
+// 1) before_command
+// 2) command
+// 3) after_command
+class ICommandObserver
+{
+public:
+    virtual ~ICommandObserver() {}
+    virtual void before_command(const std::string& ip, int port, const char* command, bool is_read_command, int argc, const char** argv, const size_t* argvlen) = 0;
+
+    // result 0 success, 1 error, 2 timeout
+    virtual void after_command(int result, const std::string& ip, int port, const char* command, const redisReply* reply) = 0;
+};
+
 // NOTICE:
 // 1) ALL keys and values can be binary.
 // 2) DO NOT use the return values of any command in MULTI & EXEC transaction
@@ -349,6 +365,7 @@ public:
     // Returns true if parameter nodes of ctor is composed of two or more nodes,
     // or false when only a node for standlone mode.
     bool cluster_mode() const;
+    void set_command_observer(ICommandObserver* command_observer) { _command_observer = command_observer; }
 
 public:
     int list_nodes(std::vector<struct NodeInfo>* nodes_info) throw (CRedisException);
@@ -477,7 +494,8 @@ public: // KV
 
     // Execute a Lua script server side.
     //
-    // NOTICE: Not support binary key and binary value, because eval is implemented by lua script.
+    // NOTICE1: Not support binary key and binary value, because eval is implemented by lua script.
+    // NOTICE2: Key can not include newline character ('\n')
     //
     // Time complexity: Depends on the script that is executed.
     const RedisReplyHelper eval(bool is_read_command, const std::string& key, const std::string& lua_scripts, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
@@ -871,6 +889,7 @@ public:
     int get_values(const redisReply* redis_reply, std::vector<int64_t>* values);
 
 private:
+    ICommandObserver* _command_observer;
     std::string _nodes_string;
     int _connect_timeout_milliseconds;
     int _data_timeout_milliseconds;
