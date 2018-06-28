@@ -2293,8 +2293,9 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, bool fo
                         close_redis_node(redis_node);
                     }
 
-                    if (_command_observer != NULL)
-                        _command_observer->after_command(1, redis_node->ip_and_port.first, redis_node->ip_and_port.second, command_args.get_command(), redis_reply.get());
+                    // MOVED这种情况不触发
+                    //if (_command_observer != NULL)
+                    //    _command_observer->after_command(1, redis_node->ip_and_port.first, redis_node->ip_and_port.second, command_args.get_command(), redis_reply.get());
                     continue;
                 }
                 else if (is_clusterdown_error(errinfo.errtype))
