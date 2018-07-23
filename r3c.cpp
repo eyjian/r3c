@@ -129,39 +129,7 @@ static void debug_reply(const char* command, const char* key, int slot, const re
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-
-class CCommandArgs
-{
-public:
-    CCommandArgs();
-    ~CCommandArgs();
-    void set_key(const std::string& key);
-    void add_arg(const std::string& arg);
-    void add_arg(int32_t arg);
-    void add_arg(uint32_t arg);
-    void add_arg(int64_t arg);
-    void add_args(const std::vector<std::string>& args);
-    void add_args(const std::map<std::string, std::string>& map);
-    void add_args(const std::map<std::string, int64_t>& map, bool reverse);
-    void final();
-    int get_argc() const;
-    const char** get_argv() const;
-    const size_t* get_argvlen() const;
-    const char* get_command() const;
-    const char* get_key() const;
-    size_t get_command_length() const;
-    size_t get_key_length() const;
-    std::string get_command_str() const;
-    std::string get_key_str() const;
-
-private:
-    std::string _command;
-    std::string _key;
-    std::vector<std::string> _args;
-    int _argc;
-    char** _argv;
-    size_t* _argvlen;
-};
+// CCommandArgs
 
 CCommandArgs::CCommandArgs()
     : _argc(0), _argv(NULL), _argvlen(NULL)
@@ -297,6 +265,7 @@ std::string CCommandArgs::get_key_str() const
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// RedisNode
 
 struct RedisNode
 {
@@ -341,6 +310,9 @@ struct SlotInfo
     }
 };
 
+////////////////////////////////////////////////////////////////////////////////
+// CRedisException
+
 CRedisException::CRedisException(const struct ErrorInfo& errinfo, const char* file, int line, const std::string& node_ip, uint16_t node_port, const std::string& command, const std::string& key) throw ()
     :  _errinfo(errinfo), _file(file), _line(line), _node_ip(node_ip), _node_port(node_port), _command(command), _key(key)
 {
@@ -370,6 +342,9 @@ bool is_clusterdown_error(const std::string& errtype)
 {
     return errtype == "CLUSTERDOWN";
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// CRedisClient
 
 CRedisClient::CRedisClient(const std::string& nodes, int connect_timeout_milliseconds, int data_timeout_milliseconds, int retry_sleep_milliseconds, const std::string& password, ReadPolicy read_policy) throw (CRedisException)
             : _command_observer(NULL),

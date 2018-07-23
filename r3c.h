@@ -321,7 +321,40 @@ bool is_clusterdown_error(const std::string& errtype);
 // }
 struct RedisNode;
 struct SlotInfo;
-class CCommandArgs;
+
+// Redis命令参数
+class CCommandArgs
+{
+public:
+    CCommandArgs();
+    ~CCommandArgs();
+    void set_key(const std::string& key);
+    void add_arg(const std::string& arg);
+    void add_arg(int32_t arg);
+    void add_arg(uint32_t arg);
+    void add_arg(int64_t arg);
+    void add_args(const std::vector<std::string>& args);
+    void add_args(const std::map<std::string, std::string>& map);
+    void add_args(const std::map<std::string, int64_t>& map, bool reverse);
+    void final();
+    int get_argc() const;
+    const char** get_argv() const;
+    const size_t* get_argvlen() const;
+    const char* get_command() const;
+    const char* get_key() const;
+    size_t get_command_length() const;
+    size_t get_key_length() const;
+    std::string get_command_str() const;
+    std::string get_key_str() const;
+
+private:
+    std::string _command;
+    std::string _key;
+    std::vector<std::string> _args;
+    int _argc;
+    char** _argv;
+    size_t* _argvlen;
+};
 
 // Set the hook to monitor command
 //
