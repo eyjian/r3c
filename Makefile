@@ -27,7 +27,7 @@ INSTALL?= cp -a
 #OPTIMIZATION?=-O3
 DEBUG?= -g -ggdb # -DSLEEP_USE_POLL=1
 WARNINGS=-Wall -W -Wwrite-strings
-REAL_CPPFLAGS=$(CPPFLAGS) $(ARCH) -I$(HIREDIS)/include -D__STDC_FORMAT_MACROS=1 -fstrict-aliasing -fPIC $(DEBUG) $(OPTIMIZATION) $(WARNINGS)
+REAL_CPPFLAGS=$(CPPFLAGS) $(ARCH) -I$(HIREDIS)/include -DSLEEP_USE_POLL=1 -D__STDC_FORMAT_MACROS=1 -fstrict-aliasing -fPIC $(DEBUG) $(OPTIMIZATION) $(WARNINGS)
 REAL_LDFLAGS=$(LDFLAGS) $(ARCH) $(HIREDIS)/lib/libhiredis.a
 
 CXX:=$(shell sh -c 'type $(CXX) >/dev/null 2>/dev/null && echo $(CXX) || echo g++')
