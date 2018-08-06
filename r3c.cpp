@@ -314,8 +314,20 @@ struct SlotInfo
 // CRedisException
 
 CRedisException::CRedisException(const struct ErrorInfo& errinfo, const char* file, int line, const std::string& node_ip, uint16_t node_port, const std::string& command, const std::string& key) throw ()
-    :  _errinfo(errinfo), _file(file), _line(line), _node_ip(node_ip), _node_port(node_port), _command(command), _key(key)
+    :  _errinfo(errinfo), _line(line), _node_ip(node_ip), _node_port(node_port), _command(command), _key(key)
 {
+    const char* slash_position = strrchr(file, '/');
+    const std::string* file_cp = &_file;
+    std::string* file_p = const_cast<std::string*>(file_cp);
+
+    if (NULL == slash_position)
+    {
+        *file_p = file;
+    }
+    else
+    {
+        *file_p = std::string(slash_position + 1);
+    }
 }
 
 const char* CRedisException::what() const throw()
