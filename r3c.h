@@ -399,6 +399,7 @@ public:
     // or false when only a node for standlone mode.
     bool cluster_mode() const;
     void set_command_observer(ICommandObserver* command_observer) { _command_observer = command_observer; }
+    ICommandObserver* get_command_observer() const { return _command_observer; }
 
 public:
     int list_nodes(std::vector<struct NodeInfo>* nodes_info) throw (CRedisException);
