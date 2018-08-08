@@ -2440,12 +2440,6 @@ void CRedisClient::init()
         {
             init_cluster();
         }
-
-        // initialize `_data`
-        for (size_t i=0; i<sizeof(_data)/sizeof(_data[0]); ++i)
-        {
-            _data[i] = NULL;
-        }
     }
     catch (...)
     {
