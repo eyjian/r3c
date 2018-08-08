@@ -868,6 +868,24 @@ public: // ZSET
     int64_t zscan(const std::string& key, int64_t cursor, const std::string& pattern, int count, std::vector<std::pair<std::string, int64_t> >* values, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES) throw (CRedisException);
 
 public:
+    // Range of values of index: [0, 5)
+    void set_data(uint8_t index, void* data)
+    {
+        R3C_ASSERT(index < sizeof(_data)/sizeof(_data[0]));
+        if (index < sizeof(_data)/sizeof(_data[0]))
+            _data[index] = data;
+    }
+
+    // Range of values of index: [0, 5)
+    void* get_data(uint8_t index) const
+    {
+        R3C_ASSERT(index < sizeof(_data)/sizeof(_data[0]));
+        if (index < sizeof(_data)/sizeof(_data[0]))
+            return _data[index];
+        else
+            return NULL;
+    }
+
     // Standlone: key should be empty
     // Cluse mode: key used to locate node
     //
@@ -922,6 +940,7 @@ public:
     int get_values(const redisReply* redis_reply, std::vector<int64_t>* values);
 
 private:
+    void* _data[5];
     ICommandObserver* _command_observer;
     std::string _nodes_string;
     int _connect_timeout_milliseconds;
