@@ -382,6 +382,11 @@ const std::string& CRedisClient::get_raw_nodes_string() const
     return _nodes_string;
 }
 
+std::string CRedisClient::str() const
+{
+    return std::string("redis://") + _nodes_string;
+}
+
 bool CRedisClient::cluster_mode() const
 {
     return _nodes.size() > 1;
