@@ -377,6 +377,11 @@ CRedisClient::~CRedisClient()
     free_redis_nodes();
 }
 
+const std::string& CRedisClient::get_raw_nodes_string() const
+{
+    return _nodes_string;
+}
+
 bool CRedisClient::cluster_mode() const
 {
     return _nodes.size() > 1;

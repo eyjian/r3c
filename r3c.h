@@ -394,6 +394,7 @@ public:
             ReadPolicy read_policy = RP_ONLEY_MASTER
             ) throw (CRedisException);
     ~CRedisClient();
+    const std::string& get_raw_nodes_string() const;
 
     // Returns true if parameter nodes of ctor is composed of two or more nodes,
     // or false when only a node for standlone mode.
