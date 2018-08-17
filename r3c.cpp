@@ -112,6 +112,7 @@ std::ostream& operator <<(std::ostream& os, const struct NodeInfo& node_info)
 
 static void debug_reply(const char* command, const char* key, int slot, const redisReply* redis_reply, const std::pair<std::string, uint16_t>& node)
 {
+    return;
     if (REDIS_REPLY_STRING == redis_reply->type)
         (*g_debug_log)("[%s:%d][STRING][%s][SLOT:%d]["PRINT_COLOR_GREEN"KEY:%s"PRINT_COLOR_NONE"][%s:%d]reply: (%d)%s\n", __FILE__, __LINE__, command, slot, key, node.first.c_str(), node.second, redis_reply->type, redis_reply->str);
     else if (REDIS_REPLY_INTEGER == redis_reply->type)
