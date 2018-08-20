@@ -36,7 +36,7 @@ fi
 redis_nodes=`redis-cli -h $REDIS_IP -p $REDIS_PORT cluster nodes | awk -F[\ \:\@] '!/ERR/{ printf("%s:%s\n",$2,$3); }'`
 if test -z "$redis_nodes"; then
     # standlone
-    redis-cli -h $REDIS_IP -p $REDIS_PORT FLUSHALL
+    $REDIS_CLI -h $REDIS_IP -p $REDIS_PORT FLUSHALL
 else
     # cluster
     for redis_node in $redis_nodes;
@@ -47,7 +47,7 @@ else
             if test ! -z "$redis_node_ip" -a ! -z "$redis_node_port"; then
                 # clear
                 echo -e "clearing \033[1;33m${redis_node_ip}:${redis_node_port}\033[m ..."
-                result=`redis-cli -h $redis_node_ip -p $redis_node_port FLUSHALL`
+                result=`$REDIS_CLI -h $redis_node_ip -p $redis_node_port FLUSHALL`
 
                 if test ! -z "$result"; then
                     # SUCCESS

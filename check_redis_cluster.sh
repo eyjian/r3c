@@ -36,7 +36,7 @@ fi
 redis_nodes=`redis-cli -h $REDIS_IP -p $REDIS_PORT cluster nodes | awk -F[\ \:\@] '!/ERR/{ printf("%s:%s\n",$2,$3); }'`
 if test -z "$redis_nodes"; then
     # standlone
-    redis-cli -h $REDIS_IP -p $REDIS_PORT SCAN 0 COUNT 1
+    $REDIS_CLI -h $REDIS_IP -p $REDIS_PORT SCAN 0 COUNT 1
 else
     # cluster
     for redis_node in $redis_nodes;
@@ -46,7 +46,7 @@ else
 
             if test ! -z "$redis_node_ip" -a ! -z "$redis_node_port"; then
                 echo -e "checking \033[1;33m${redis_node_ip}:${redis_node_port}\033[m ..."
-                redis-cli -h $redis_node_ip -p $redis_node_port SCAN 0 COUNT 1                
+                $REDIS_CLI -h $redis_node_ip -p $redis_node_port SCAN 0 COUNT 1                
             fi
         fi
     done
