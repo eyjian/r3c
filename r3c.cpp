@@ -2267,7 +2267,7 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, bool fo
                 extract_errtype(redis_reply.get(), &errinfo.errtype);
                 errinfo.errcode = ERROR_COMMAND;
                 errinfo.raw_errmsg = format_string("[SLOT:%d][%s:%d] %s", slot, redis_node->ip_and_port.first.c_str(), redis_node->ip_and_port.second, redis_reply->str);
-                errinfo.errmsg = format_string("[%s:%d][COMMAND:%s] (RETRY:%d/%d)%s", __FILE__, __LINE__, command_args.get_command(), rt, retry_times_, errinfo.raw_errmsg.c_str());
+                errinfo.errmsg = format_string("[%s:%d][%s] (RETRY:%d/%d)%s", __FILE__, __LINE__, command_args.get_command(), rt, retry_times_, errinfo.raw_errmsg.c_str());
 
                 if (is_moved_error(errinfo.errtype))
                 {
@@ -2352,7 +2352,7 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, bool fo
 
                 errinfo.errcode = ERROR_COMMAND;
                 errinfo.raw_errmsg = format_string("[SLOT:%d][%s:%d] (%d)%s", slot, redis_node->ip_and_port.first.c_str(), redis_node->ip_and_port.second, redis_errcode, redis_errmsg.c_str());
-                errinfo.errmsg = format_string("[%s:%d][COMMAND:%s] (RETRY:%d/%d)%s", __FILE__, __LINE__, command_args.get_command(), rt, retry_times_, errinfo.raw_errmsg.c_str());
+                errinfo.errmsg = format_string("[%s:%d][%s] (RETRY:%d/%d)%s", __FILE__, __LINE__, command_args.get_command(), rt, retry_times_, errinfo.raw_errmsg.c_str());
                 (*g_error_log)("%s\n", errinfo.errmsg.c_str());
 
                 if (_command_observer != NULL)
@@ -2386,7 +2386,7 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, bool fo
                 // 可导致所有重试均失败（errno为EAGAIN或EWOULDBLOCK），
                 // 解决办法：增加重试次数或延长重试间隔时长。
                 errinfo.raw_errmsg = format_string("[SLOT:%d][%s:%d] (errcode:%d/%d)%s", slot, redis_node->ip_and_port.first.c_str(), redis_node->ip_and_port.second, errinfo.errcode, redis_errcode, redis_errmsg.c_str());
-                errinfo.errmsg = format_string("[%s:%d][COMMAND:%s] (RETRY:%d/%d)%s", __FILE__, __LINE__, command_args.get_command(), rt, retry_times_, errinfo.raw_errmsg.c_str());
+                errinfo.errmsg = format_string("[%s:%d][%s] (RETRY:%d/%d)%s", __FILE__, __LINE__, command_args.get_command(), rt, retry_times_, errinfo.raw_errmsg.c_str());
                 (*g_error_log)("%s\n", errinfo.errmsg.c_str());
 
                 if (REDIS_ERR_IO == redis_errcode)
