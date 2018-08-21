@@ -2207,7 +2207,7 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, bool fo
     {
         // 集群模式必须指定key
         errinfo.errcode = ERROR_ZERO_KEY;
-        errinfo.raw_errmsg = "key not set in cluster mode";
+        errinfo.raw_errmsg = format_string("[SLOT:%d][%s] key not set in cluster mode", slot, command_args.get_command());
         errinfo.errmsg = format_string("[%s:%d] %s", __FILE__, __LINE__, errinfo.raw_errmsg.c_str());
         THROW_REDIS_EXCEPTION(errinfo);
     }
@@ -2266,7 +2266,7 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, bool fo
                 // CLUSTERDOWN The cluster is down
                 extract_errtype(redis_reply.get(), &errinfo.errtype);
                 errinfo.errcode = ERROR_COMMAND;
-                errinfo.raw_errmsg = format_string("[%s:%d] %s", redis_node->ip_and_port.first.c_str(), redis_node->ip_and_port.second, redis_reply->str);
+                errinfo.raw_errmsg = format_string("[SLOT:%d][%s:%d] %s", slot, redis_node->ip_and_port.first.c_str(), redis_node->ip_and_port.second, redis_reply->str);
                 errinfo.errmsg = format_string("[%s:%d][COMMAND:%s] (RETRY:%d/%d)%s", __FILE__, __LINE__, command_args.get_command(), rt, retry_times_, errinfo.raw_errmsg.c_str());
 
                 if (is_moved_error(errinfo.errtype))
@@ -2296,7 +2296,7 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, bool fo
                 }
                 else if (is_clusterdown_error(errinfo.errtype))
                 {
-                    (*g_error_log)("%s\n", errinfo.errmsg.c_str());
+                    (*g_error_log)("[SLOT:%d] %s\n", slot, errinfo.errmsg.c_str());
 
                     redis_reply.free();
                     if (_retry_sleep_milliseconds > 0)
@@ -2351,7 +2351,7 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, bool fo
                 // NOT RETRY
 
                 errinfo.errcode = ERROR_COMMAND;
-                errinfo.raw_errmsg = format_string("[%s:%d] (%d)%s", redis_node->ip_and_port.first.c_str(), redis_node->ip_and_port.second, redis_errcode, redis_errmsg.c_str());
+                errinfo.raw_errmsg = format_string("[SLOT:%d][%s:%d] (%d)%s", slot, redis_node->ip_and_port.first.c_str(), redis_node->ip_and_port.second, redis_errcode, redis_errmsg.c_str());
                 errinfo.errmsg = format_string("[%s:%d][COMMAND:%s] (RETRY:%d/%d)%s", __FILE__, __LINE__, command_args.get_command(), rt, retry_times_, errinfo.raw_errmsg.c_str());
                 (*g_error_log)("%s\n", errinfo.errmsg.c_str());
 
@@ -2385,7 +2385,7 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, bool fo
                 // 如果同时大量主备切换，
                 // 可导致所有重试均失败（errno为EAGAIN或EWOULDBLOCK），
                 // 解决办法：增加重试次数或延长重试间隔时长。
-                errinfo.raw_errmsg = format_string("[%s:%d] (errcode:%d/%d)%s", redis_node->ip_and_port.first.c_str(), redis_node->ip_and_port.second, errinfo.errcode, redis_errcode, redis_errmsg.c_str());
+                errinfo.raw_errmsg = format_string("[SLOT:%d][%s:%d] (errcode:%d/%d)%s", slot, redis_node->ip_and_port.first.c_str(), redis_node->ip_and_port.second, errinfo.errcode, redis_errcode, redis_errmsg.c_str());
                 errinfo.errmsg = format_string("[%s:%d][COMMAND:%s] (RETRY:%d/%d)%s", __FILE__, __LINE__, command_args.get_command(), rt, retry_times_, errinfo.raw_errmsg.c_str());
                 (*g_error_log)("%s\n", errinfo.errmsg.c_str());
 
