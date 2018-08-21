@@ -101,6 +101,8 @@ std::ostream& operator <<(std::ostream& os, const struct NodeInfo& node_info)
 
     for (std::vector<std::pair<int, int> >::size_type i=0; i<node_info.slots.size(); ++i)
     {
+        if (i > 0)
+            os << " ";
         if (node_info.slots[i].first == node_info.slots[i].second)
             os << node_info.slots[i].first;
         else
