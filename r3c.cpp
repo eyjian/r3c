@@ -2271,7 +2271,7 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, bool fo
                 errinfo.raw_errmsg = format_string("[SLOT:%d][%s:%d] %s", slot, redis_node->ip_and_port.first.c_str(), redis_node->ip_and_port.second, redis_reply->str);
                 errinfo.errmsg = format_string("[%s:%d][%s] (RETRY:%d/%d)%s", __FILE__, __LINE__, command_args.get_command(), rt, retry_times_, errinfo.raw_errmsg.c_str());
 
-                if (is_moved_error(errinfo.errtype))
+                if (cluster_mode() && is_moved_error(errinfo.errtype))
                 {
                     (*g_info_log)("%s\n", errinfo.errmsg.c_str());
                     to_retry = true; // MOVED unconditionally RETRY
