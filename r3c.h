@@ -393,6 +393,10 @@ public:
             const std::string& password=std::string(""),
             ReadPolicy read_policy = RP_ONLEY_MASTER
             ) throw (CRedisException);
+    CRedisClient(
+            const std::string& nodes,
+            const std::string& password
+            ) throw (CRedisException);
     ~CRedisClient();
     const std::string& get_raw_nodes_string() const;
     std::string str() const;

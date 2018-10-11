@@ -54,58 +54,58 @@ static void success_print(const char* file, int line, const char* function, cons
 
 ////////////////////////////////////////////////////////////////////////////
 // MISC
-static void test_slots(const std::string& redis_cluster_nodes);
+static void test_slots(const std::string& redis_cluster_nodes, const std::string& redis_password);
 
 // EVAL
-static void test_eval(const std::string& redis_cluster_nodes);
+static void test_eval(const std::string& redis_cluster_nodes, const std::string& redis_password);
 
 // TRANSACTION (MULTI & EXEC)
-static void test_transaction(const std::string& redis_cluster_nodes);
+static void test_transaction(const std::string& redis_cluster_nodes, const std::string& redis_password);
 
 ////////////////////////////////////////////////////////////////////////////
 // KEY VALUE
-static void test_empty_key(const std::string& redis_cluster_nodes);
-static void test_key_type(const std::string& redis_cluster_nodes);
-static void test_expire(const std::string& redis_cluster_nodes);
-static void test_get_and_set0(const std::string& redis_cluster_nodes);
-static void test_get_and_set1(const std::string& redis_cluster_nodes);
-static void test_get_and_set2(const std::string& redis_cluster_nodes);
-static void test_get_and_set3(const std::string& redis_cluster_nodes);
-static void test_incrby(const std::string& redis_cluster_nodes);
-static void test_setnxex(const std::string& redis_cluster_nodes);
-static void test_mget_and_mset(const std::string& redis_cluster_nodes);
+static void test_empty_key(const std::string& redis_cluster_nodes, const std::string& redis_password);
+static void test_key_type(const std::string& redis_cluster_nodes, const std::string& redis_password);
+static void test_expire(const std::string& redis_cluster_nodes, const std::string& redis_password);
+static void test_get_and_set0(const std::string& redis_cluster_nodes, const std::string& redis_password);
+static void test_get_and_set1(const std::string& redis_cluster_nodes, const std::string& redis_password);
+static void test_get_and_set2(const std::string& redis_cluster_nodes, const std::string& redis_password);
+static void test_get_and_set3(const std::string& redis_cluster_nodes, const std::string& redis_password);
+static void test_incrby(const std::string& redis_cluster_nodes, const std::string& redis_password);
+static void test_setnxex(const std::string& redis_cluster_nodes, const std::string& redis_password);
+static void test_mget_and_mset(const std::string& redis_cluster_nodes, const std::string& redis_password);
 
 ////////////////////////////////////////////////////////////////////////////
 // LIST
-static void test_list(const std::string& redis_cluster_nodes);
+static void test_list(const std::string& redis_cluster_nodes, const std::string& redis_password);
 
 ////////////////////////////////////////////////////////////////////////////
 // HASH
-static void test_hget_and_hset1(const std::string& redis_cluster_nodes);
-static void test_hget_and_hset2(const std::string& redis_cluster_nodes);
-static void test_hmget_and_hmset1(const std::string& redis_cluster_nodes);
-static void test_hmget_and_hmset2(const std::string& redis_cluster_nodes);
-static void test_hscan(const std::string& redis_cluster_nodes);
-static void test_hincrby_and_hlen(const std::string& redis_cluster_nodes);
-static void test_hmincrby(const std::string& redis_cluster_nodes);
-static void test_hsetnx(const std::string& redis_cluster_nodes);
-static void test_hsetnxex(const std::string& redis_cluster_nodes);
+static void test_hget_and_hset1(const std::string& redis_cluster_nodes, const std::string& redis_password);
+static void test_hget_and_hset2(const std::string& redis_cluster_nodes, const std::string& redis_password);
+static void test_hmget_and_hmset1(const std::string& redis_cluster_nodes, const std::string& redis_password);
+static void test_hmget_and_hmset2(const std::string& redis_cluster_nodes, const std::string& redis_password);
+static void test_hscan(const std::string& redis_cluster_nodes, const std::string& redis_password);
+static void test_hincrby_and_hlen(const std::string& redis_cluster_nodes, const std::string& redis_password);
+static void test_hmincrby(const std::string& redis_cluster_nodes, const std::string& redis_password);
+static void test_hsetnx(const std::string& redis_cluster_nodes, const std::string& redis_password);
+static void test_hsetnxex(const std::string& redis_cluster_nodes, const std::string& redis_password);
 
 ////////////////////////////////////////////////////////////////////////////
 // SET
-static void test_set(const std::string& redis_cluster_nodes);
-static void test_sscan1(const std::string& redis_cluster_nodes);
-static void test_sscan2(const std::string& redis_cluster_nodes);
+static void test_set(const std::string& redis_cluster_nodes, const std::string& redis_password);
+static void test_sscan1(const std::string& redis_cluster_nodes, const std::string& redis_password);
+static void test_sscan2(const std::string& redis_cluster_nodes, const std::string& redis_password);
 
 ////////////////////////////////////////////////////////////////////////////
 // SORTED SET
-static void test_sorted_set(const std::string& redis_cluster_nodes);
-static void test_zrange(const std::string& redis_cluster_nodes);
-static void test_zrevrange(const std::string& redis_cluster_nodes);
-static void test_zrangebyscore(const std::string& redis_cluster_nodes);
-static void test_zrevrangebyscore(const std::string& redis_cluster_nodes);
-static void test_zrem(const std::string& redis_cluster_nodes);
-static void test_zremrangebyrank(const std::string& redis_cluster_nodes);
+static void test_sorted_set(const std::string& redis_cluster_nodes, const std::string& redis_password);
+static void test_zrange(const std::string& redis_cluster_nodes, const std::string& redis_password);
+static void test_zrevrange(const std::string& redis_cluster_nodes, const std::string& redis_password);
+static void test_zrangebyscore(const std::string& redis_cluster_nodes, const std::string& redis_password);
+static void test_zrevrangebyscore(const std::string& redis_cluster_nodes, const std::string& redis_password);
+static void test_zrem(const std::string& redis_cluster_nodes, const std::string& redis_password);
+static void test_zremrangebyrank(const std::string& redis_cluster_nodes, const std::string& redis_password);
 
 static void my_log_write(const char* format, ...)
 {
@@ -122,8 +122,9 @@ static void my_log_write(const char* format, ...)
 int main(int argc, char* argv[])
 {
     std::string redis_cluster_nodes;
+    std::string redis_password;
 
-    if (2 == argc)
+    if (argc >= 2)
     {
         redis_cluster_nodes = argv[1];
     }
@@ -135,67 +136,71 @@ int main(int argc, char* argv[])
         else
             redis_cluster_nodes = "127.0.0.1:6379,127.0.0.1:6380";
     }
+    if (argc >= 3)
+    {
+        redis_password = argv[2];
+    }
 
     r3c::set_info_log_write(my_log_write);
     r3c::set_debug_log_write(my_log_write);
 
     ////////////////////////////////////////////////////////////////////////////
     // EVAL
-    test_eval(redis_cluster_nodes);
+    test_eval(redis_cluster_nodes, redis_password);
 
     // TRANSACTION (MULTI & EXEC)
-    test_transaction(redis_cluster_nodes);
+    test_transaction(redis_cluster_nodes, redis_password);
 
     ////////////////////////////////////////////////////////////////////////////
     // KEY VALUE
-    test_empty_key(redis_cluster_nodes);
-    test_key_type(redis_cluster_nodes);
-    test_expire(redis_cluster_nodes);
-    test_get_and_set0(redis_cluster_nodes);
-    test_get_and_set1(redis_cluster_nodes);
-    test_get_and_set2(redis_cluster_nodes);
-    test_get_and_set3(redis_cluster_nodes);
-    test_incrby(redis_cluster_nodes);
-    test_setnxex(redis_cluster_nodes);
-    test_mget_and_mset(redis_cluster_nodes);
+    test_empty_key(redis_cluster_nodes, redis_password);
+    test_key_type(redis_cluster_nodes, redis_password);
+    test_expire(redis_cluster_nodes, redis_password);
+    test_get_and_set0(redis_cluster_nodes, redis_password);
+    test_get_and_set1(redis_cluster_nodes, redis_password);
+    test_get_and_set2(redis_cluster_nodes, redis_password);
+    test_get_and_set3(redis_cluster_nodes, redis_password);
+    test_incrby(redis_cluster_nodes, redis_password);
+    test_setnxex(redis_cluster_nodes, redis_password);
+    test_mget_and_mset(redis_cluster_nodes, redis_password);
 
     ////////////////////////////////////////////////////////////////////////////
     // LIST
-    test_list(redis_cluster_nodes);
+    test_list(redis_cluster_nodes, redis_password);
 
     ////////////////////////////////////////////////////////////////////////////
     // HASH
-    test_hget_and_hset1(redis_cluster_nodes);
-    test_hget_and_hset2(redis_cluster_nodes);
-    test_hmget_and_hmset1(redis_cluster_nodes);
-    test_hmget_and_hmset2(redis_cluster_nodes);
-    test_hscan(redis_cluster_nodes);
-    test_hincrby_and_hlen(redis_cluster_nodes);
-    test_hmincrby(redis_cluster_nodes);
-    test_hsetnx(redis_cluster_nodes);
-    test_hsetnxex(redis_cluster_nodes);
+    test_hget_and_hset1(redis_cluster_nodes, redis_password);
+    test_hget_and_hset2(redis_cluster_nodes, redis_password);
+    test_hmget_and_hmset1(redis_cluster_nodes, redis_password);
+    test_hmget_and_hmset2(redis_cluster_nodes, redis_password);
+    test_hscan(redis_cluster_nodes, redis_password);
+    test_hincrby_and_hlen(redis_cluster_nodes, redis_password);
+    test_hmincrby(redis_cluster_nodes, redis_password);
+    test_hsetnx(redis_cluster_nodes, redis_password);
+    test_hsetnxex(redis_cluster_nodes, redis_password);
 
     ////////////////////////////////////////////////////////////////////////////
     // SET
-    test_set(redis_cluster_nodes);
-    test_sscan1(redis_cluster_nodes);
-    test_sscan2(redis_cluster_nodes);
+    test_set(redis_cluster_nodes, redis_password);
+    test_sscan1(redis_cluster_nodes, redis_password);
+    test_sscan2(redis_cluster_nodes, redis_password);
 
     ////////////////////////////////////////////////////////////////////////////
     // SORTED SET
-    test_sorted_set(redis_cluster_nodes);
-    test_zrange(redis_cluster_nodes);
-    test_zrevrange(redis_cluster_nodes);
-    test_zrangebyscore(redis_cluster_nodes);
-    test_zrevrangebyscore(redis_cluster_nodes);
-    test_zrem(redis_cluster_nodes);
-    test_zremrangebyrank(redis_cluster_nodes);
+    test_sorted_set(redis_cluster_nodes, redis_password);
+    test_zrange(redis_cluster_nodes, redis_password);
+    test_zrevrange(redis_cluster_nodes, redis_password);
+    test_zrangebyscore(redis_cluster_nodes, redis_password);
+    test_zrevrangebyscore(redis_cluster_nodes, redis_password);
+    test_zrem(redis_cluster_nodes, redis_password);
+    test_zremrangebyrank(redis_cluster_nodes, redis_password);
 
     ////////////////////////////////////////////////////////////////////////////
     // MISC
     const char* test_slots_env = getenv("TEST_SLOSTS");
     if ((test_slots_env != NULL) && (0 == strcmp(test_slots_env, "1")))
-        test_slots(redis_cluster_nodes);
+        test_slots(redis_cluster_nodes, redis_password);
 
     printf("\n");
     for (std::vector<std::string>::size_type i=0; i<sg_faild_cases.size(); ++i)
@@ -271,12 +276,12 @@ void success_print(const char* file, int line, const char* function, const char*
 
 ////////////////////////////////////////////////////////////////////////////
 // MISC
-void test_slots(const std::string& redis_cluster_nodes)
+void test_slots(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     // test all slots attached with a node
     TIPS_PRINT();
 
-    r3c::CRedisClient rc(redis_cluster_nodes);
+    r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
     for (unsigned int i=0; i<100000; ++i)
     {
         const std::string& key = r3c::any2string(i);
@@ -298,13 +303,13 @@ void test_slots(const std::string& redis_cluster_nodes)
 
 ////////////////////////////////////////////////////////////////////////////
 // EVAL
-void test_eval(const std::string& redis_cluster_nodes)
+void test_eval(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
     try
     {
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         const uint32_t timeout_seconds = 3;
         const std::string key = "eval_key";
         const std::string& lua_scripts = r3c::format_string("local n; n=redis.call('incrby','%s','2016');redis.call('expire','%s','%u'); return n;", key.c_str(), key.c_str(), timeout_seconds);
@@ -358,7 +363,7 @@ void test_eval(const std::string& redis_cluster_nodes)
     }
 }
 
-void test_transaction(const std::string& redis_cluster_nodes)
+void test_transaction(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
@@ -367,9 +372,9 @@ void test_transaction(const std::string& redis_cluster_nodes)
         const int retry_times = 0;
         const bool force_retry = false;
         std::pair<std::string, uint16_t>* which = NULL;
-        r3c::CRedisClient rc1(redis_cluster_nodes);
-        r3c::CRedisClient rc2(redis_cluster_nodes);
-        r3c::CRedisClient rc3(redis_cluster_nodes);
+        r3c::CRedisClient rc1(redis_cluster_nodes, redis_password);
+        r3c::CRedisClient rc2(redis_cluster_nodes, redis_password);
+        r3c::CRedisClient rc3(redis_cluster_nodes, redis_password);
         const std::string key = "r3c_kk";
         std::string value;
 
@@ -428,13 +433,13 @@ void test_transaction(const std::string& redis_cluster_nodes)
 ////////////////////////////////////////////////////////////////////////////
 // KEY VALUE
 
-void test_empty_key(const std::string& redis_cluster_nodes)
+void test_empty_key(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
     try
     {
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         const std::string key;
 
         if (rc.cluster_mode())
@@ -540,13 +545,13 @@ void test_empty_key(const std::string& redis_cluster_nodes)
     }
 }
 
-void test_key_type(const std::string& redis_cluster_nodes)
+void test_key_type(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
     try
     {
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         const std::string key = "r3c_kk";
         std::string key_type;
         std::string value;
@@ -652,13 +657,13 @@ void test_key_type(const std::string& redis_cluster_nodes)
     }
 }
 
-void test_expire(const std::string& redis_cluster_nodes)
+void test_expire(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
     try
     {
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         const std::string key = "r3c_kk";
         const std::string value = "123456";
 
@@ -699,13 +704,13 @@ void test_expire(const std::string& redis_cluster_nodes)
     }
 }
 
-void test_get_and_set0(const std::string& redis_cluster_nodes)
+void test_get_and_set0(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
     try
     {
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         const std::string key1 = "r3c_kk 00";
         const std::string key2 = "r3c_kk 22";
         const std::string key3 = "r3c_kk 33";
@@ -770,13 +775,13 @@ void test_get_and_set0(const std::string& redis_cluster_nodes)
     }
 }
 
-void test_get_and_set1(const std::string& redis_cluster_nodes)
+void test_get_and_set1(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
     try
     {
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         const std::string key = "r3c_kk";
         const std::string value = "123456";
 
@@ -812,13 +817,13 @@ void test_get_and_set1(const std::string& redis_cluster_nodes)
     }
 }
 
-void test_get_and_set2(const std::string& redis_cluster_nodes)
+void test_get_and_set2(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
     try
     {
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         int k = 20180212;
         struct X v;
 
@@ -860,13 +865,13 @@ void test_get_and_set2(const std::string& redis_cluster_nodes)
     }
 }
 
-void test_get_and_set3(const std::string& redis_cluster_nodes)
+void test_get_and_set3(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
     try
     {
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         const std::string key = "r3c kk";
         std::string value;
         int step = 0;
@@ -911,13 +916,13 @@ void test_get_and_set3(const std::string& redis_cluster_nodes)
     }
 }
 
-void test_incrby(const std::string& redis_cluster_nodes)
+void test_incrby(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
     try
     {
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         const uint32_t expired_seconds = 2;
         const std::string key = "r3c kk";
         std::string value;
@@ -1099,13 +1104,13 @@ void test_incrby(const std::string& redis_cluster_nodes)
     }
 }
 
-void test_setnxex(const std::string& redis_cluster_nodes)
+void test_setnxex(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
     try
     {
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         const std::string key = "r3c kk";
         std::string value;
 
@@ -1143,13 +1148,13 @@ void test_setnxex(const std::string& redis_cluster_nodes)
     }
 }
 
-void test_mget_and_mset(const std::string& redis_cluster_nodes)
+void test_mget_and_mset(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
     try
     {
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         std::vector<std::string> values;
         std::vector<std::string> keys(3);
         keys[0] = "r3c kk 0";
@@ -1213,13 +1218,13 @@ void test_mget_and_mset(const std::string& redis_cluster_nodes)
 
 ////////////////////////////////////////////////////////////////////////////
 // LIST
-void test_list(const std::string& redis_cluster_nodes)
+void test_list(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
     try
     {
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         const std::string key = "r3c kk";
         std::vector<std::string> values;
         std::string value;
@@ -1337,13 +1342,13 @@ void test_list(const std::string& redis_cluster_nodes)
 
 ////////////////////////////////////////////////////////////////////////////
 // HASH
-void test_hget_and_hset1(const std::string& redis_cluster_nodes)
+void test_hget_and_hset1(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
     try
     {
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         const std::string key = "r3c_kk";
         const std::string field = "fiel d";
         const std::string value = "12345 6";
@@ -1411,13 +1416,13 @@ void test_hget_and_hset1(const std::string& redis_cluster_nodes)
     }
 }
 
-void test_hget_and_hset2(const std::string& redis_cluster_nodes)
+void test_hget_and_hset2(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
     try
     {
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         int k = 603;
         int f = 2016;
         struct X v;
@@ -1465,13 +1470,13 @@ void test_hget_and_hset2(const std::string& redis_cluster_nodes)
     }
 }
 
-void test_hmget_and_hmset1(const std::string& redis_cluster_nodes)
+void test_hmget_and_hmset1(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
     try
     {
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         const std::string key = "r3c_kk";
         const std::string f[3] = { "field 1", "field 2", "field 3" };
         const std::string v[3] = { "abc 1", "abc 2", "abc 3" };
@@ -1561,13 +1566,13 @@ void test_hmget_and_hmset1(const std::string& redis_cluster_nodes)
     }
 }
 
-void test_hmget_and_hmset2(const std::string& redis_cluster_nodes)
+void test_hmget_and_hmset2(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
     try
     {
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         SUCCESS_PRINT("%s", "OK");
     }
     catch (r3c::CRedisException& ex)
@@ -1576,13 +1581,13 @@ void test_hmget_and_hmset2(const std::string& redis_cluster_nodes)
     }
 }
 
-void test_hscan(const std::string& redis_cluster_nodes)
+void test_hscan(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
     try
     {
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         std::map<std::string, std::string> map, results;
         std::map<std::string, std::string>::iterator iter;
         std::string key = "r3c_kk";
@@ -1644,13 +1649,13 @@ void test_hscan(const std::string& redis_cluster_nodes)
     }
 }
 
-void test_hincrby_and_hlen(const std::string& redis_cluster_nodes)
+void test_hincrby_and_hlen(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
     try
     {
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         const std::string key = "r3c_kk";
         std::string str_value;
         int64_t int_value = -1;
@@ -1716,13 +1721,13 @@ void test_hincrby_and_hlen(const std::string& redis_cluster_nodes)
     }
 }
 
-void test_hmincrby(const std::string& redis_cluster_nodes)
+void test_hmincrby(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
     try
     {
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         const std::string key = "r3c_kk";
         rc.del(key);
 
@@ -1775,13 +1780,13 @@ void test_hmincrby(const std::string& redis_cluster_nodes)
     }
 }
 
-void test_hsetnx(const std::string& redis_cluster_nodes)
+void test_hsetnx(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
     try
     {
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         const std::string key = "r3c kk";
         std::string value;
 
@@ -1828,13 +1833,13 @@ void test_hsetnx(const std::string& redis_cluster_nodes)
     }
 }
 
-void test_hsetnxex(const std::string& redis_cluster_nodes)
+void test_hsetnxex(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
     try
     {
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         const std::string key = "r3c kk";
         std::string value;
 
@@ -1910,13 +1915,13 @@ void test_hsetnxex(const std::string& redis_cluster_nodes)
 
 ////////////////////////////////////////////////////////////////////////////
 // SET
-void test_set(const std::string& redis_cluster_nodes)
+void test_set(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
     try
     {
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         const std::string key = "r3c_kk";
         std::vector<std::string> members;
         std::string member = "member";
@@ -2094,13 +2099,13 @@ void test_set(const std::string& redis_cluster_nodes)
     }
 }
 
-void test_sscan1(const std::string& redis_cluster_nodes)
+void test_sscan1(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
     try
     {
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         const std::string key = "r3c_kk";
         std::string pattern;
         int count = 0;
@@ -2175,13 +2180,13 @@ void test_sscan1(const std::string& redis_cluster_nodes)
     }
 }
 
-void test_sscan2(const std::string& redis_cluster_nodes)
+void test_sscan2(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
     try
     {
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         const std::string key = "r3c_kk";
         std::string pattern;
         int count = 0;
@@ -2254,13 +2259,13 @@ void test_sscan2(const std::string& redis_cluster_nodes)
 
 ////////////////////////////////////////////////////////////////////////////
 // SORTED SET
-void test_sorted_set(const std::string& redis_cluster_nodes)
+void test_sorted_set(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
     try
     {
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         const std::string key = "r3c_kk";
         std::string field = "f 1";
         int64_t score = 0;
@@ -2478,7 +2483,7 @@ void test_sorted_set(const std::string& redis_cluster_nodes)
     }
 }
 
-void test_zrange(const std::string& redis_cluster_nodes)
+void test_zrange(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
@@ -2487,7 +2492,7 @@ void test_zrange(const std::string& redis_cluster_nodes)
         int count = -1;
         int64_t ret = 0;
         std::vector<std::pair<std::string, int64_t> > values;
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         const std::string key = "r3c_kk";
 
         rc.del(key);
@@ -2565,7 +2570,7 @@ void test_zrange(const std::string& redis_cluster_nodes)
     }
 }
 
-void test_zrevrange(const std::string& redis_cluster_nodes)
+void test_zrevrange(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
@@ -2573,7 +2578,7 @@ void test_zrevrange(const std::string& redis_cluster_nodes)
     {
         int count = -1;
         std::vector<std::pair<std::string, int64_t> > values;
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         const std::string key = "r3c_kk";
 
         rc.del(key);
@@ -2653,13 +2658,13 @@ void test_zrevrange(const std::string& redis_cluster_nodes)
     }
 }
 
-void test_zrangebyscore(const std::string& redis_cluster_nodes)
+void test_zrangebyscore(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
     try
     {
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         const std::string key = "r3c_kk";
 
         rc.del(key);
@@ -2699,13 +2704,13 @@ void test_zrangebyscore(const std::string& redis_cluster_nodes)
     }
 }
 
-void test_zrevrangebyscore(const std::string& redis_cluster_nodes)
+void test_zrevrangebyscore(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
     try
     {
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         const std::string key = "r3c_kk";
 
         rc.del(key);
@@ -2745,14 +2750,14 @@ void test_zrevrangebyscore(const std::string& redis_cluster_nodes)
     }
 }
 
-void test_zrem(const std::string& redis_cluster_nodes)
+void test_zrem(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
     try
     {
         int count = -1;
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         const std::string key = "r3c_kk";
         rc.del(key);
 
@@ -2795,14 +2800,14 @@ void test_zrem(const std::string& redis_cluster_nodes)
     }
 }
 
-void test_zremrangebyrank(const std::string& redis_cluster_nodes)
+void test_zremrangebyrank(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
     try
     {
         int count = -1;
-        r3c::CRedisClient rc(redis_cluster_nodes);
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
         const std::string key = "r3c_kk";
         int64_t start;
         int64_t end;

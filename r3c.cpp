@@ -374,6 +374,19 @@ CRedisClient::CRedisClient(const std::string& nodes, int connect_timeout_millise
     init();
 }
 
+CRedisClient::CRedisClient(const std::string& nodes, const std::string& password) throw (CRedisException)
+            : _command_observer(NULL),
+              _nodes_string(nodes),
+              _connect_timeout_milliseconds(CONNECT_TIMEOUT_MILLISECONDS),
+              _data_timeout_milliseconds(DATA_TIMEOUT_MILLISECONDS),
+              _retry_times(RETRY_TIMES),
+              _retry_sleep_milliseconds(RETRY_SLEEP_MILLISECONDS),
+              _password(password),
+              _read_policy(RP_ONLEY_MASTER)
+{
+    init();
+}
+
 CRedisClient::~CRedisClient()
 {
     free_slots_info();
