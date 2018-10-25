@@ -1124,9 +1124,7 @@ void CRedisClient::hincrby(const std::string& key, const std::vector<std::pair<s
 
 void CRedisClient::hmincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
-    const std::string& lua_scripts = format_string(
-            "local j=1;local results={};for i=1,#ARGV,2 do local f=ARGV[i];local v=ARGV[i+1];results[j]=redis.call('hincrby','%s',f,v);j=j+1; end;return results;",
-            key.c_str());
+    const std::string lua_scripts = "local j=1;local results={};for i=1,#ARGV,2 do local f=ARGV[i];local v=ARGV[i+1];results[j]=redis.call('hincrby',KEYS[1],f,v);j=j+1; end;return results;";
     std::vector<std::string> parameters(2*increments.size());
     for (std::vector<std::pair<std::string, int64_t> >::size_type i=0,j=0; i<increments.size(); ++i,j+=2)
     {
