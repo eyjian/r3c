@@ -741,10 +741,13 @@ int64_t CRedisClient::incrby(const std::string& key, int64_t increment, std::pai
 
 int64_t CRedisClient::incrby(const std::string& key, int64_t increment, int64_t expired_increment, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
-    const std::string& lua_scripts = format_string(
-            "local n; n=redis.call('incrby','%s','%" PRId64"'); if (n==%" PRId64") then redis.call('expire', '%s', '%u') end; return n;",
-            key.c_str(), increment, expired_increment, key.c_str(), expired_seconds);
-    const RedisReplyHelper redis_reply = eval(false, key, lua_scripts, which, retry_times, force_retry);
+    // 注意ARGV[2]和n需类型相同才可以比较，所以要么n转成字符串，要么ARGV[2]转成数字
+    const std::string lua_scripts = "local n;n=redis.call('INCRBY',KEYS[1],ARGV[1]);if (n==tonumber(ARGV[2])) then redis.call('EXPIRE',KEYS[1],ARGV[3]) end;return n;";
+    std::vector<std::string> parameters(3);
+    parameters[0] = any2string(increment);
+    parameters[1] = any2string(expired_increment);
+    parameters[2] = any2string(expired_seconds);
+    const RedisReplyHelper redis_reply = eval(false, key, lua_scripts, parameters, which, retry_times, force_retry);
     if (REDIS_REPLY_INTEGER == redis_reply->type)
         return static_cast<int64_t>(redis_reply->integer);
     return 0;
@@ -1124,7 +1127,7 @@ void CRedisClient::hincrby(const std::string& key, const std::vector<std::pair<s
 
 void CRedisClient::hmincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
-    const std::string lua_scripts = "local j=1;local results={};for i=1,#ARGV,2 do local f=ARGV[i];local v=ARGV[i+1];results[j]=redis.call('hincrby',KEYS[1],f,v);j=j+1; end;return results;";
+    const std::string lua_scripts = "local j=1;local results={};for i=1,#ARGV,2 do local f=ARGV[i];local v=ARGV[i+1];results[j]=redis.call('HINCRBY',KEYS[1],f,v);j=j+1; end;return results;";
     std::vector<std::string> parameters(2*increments.size());
     for (std::vector<std::pair<std::string, int64_t> >::size_type i=0,j=0; i<increments.size(); ++i,j+=2)
     {
