@@ -545,6 +545,24 @@ public: // KV
     const RedisReplyHelper evalsha(bool is_read_command, const std::string& key, const std::string& sha1, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
     const RedisReplyHelper evalsha(const std::string& key, const std::string& sha1, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
 
+    // Only standlone
+    //
+    // Example:
+    //
+    // const std::string lua_scripts = "for i=1,#ARGV,2 do redis.call('SET',KEYS[i],ARGV[i]); end;redis.status_reply('OK');";
+    // std::vector<std::string> keys(3);
+    // std::vector<std::string> parameters(3);
+    // keys[0] = "K1";
+    // keys[1] = "K2";
+    // keys[2] = "K3";
+    // parameters[0] = "1";
+    // parameters[1] = "2";
+    // parameters[2] = "3";
+    //
+    // eval(false, lua_scripts, keys, parameters);
+    const RedisReplyHelper eval(bool is_read_command, const std::string& lua_scripts, const std::vector<std::string>& keys, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
+    const RedisReplyHelper evalsha(bool is_read_command, const std::string& sha1, const std::vector<std::string>& keys, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which=NULL, int retry_times=RETRY_TIMES, bool force_retry=false) throw (CRedisException);
+
 public: // HASH
     // Delete a hash field.
     // Time complexity: O(1)

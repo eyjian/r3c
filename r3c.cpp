@@ -938,6 +938,36 @@ const RedisReplyHelper CRedisClient::evalsha(const std::string& key, const std::
     return evalsha(false, key, sha1, parameters, which, retry_times, force_retry);
 }
 
+const RedisReplyHelper CRedisClient::eval(bool is_read_command, const std::string& lua_scripts, const std::vector<std::string>& keys, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
+{
+    const int numkeys = static_cast<int>(keys.size());
+    const std::string key = std::string("");
+    CCommandArgs cmd_args;
+    cmd_args.add_arg("EVAL");
+    cmd_args.add_arg(lua_scripts);
+    cmd_args.add_arg(numkeys);
+    cmd_args.add_args(keys);
+    cmd_args.add_args(parameters);
+    cmd_args.final();
+
+    return redis_command(is_read_command, force_retry, retry_times, key, cmd_args, which);
+}
+
+const RedisReplyHelper CRedisClient::evalsha(bool is_read_command, const std::string& sha1, const std::vector<std::string>& keys, const std::vector<std::string>& parameters, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
+{
+    const int numkeys = static_cast<int>(keys.size());
+    const std::string key = std::string("");
+    CCommandArgs cmd_args;
+    cmd_args.add_arg("EVALSHA");
+    cmd_args.add_arg(sha1);
+    cmd_args.add_arg(numkeys);
+    cmd_args.add_args(keys);
+    cmd_args.add_args(parameters);
+    cmd_args.final();
+
+    return redis_command(is_read_command, force_retry, retry_times, key, cmd_args, which);
+}
+
 //
 // HASH
 //
