@@ -1042,10 +1042,13 @@ bool CRedisClient::hset(const std::string& key, const std::string& field, const 
 
 bool CRedisClient::hsetex(const std::string& key, const std::string& field, const std::string& value, uint32_t expired_seconds, std::pair<std::string, uint16_t>* which, int retry_times, bool force_retry) throw (CRedisException)
 {
-    const std::string& lua_scripts = format_string(
-            "local n; n=redis.call('hset','%s','%s','%s'); if (n>0) then redis.call('expire', '%s', '%u') end; return n;",
-            key.c_str(), field.c_str(), value.c_str(), key.c_str(), expired_seconds);
-    const RedisReplyHelper redis_reply = eval(false, key, lua_scripts, which, retry_times, force_retry);
+    const std::string lua_scripts = "local n;n=redis.call('HSET',KEYS[1],ARGV[1],ARGV[2]);if (n>0) then redis.call('EXPIRE',KEYS[1],ARGV[3]) end;return n;";
+    std::vector<std::string> parameters(3);
+    parameters[0] = field;
+    parameters[1] = any2string(value);
+    parameters[2] = any2string(expired_seconds);
+
+    const RedisReplyHelper redis_reply = eval(false, key, lua_scripts, parameters, which, retry_times, force_retry);
     if (REDIS_REPLY_INTEGER == redis_reply->type)
         return 1 == redis_reply->integer;
     return true;
