@@ -358,7 +358,7 @@ bool is_clusterdown_error(const std::string& errtype)
     return errtype == "CLUSTERDOWN";
 }
 
-bool is_noscript(const std::string& errtype)
+bool is_noscript_error(const std::string& errtype)
 {
     // NOSCRIPT No matching script. Please use EVAL.
     return errtype == "NOSCRIPT";

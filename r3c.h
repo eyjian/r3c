@@ -293,7 +293,7 @@ private:
 bool is_moved_error(const std::string& errtype);
 bool is_wrongtype_error(const std::string& errtype);
 bool is_clusterdown_error(const std::string& errtype);
-bool is_noscript(const std::string& errtype);
+bool is_noscript_error(const std::string& errtype);
 
 // NOTICE: not thread safe
 // A redis client than support redis cluster
