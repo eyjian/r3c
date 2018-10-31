@@ -18,7 +18,6 @@ int incrbyex_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
     // 2) don't need to free replies
     // 3) don't need to free RedisModuleString objects
     RedisModule_AutoMemory(ctx); /* Use automatic memory management. */
-    RedisModule_AutoMemory(ctx); /* Use automatic memory management. */
     if (argc != 4) return RedisModule_WrongArity(ctx);
 
     RedisModuleKey *key = (RedisModuleKey*)RedisModule_OpenKey(ctx, argv[1],
