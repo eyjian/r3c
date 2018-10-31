@@ -31,7 +31,8 @@ int incrbyex_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 
     RedisModuleString* seconds = argv[2];
     RedisModuleString* increment = argv[3];
-    long long ll_seconds, ll_newval;
+    long long ll_seconds; // 过期时长
+    long long ll_newval; // 新的值
     if (RedisModule_StringToLongLong(seconds, &ll_seconds) != REDISMODULE_OK) {
         return RedisModule_ReplyWithError(ctx, "ERR value is not an integer or out of range");
     }
@@ -40,16 +41,16 @@ int incrbyex_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
     }
 
     size_t len;
-    char *s = RedisModule_StringDMA(key, &len, REDISMODULE_READ);
+    char *s = RedisModule_StringDMA(key, &len, REDISMODULE_READ|REDISMODULE_WRITE);
     if (0 == len || NULL == s || s == '\0') {
         // set必须在Expire之前，否则会冲掉Expire的作用，
         // 这也是else分支未用RedisModule_StringSet的原因
         RedisModule_StringSet(key, increment);
-        RedisModule_SetExpire(key, ll_seconds*1000);
+        RedisModule_SetExpire(key, ll_seconds*1000); // 以秒为单位，需要乘以1000
     }
     else {
         char* endptr;
-        long long ll_oldval = strtoll(s, &endptr, 10);
+        long long ll_oldval = strtoll(s, &endptr, 10); // s不一定是有效的数字，所以需要做检查
         ll_newval = ll_newval + ll_oldval;
         if ((errno == ERANGE && (ll_oldval == LLONG_MAX || ll_oldval == LLONG_MIN))
                 || (errno != 0 && ll_oldval == 0)) {
@@ -94,8 +95,8 @@ int hmincrby_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
         return RedisModule_ReplyWithError(ctx, REDISMODULE_ERRORMSG_WRONGTYPE);
     }
 
-    const int count = argc/2 - 1;
-    std::vector<long long> newval_array(count);
+    const int count = argc/2 - 1; // 键值对个数
+    std::vector<long long> newval_array(count); // 用来存储新值的数组
     for (int i=2; i<argc; i+=2) {
         RedisModuleString* field = argv[i];
         RedisModuleString* incrvalue = argv[i+1];
@@ -106,16 +107,16 @@ int hmincrby_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 
         RedisModuleString *oldval;
         RedisModule_HashGet(key, REDISMODULE_HASH_NONE, field, &oldval, NULL);
-        if (NULL == oldval) {
+        if (NULL == oldval) { // field不存在时
             RedisModule_HashSet(key,REDISMODULE_HASH_NONE, field, incrvalue, NULL);
         }
-        else {
+        else { // field已存在时
             long long ll_oldval;
             if (RedisModule_StringToLongLong(oldval, &ll_oldval) != REDISMODULE_OK) {
                 return RedisModule_ReplyWithError(ctx, "ERR hash value is not an integer");
             }
 
-            ll_newvalue = ll_newvalue + ll_oldval;
+            ll_newvalue = ll_newvalue + ll_oldval; // 累加得到新值
             RedisModuleString* newval = RedisModule_CreateStringFromLongLong(ctx, ll_newvalue);
             RedisModule_HashSet(key,REDISMODULE_HASH_NONE, field, newval, NULL);
         }
@@ -123,7 +124,7 @@ int hmincrby_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
         newval_array[i] = ll_newvalue;
     }
 
-    RedisModule_ReplyWithArray(ctx, count);
+    RedisModule_ReplyWithArray(ctx, count); // 返回数组类型的Reply
     for (std::vector<long long>::size_type i=0; i<newval_array.size(); ++i)
         RedisModule_ReplyWithLongLong(ctx, newval_array[i]);
     return REDISMODULE_OK;
