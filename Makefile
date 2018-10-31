@@ -10,6 +10,7 @@ LIBNAME=libr3c
 CMD=r3c_cmd
 TEST=r3c_test
 STRESS=r3c_stress
+EXTENSION=redis_command_extension.so
 
 HIREDIS?=/usr/local/hiredis
 PREFIX?=/usr/local
@@ -28,22 +29,23 @@ INSTALL?= cp -a
 DEBUG?= -g -ggdb # -DSLEEP_USE_POLL=1
 WARNINGS=-Wall -W -Wwrite-strings
 REAL_CPPFLAGS=$(CPPFLAGS) $(ARCH) -I$(HIREDIS)/include -DSLEEP_USE_POLL=1 -D__STDC_FORMAT_MACROS=1 -fstrict-aliasing -fPIC $(DEBUG) $(OPTIMIZATION) $(WARNINGS)
-REAL_LDFLAGS=$(LDFLAGS) $(ARCH) $(HIREDIS)/lib/libhiredis.a
+REAL_LDFLAGS=$(LDFLAGS) $(ARCH) -fPIC $(HIREDIS)/lib/libhiredis.a
 
 CXX:=$(shell sh -c 'type $(CXX) >/dev/null 2>/dev/null && echo $(CXX) || echo g++')
 STLIBSUFFIX=a
 STLIBNAME=$(LIBNAME).$(STLIBSUFFIX)
 STLIB_MAKE_CMD=ar rcs
 
-all: $(STLIBNAME) $(CMD) $(TEST) $(STRESS)
+all: $(STLIBNAME) $(CMD) $(TEST) $(STRESS) $(EXTENSION)
 
 # Deps (use make dep to generate this)
 sha1.o: sha1.cpp
-utils.o: utils.cpp utils.h
-r3c.o: r3c.cpp r3c.h
-r3c_cmd.o: r3c_cmd.cpp r3c.h utils.cpp
-r3c_test.o: r3c_test.cpp r3c.h utils.cpp
-r3c_stress.o: r3c_stress.cpp r3c.h utils.cpp
+utils.o: utils.h utils.cpp
+r3c.o: r3c.cpp r3c.h r3c.cpp utils.h utils.cpp
+r3c_cmd.o: r3c_cmd.cpp r3c.h r3c.cpp utils.h utils.cpp
+r3c_test.o: r3c_test.cpp r3c.h r3c.cpp utils.h utils.cpp
+r3c_stress.o: r3c_stress.cpp r3c.h r3c.cpp utils.cpp
+redis_command_extension.o: redis_command_extension.cpp r3c.h r3c.cpp utils.h utils.cpp
 
 %.o: %.cpp
 	$(CXX) -c $< $(REAL_CPPFLAGS)
@@ -59,9 +61,12 @@ $(TEST): r3c_test.o $(STLIBNAME)
 
 $(STRESS): r3c_stress.o $(STLIBNAME)
 	$(CXX) -o $@ $^ $(REAL_LDFLAGS)
-	
+
+$(EXTENSION): redis_command_extension.o $(STLIBNAME)
+	$(CXX) -o $@ -shared $^ $(REAL_LDFLAGS)
+
 clean:
-	rm -f $(STLIBNAME) $(CMD) $(TEST) $(STRESS) *.o core core.*
+	rm -f $(STLIBNAME) $(CMD) $(TEST) $(STRESS) $(EXTENSION) *.o core core.*
 
 install:
 	mkdir -p $(INSTALL_BIN)
