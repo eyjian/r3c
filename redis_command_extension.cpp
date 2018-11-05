@@ -68,6 +68,7 @@ int incrbyex_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
         strncpy(s, newval_s, newval_len);
     }
 
+    RedisModule_ReplicateVerbatim(ctx); // 写AOF和复制到slaves
     RedisModule_ReplyWithLongLong(ctx, ll_newval);
     return REDISMODULE_OK;
 }
@@ -124,6 +125,7 @@ int hmincrby_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
         newval_array[i] = ll_newvalue;
     }
 
+    RedisModule_ReplicateVerbatim(ctx); // 写AOF和复制到slaves
     RedisModule_ReplyWithArray(ctx, count); // 返回数组类型的Reply
     for (std::vector<long long>::size_type i=0; i<newval_array.size(); ++i)
         RedisModule_ReplyWithLongLong(ctx, newval_array[i]);
