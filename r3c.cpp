@@ -364,6 +364,12 @@ bool is_noscript_error(const std::string& errtype)
     return errtype == "NOSCRIPT";
 }
 
+bool is_noauth_error(const std::string& errtype)
+{
+    // NOAUTH Authentication required.
+    return errtype == "NOAUTH";
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // CRedisClient
 
@@ -2319,6 +2325,7 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, bool fo
             }
             else
             {
+                // NOAUTH Authentication required
                 // MOVED 6474 127.0.0.1:6380
                 // WRONGTYPE Operation against a key holding the wrong kind of value
                 // CLUSTERDOWN The cluster is down
@@ -2362,6 +2369,18 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, bool fo
 
                     if (_command_observer != NULL)
                         _command_observer->after_command(1, redis_node->ip_and_port.first, redis_node->ip_and_port.second, command_args.get_command(), redis_reply.get());
+                    continue;
+                }
+                else if (is_noauth_error(errinfo.errtype))
+                {
+                    (*g_error_log)("[SLOT:%d] %s\n", slot, errinfo.errmsg.c_str());
+                    redis_reply.free();
+
+                    if (_command_observer != NULL)
+                        _command_observer->after_command(1, redis_node->ip_and_port.first, redis_node->ip_and_port.second, command_args.get_command(), redis_reply.get());
+
+                    // 需要自己重新授权
+                    close_redis_node(redis_node);
                     continue;
                 }
                 else
