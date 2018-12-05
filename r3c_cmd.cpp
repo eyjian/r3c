@@ -99,7 +99,8 @@ int main(int argc, char* argv[])
         std::map<std::string, std::string>::iterator iter;
         std::vector<std::string> vec;
         std::pair<std::string, uint16_t> which_node;
-        r3c::CRedisClient redis_client(nodes);
+        std::string password = (getenv("PASSWORD")!=NULL)? getenv("PASSWORD"): "";
+        r3c::CRedisClient redis_client(nodes, password);
 
         if (0 == strcasecmp(cmd, "sha1"))
         {

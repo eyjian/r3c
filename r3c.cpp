@@ -2381,7 +2381,7 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, bool fo
 
                     // 需要自己重新授权
                     close_redis_node(redis_node);
-                    continue;
+                    break;
                 }
                 else
                 {
@@ -2394,7 +2394,7 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, bool fo
                 }
             }
         }
-        else
+        else // (redis_reply != NULL)
         {
             // REDIS_ERR_EOF (call read() return 0):
             // redis_context->err(3)
@@ -2737,15 +2737,20 @@ redisContext* CRedisClient::connect_redis_node(int slot, const std::pair<std::st
         {
             const redisReply* redis_reply = (redisReply*)redisCommand(redis_context, "AUTH %s", _password.c_str());
 
-            if (redis_reply != NULL)
+            if (redis_reply!=NULL && 0==strcmp(redis_reply->str,"OK"))
             {
+                // AUTH success
+                (*g_info_log)("[%s:%d] connect redis://%s:%d success\n", __FILE__, __LINE__, node.first.c_str(), node.second);
                 freeReplyObject((void*)redis_reply);
             }
             else
             {
-                // Authorization failed
+                // AUTH failed
                 errinfo->errcode = ERROR_REDIS_AUTH;
-                errinfo->raw_errmsg = "authorization failed";
+                if (redis_reply != NULL)
+                    errinfo->raw_errmsg = redis_reply->str;
+                else
+                    errinfo->raw_errmsg = "authorization failed";
                 errinfo->errmsg = format_string("[%s:%d][%s:%d][SLOT:%d] %s", __FILE__, __LINE__, node.first.c_str(), node.second, slot, errinfo->raw_errmsg.c_str());
                 (*g_error_log)("%s\n", errinfo->errmsg.c_str());
                 redisFree(redis_context);
