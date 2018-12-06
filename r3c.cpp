@@ -2262,7 +2262,7 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, bool fo
 
     const int slot = cluster_mode()? get_key_slot(&key): 0;
     struct RedisNode* redis_node = NULL;
-    RedisReplyHelper redis_reply;
+    RedisReplyHelper redis_reply = NULL;
     struct ErrorInfo errinfo;
     int retry_times_ = retry_times;
     bool to_retry = false;
@@ -2279,6 +2279,7 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, bool fo
     {
         bool is_node_of_slot;
 
+        redis_reply = NULL;
         to_retry = false;
         redis_node = get_redis_node(slot, is_read_command, &is_node_of_slot, &errinfo);
         redisContext* redis_context = redis_node->context;
