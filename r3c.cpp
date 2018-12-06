@@ -2290,9 +2290,17 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, bool fo
         if (NULL == redis_context)
         {
             reset_slots_info(slot);
-            if (_retry_sleep_milliseconds > 0)
-                millisleep(_retry_sleep_milliseconds);
-            continue; // RETRY
+
+            if (is_noauth_error(errinfo.errtype))
+            {
+                break;
+            }
+            else
+            {
+                if (_retry_sleep_milliseconds > 0)
+                    millisleep(_retry_sleep_milliseconds);
+                continue; // RETRY
+            }
         }
 
         if (_command_observer != NULL)
@@ -2746,11 +2754,19 @@ redisContext* CRedisClient::connect_redis_node(int slot, const std::pair<std::st
             else
             {
                 // AUTH failed
-                errinfo->errcode = ERROR_REDIS_AUTH;
-                if (redis_reply != NULL)
-                    errinfo->raw_errmsg = redis_reply->str;
-                else
+                if (NULL == redis_reply)
+                {
+                    errinfo->errcode = ERROR_REDIS_AUTH;
                     errinfo->raw_errmsg = "authorization failed";
+                }
+                else
+                {
+                    errinfo->errcode = ERROR_REDIS_AUTH;
+                    errinfo->raw_errmsg = redis_reply->str;
+                    extract_errtype(redis_reply, &errinfo->errtype);
+                    freeReplyObject((void*)redis_reply);
+                }
+
                 errinfo->errmsg = format_string("[%s:%d][%s:%d][SLOT:%d] %s", __FILE__, __LINE__, node.first.c_str(), node.second, slot, errinfo->raw_errmsg.c_str());
                 (*g_error_log)("%s\n", errinfo->errmsg.c_str());
                 redisFree(redis_context);
@@ -3047,7 +3063,7 @@ bool CRedisClient::get_slave_nodes(redisContext* redis_context, std::vector<std:
 }
 
 // Extract error type, such as ERR, MOVED, WRONGTYPE, ...
-void CRedisClient::extract_errtype(const redisReply* redis_reply, std::string* errtype)
+void CRedisClient::extract_errtype(const redisReply* redis_reply, std::string* errtype) const
 {
     if (redis_reply->len > 2)
     {

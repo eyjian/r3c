@@ -924,7 +924,7 @@ private:
     bool get_slave_nodes(redisContext* redis_context, std::vector<std::pair<std::string, uint16_t> >* nodes);
 
     // Called by: redis_command
-    void extract_errtype(const redisReply* redis_reply, std::string* errtype);
+    void extract_errtype(const redisReply* redis_reply, std::string* errtype) const;
 
 public:
     // Called by: get,hget,key_type,lpop,rpop,srandmember
