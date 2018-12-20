@@ -1,3 +1,5 @@
+// Writed by yijian
+// eyjian@qq.com eyjian@gmail.com
 #include "utils.h"
 #include "sha1.h"
 #include <hiredis/hiredis.h>

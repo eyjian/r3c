@@ -1,3 +1,6 @@
+// Writed by yijian
+// eyjian@qq.com eyjian@gmail.com
+// https://blog.csdn.net/Aquester
 #include "r3c.h"
 #include "utils.h"
 

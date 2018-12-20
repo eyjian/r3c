@@ -1,3 +1,6 @@
+// Writed by yijian
+// eyjian@qq.com eyjian@gmail.com
+// https://blog.csdn.net/Aquester
 #ifndef REDIS_CLUSTER_CLIENT_H
 #define REDIS_CLUSTER_CLIENT_H
 #include <assert.h>
