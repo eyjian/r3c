@@ -293,6 +293,7 @@ private:
     std::string _key;
 };
 
+bool is_ask_error(const std::string& errtype);
 bool is_moved_error(const std::string& errtype);
 bool is_wrongtype_error(const std::string& errtype);
 bool is_clusterdown_error(const std::string& errtype);
