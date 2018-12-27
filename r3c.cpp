@@ -2407,7 +2407,10 @@ const RedisReplyHelper CRedisClient::redis_command(bool is_read_command, bool fo
 
                     if (_command_observer != NULL)
                         _command_observer->after_command(1, redis_node->ip_and_port.first, redis_node->ip_and_port.second, command_args.get_command(), redis_reply.get());
-                    break;
+                    if (is_ask_error(errinfo.errtype))
+                        continue;
+                    else
+                        break;
                 }
             }
         }
@@ -2832,7 +2835,7 @@ struct RedisNode* CRedisClient::get_redis_node(int slot, bool is_read_command, b
 
         if (NULL == redis_node->context)
         {
-            (*g_debug_log)("[%s:%d] without any node\n", __FILE__, __LINE__, slot);
+            (*g_debug_log)("[%s:%d] slot(%d) without any node\n", __FILE__, __LINE__, slot);
 
             for (std::map<std::pair<std::string, uint16_t>, struct RedisNode*>::iterator iter=_redis_contexts.begin(); iter!=_redis_contexts.end(); ++iter)
             {
