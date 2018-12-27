@@ -106,7 +106,7 @@ std::string zaddflag2str(ZADDFLAG zaddflag);
 ////////////////////////////////////////////////////////////////////////////////
 
 // Set NULL to discard log
-typedef void (*LOG_WRITE)(const char* format, ...);
+typedef void (*LOG_WRITE)(const char* format, ...) __attribute__((format(printf, 1, 2)));
 void set_error_log_write(LOG_WRITE error_log);
 void set_info_log_write(LOG_WRITE info_log);
 void set_debug_log_write(LOG_WRITE debug_log);

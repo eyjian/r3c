@@ -21,8 +21,8 @@ std::ostream& operator <<(std::ostream& os, const struct redisReply& redis_reply
 
 namespace r3c {
 
-extern void null_log_write(const char* UNUSED(format), ...); // Discard log
-extern void r3c_log_write(const char* format, ...); // Ouput log to stdout
+extern void null_log_write(const char* UNUSED(format), ...) __attribute__((format(printf, 1, 2))); // Discard log
+extern void r3c_log_write(const char* format, ...) __attribute__((format(printf, 1, 2))); // Ouput log to stdout
 extern std::string strsha1(const std::string& str);
 extern uint16_t crc16(const char *buf, int len);
 extern int keyHashSlot(const char *key, size_t keylen);

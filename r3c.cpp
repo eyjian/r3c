@@ -127,7 +127,7 @@ static void debug_reply(const char* command, const char* key, int slot, const re
     else if (REDIS_REPLY_NIL == redis_reply->type)
         (*g_debug_log)("[%s:%d][NIL][%s][SLOT:%d]["PRINT_COLOR_GREEN"KEY:%s"PRINT_COLOR_NONE"][%s:%d]reply: (%d)%s\n", __FILE__, __LINE__, command, slot, key, node.first.c_str(), node.second, redis_reply->type, redis_reply->str);
     else if (REDIS_REPLY_ERROR == redis_reply->type)
-        (*g_debug_log)("[%s:%d][ERROR][%s][SLOT:%d]["PRINT_COLOR_GREEN"KEY:%s"PRINT_COLOR_NONE"][%s:%d]reply: (%d)(%d)%s\n", __FILE__, __LINE__, command, slot, key, node.first.c_str(), node.second, redis_reply->type, redis_reply->integer, redis_reply->str);
+        (*g_debug_log)("[%s:%d][ERROR][%s][SLOT:%d]["PRINT_COLOR_GREEN"KEY:%s"PRINT_COLOR_NONE"][%s:%d]reply: (%d)(%lld)%s\n", __FILE__, __LINE__, command, slot, key, node.first.c_str(), node.second, redis_reply->type, redis_reply->integer, redis_reply->str);
     else if (REDIS_REPLY_STATUS == redis_reply->type)
         (*g_debug_log)("[%s:%d][STATUS][%s][SLOT:%d]["PRINT_COLOR_GREEN"KEY:%s"PRINT_COLOR_NONE"][%s:%d]reply: (%d)%s\n", __FILE__, __LINE__, command, slot, key, node.first.c_str(), node.second, redis_reply->type, redis_reply->str);
     else
