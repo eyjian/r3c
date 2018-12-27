@@ -343,7 +343,11 @@ const char* CRedisException::what() const throw()
 
 std::string CRedisException::str() const throw ()
 {
-    return format_string("redis://%s:%d/CMD:%s/KEY:%.*s/%s/(%d)%s@%s:%d", _node_ip.c_str(), _node_port, _command.c_str(), _key.length(), _key.c_str(), _errinfo.errtype.c_str(), _errinfo.errcode, _errinfo.errmsg.c_str(), _file.c_str(), _line);
+    return format_string("redis://%s:%d/CMD:%s/KEY:%.*s/%s/(%d)%s@%s:%d",
+            _node_ip.c_str(), _node_port, _command.c_str(),
+            static_cast<int>(_key.length()), _key.c_str(),
+            _errinfo.errtype.c_str(), _errinfo.errcode, _errinfo.errmsg.c_str(),
+            _file.c_str(), _line);
 }
 
 bool is_ask_error(const std::string& errtype)

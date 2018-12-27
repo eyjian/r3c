@@ -36,7 +36,7 @@
 namespace r3c {
 
 extern void millisleep(int milliseconds);
-extern std::string format_string(const char* format, ...);
+extern std::string format_string(const char* format, ...) __attribute__((format(printf, 1, 2)));
 extern int split(std::vector<std::string>* tokens, const std::string& source, const std::string& sep, bool skip_sep=false);
 extern unsigned int get_key_slot(const std::string* key);
 
