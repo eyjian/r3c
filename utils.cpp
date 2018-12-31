@@ -366,6 +366,33 @@ void millisleep(int milliseconds)
 #endif
 }
 
+std::string get_formatted_current_datetime(bool with_milliseconds)
+{
+    char datetime_buffer[sizeof("YYYY-MM-DD hh:mm:ss/0123456789")];
+    struct timeval current;
+    gettimeofday(&current, NULL);
+    time_t current_seconds = current.tv_sec;
+
+    struct tm result;
+    result.tm_isdst = 0;
+    localtime_r(&current_seconds, &result);
+    if (with_milliseconds)
+    {
+        snprintf(datetime_buffer, sizeof(datetime_buffer)
+            ,"%04d-%02d-%02d %02d:%02d:%02d/%u"
+            ,result.tm_year+1900, result.tm_mon+1, result.tm_mday
+            ,result.tm_hour, result.tm_min, result.tm_sec, (unsigned int)(current.tv_usec));
+    }
+    else
+    {
+        snprintf(datetime_buffer, sizeof(datetime_buffer)
+            ,"%04d-%02d-%02d %02d:%02d:%02d"
+            ,result.tm_year+1900, result.tm_mon+1, result.tm_mday
+            ,result.tm_hour, result.tm_min, result.tm_sec);
+    }
+    return datetime_buffer;
+}
+
 std::string format_string(const char* format, ...)
 {
     size_t size = 4096;

@@ -54,6 +54,7 @@ struct NodeHasher
 };
 
 std::string& node2string(const Node& node, std::string* str);
+std::string node2string(const Node& node);
 
 struct NodeInfo
 {
@@ -883,6 +884,7 @@ extern void set_info_log_write(LOG_WRITE info_log);
 extern void set_debug_log_write(LOG_WRITE debug_log);
 
 extern void millisleep(int milliseconds);
+extern std::string get_formatted_current_datetime(bool with_milliseconds=false);
 extern std::string format_string(const char* format, ...) __attribute__((format(printf, 1, 2)));
 extern int split(std::vector<std::string>* tokens, const std::string& source, const std::string& sep, bool skip_sep=false);
 extern int get_key_slot(const std::string* key);

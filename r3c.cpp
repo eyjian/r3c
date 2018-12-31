@@ -95,6 +95,12 @@ std::string& node2string(const Node& node, std::string* str)
     return *str;
 }
 
+std::string node2string(const Node& node)
+{
+    std::string nodestr;
+    return node2string(node, &nodestr);
+}
+
 std::string NodeInfo::str() const
 {
     return format_string("nodeinfo://%s/%s:%d/%s", id.c_str(), node.first.c_str(), node.second, flags.c_str());
