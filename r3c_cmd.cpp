@@ -223,9 +223,13 @@ int main(int argc, char* argv[])
                 const char* lua_scripts_or_sha1 = argv[3];
                 if (0 == strcasecmp(cmd, "eval"))
                 {
+                    std::vector<std::string> parameters;
+                    for (int i=4; i<argc; ++i)
+                        parameters.push_back(argv[i]);
+
                     // r3c_cmd eval r3c_k1 "local v=redis.call('get','r3c_k1');return v"
                     // r3c_cmd eval r3c_k1 "local v=redis.call('set','r3c_k1','123');return v"
-                    const r3c::RedisReplyHelper reply = redis_client.eval(key, lua_scripts_or_sha1, &which_node);
+                    const r3c::RedisReplyHelper reply = redis_client.eval(key, lua_scripts_or_sha1, parameters, &which_node);
                     if (reply)
                         std::cout << reply.get();
                 }

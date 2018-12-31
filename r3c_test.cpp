@@ -33,6 +33,7 @@
 //         and run without any parameter.
 // To test slots, please set environment varialbe TEST_SLOSTS to 1.
 #include "r3c.h"
+#include "utils.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -284,7 +285,7 @@ void test_slots(const std::string& redis_cluster_nodes, const std::string& redis
     r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
     for (unsigned int i=0; i<100000; ++i)
     {
-        const std::string& key = r3c::any2string(i);
+        const std::string& key = r3c::int2string(i);
         const unsigned int slot = r3c::get_key_slot(&key);
 
         try
@@ -370,7 +371,6 @@ void test_transaction(const std::string& redis_cluster_nodes, const std::string&
     try
     {
         const int retry_times = 0;
-        const bool force_retry = false;
         std::pair<std::string, uint16_t>* which = NULL;
         r3c::CRedisClient rc1(redis_cluster_nodes, redis_password);
         r3c::CRedisClient rc2(redis_cluster_nodes, redis_password);
@@ -380,8 +380,8 @@ void test_transaction(const std::string& redis_cluster_nodes, const std::string&
 
         rc3.del(key);
         rc1.multi(key);
-        rc1.incrby(key, 1, which, retry_times, force_retry);
-        rc1.incrby(key, 3, which, retry_times, force_retry);
+        rc1.incrby(key, 1, which, retry_times);
+        rc1.incrby(key, 3, which, retry_times);
 
         value.clear();
         if (rc3.get(key, &value))

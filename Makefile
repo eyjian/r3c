@@ -25,10 +25,10 @@ INSTALL_INCLUDE_PATH= $(PREFIX)/$(INCLUDE_PATH)
 INSTALL_LIBRARY_PATH= $(PREFIX)/$(LIBRARY_PATH)
 INSTALL?= cp -a
 
-#OPTIMIZATION?=-O3
+#OPTIMIZATION?=-O2
 DEBUG?= -g -ggdb # -DSLEEP_USE_POLL=1
-WARNINGS=-Wall -W -Wwrite-strings
-REAL_CPPFLAGS=$(CPPFLAGS) $(ARCH) -I$(HIREDIS)/include -DSLEEP_USE_POLL=1 -D__STDC_FORMAT_MACROS=1 -fstrict-aliasing -fPIC $(DEBUG) $(OPTIMIZATION) $(WARNINGS)
+WARNINGS=-Wall -W -Wwrite-strings -Wno-missing-field-initializers
+REAL_CPPFLAGS=$(CPPFLAGS) $(ARCH) -I$(HIREDIS)/include -DSLEEP_USE_POLL=1 -D__STDC_FORMAT_MACROS=1 -D__STDC_CONSTANT_MACROS -fstrict-aliasing -fPIC $(DEBUG) $(OPTIMIZATION) $(WARNINGS)
 REAL_LDFLAGS=$(LDFLAGS) $(ARCH) -fPIC $(HIREDIS)/lib/libhiredis.a
 
 CXX:=$(shell sh -c 'type $(CXX) >/dev/null 2>/dev/null && echo $(CXX) || echo g++')

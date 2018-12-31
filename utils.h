@@ -1,5 +1,6 @@
 // Writed by yijian
-// eyjian@qq.com eyjian@gmail.com
+// eyjian@qq.com
+// eyjian@gmail.com
 #ifndef REDIS_CLUSTER_CLIENT_UTILS_H
 #define REDIS_CLUSTER_CLIENT_UTILS_H
 #include <errno.h>
@@ -8,8 +9,8 @@
 #include <string>
 #include <string.h>
 #include <sys/time.h>
-#include <vector>
 #include <unistd.h>
+#include <vector>
 
 #ifdef __GNUC__
 #  define UNUSED(x) UNUSED_ ## x __attribute__((__unused__))
@@ -17,19 +18,38 @@
 #  define UNUSED(x) UNUSED_ ## x
 #endif
 
+#define PRINT_COLOR_NONE         "\033[m"
+#define PRINT_COLOR_RED          "\033[0;32;31m"
+#define PRINT_COLOR_YELLOW       "\033[1;33m"
+#define PRINT_COLOR_BLUE         "\033[0;32;34m"
+#define PRINT_COLOR_GREEN        "\033[0;32;32m"
+#define PRINT_COLOR_WHITE        "\033[1;37m"
+#define PRINT_COLOR_CYAN         "\033[0;36m"
+#define PRINT_COLOR_PURPLE       "\033[0;35m"
+#define PRINT_COLOR_BROWN        "\033[0;33m"
+#define PRINT_COLOR_DARY_GRAY    "\033[1;30m"
+#define PRINT_COLOR_LIGHT_RED    "\033[1;31m"
+#define PRINT_COLOR_LIGHT_GREEN  "\033[1;32m"
+#define PRINT_COLOR_LIGHT_BLUE   "\033[1;34m"
+#define PRINT_COLOR_LIGHT_CYAN   "\033[1;36m"
+#define PRINT_COLOR_LIGHT_PURPLE "\033[1;35m"
+#define PRINT_COLOR_LIGHT_GRAY   "\033[0;37m"
+
 std::ostream& operator <<(std::ostream& os, const struct redisReply& redis_reply);
 
 namespace r3c {
+    std::ostream& operator <<(std::ostream& os, const struct NodeInfo& nodeinfo);
 
-extern void null_log_write(const char* UNUSED(format), ...) __attribute__((format(printf, 1, 2))); // Discard log
-extern void r3c_log_write(const char* format, ...) __attribute__((format(printf, 1, 2))); // Ouput log to stdout
-extern std::string strsha1(const std::string& str);
-extern uint16_t crc16(const char *buf, int len);
-extern int keyHashSlot(const char *key, size_t keylen);
-extern int parse_nodes(std::vector<std::pair<std::string, uint16_t> >* nodes, const std::string& nodes_string);
-extern bool parse_node_string(const std::string& node_string, std::string* ip, uint16_t* port);
-extern void parse_slot_string(const std::string& slot_string, int* start_slot, int* end_slot);
-extern void parse_moved_string(const std::string& moved_string, std::pair<std::string, uint16_t>* node);
+    extern void null_log_write(const char* UNUSED(format), ...) __attribute__((format(printf, 1, 2))); // Discard log
+    extern void r3c_log_write(const char* format, ...) __attribute__((format(printf, 1, 2))); // Ouput log to stdout
+    extern std::string strsha1(const std::string& str);
+    extern uint16_t crc16(const char *buf, int len);
+    extern uint64_t crc64(uint64_t crc, const unsigned char *s, uint64_t l);
+    extern int keyHashSlot(const char *key, size_t keylen);
+    extern int parse_nodes(std::vector<std::pair<std::string, uint16_t> >* nodes, const std::string& nodes_string);
+    extern bool parse_node_string(const std::string& node_string, std::string* ip, uint16_t* port);
+    extern void parse_slot_string(const std::string& slot_string, int* start_slot, int* end_slot);
+    extern void parse_moved_string(const std::string& moved_string, std::pair<std::string, uint16_t>* node);
 
 } // namespace r3c {
 #endif // REDIS_CLUSTER_CLIENT_UTILS_H
