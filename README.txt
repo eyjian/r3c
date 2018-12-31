@@ -1,6 +1,3 @@
-check_redis_cluster.sh 批量检查集群所有节点工具，依赖SCAN命令，带一个参数：集群中任意一节点
-clear_redis_cluster.sh 批量清空集群所有节点工具，依赖FLUSHALL命令，带一个参数：集群中任意一节点
-
 Redis Cluster C++ Client, based on hiredis, support password and standalone, it's easy to make and use, not depends on C++11 or later.
 r3c::CRedisClient is not thread safe, you can use __thread to create a object of r3c::CRedisClient for every thread.
 

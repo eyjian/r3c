@@ -1,7 +1,6 @@
+# Writed by yijian (eyjian@gmail.com)
 # Redis Cluster Client Makefile
 #
-# Copyright (C) 2016 Jian Yi <eyjian at gmail dot com>
-# This file is released under the BSD license, see the COPYING file
 #
 # Dependencies are stored in the Makefile.dep file. To rebuild this file
 # Just use 'make dep > Makefile.dep', but this is only needed by developers.

@@ -1,6 +1,4 @@
-// Writed by yijian
-// eyjian@qq.com
-// eyjian@gmail.com
+// Writed by yijian (eyjian@qq.com)
 #include "utils.h"
 #include "r3c.h"
 #include "sha1.h"

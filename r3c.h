@@ -1,8 +1,5 @@
-// Writed by yijian
-// eyjian@qq.com
-// eyjian@gmail.com
-// R3C is a client for redis cluster, but supports standlone redis
-// R3C relies on hiredis (https://github.com/redis/hiredis)
+// Writed by yijian (eyjian@qq.com)
+// R3C is a C++ client for redis based on hiredis (https://github.com/redis/hiredis)
 #ifndef REDIS_CLUSTER_CLIENT_H
 #define REDIS_CLUSTER_CLIENT_H
 #include <hiredis/hiredis.h>

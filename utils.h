@@ -1,6 +1,4 @@
-// Writed by yijian
-// eyjian@qq.com
-// eyjian@gmail.com
+// Writed by yijian (eyjian@qq.com)
 #ifndef REDIS_CLUSTER_CLIENT_UTILS_H
 #define REDIS_CLUSTER_CLIENT_UTILS_H
 #include <errno.h>
