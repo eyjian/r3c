@@ -366,33 +366,53 @@ void millisleep(int milliseconds)
 #endif
 }
 
-std::string format_string(const char* format, ...) {
+std::string format_string(const char* format, ...)
+{
+    size_t size = 4096;
+    std::string buffer(size, '\0');
+    char* buffer_p = const_cast<char*>(buffer.data());
+    int expected = 0;
     va_list ap;
-    size_t size = getpagesize();
-    char* buffer = new char[size];
 
     while (true)
     {
         va_start(ap, format);
-        const int expected = vsnprintf(buffer, size, format, ap);
+        expected = vsnprintf(buffer_p, size, format, ap);
 
         va_end(ap);
-        if (expected > -1 && expected < (int)size)
+        if (expected>-1 && expected<=static_cast<int>(size))
+        {
             break;
+        }
+        else
+        {
+            /* The functions snprintf() and vsnprintf() do not write more than size bytes
+             * (including the terminating null byte ('\0')).
+             *
+             * If the output was truncated due to this limit then the return value is the number of characters
+             * (excluding the terminating null byte) which would have been written to the final
+             * string if enough space had been available.
+             *
+             * Thus, a return value of size or more means that the output was truncated.
+             *
+             * The glibc implementation of the functions snprintf() and vsnprintf() conforms to the C99 standard,
+             * that is, behaves as described above, since glibc version 2.1.
+             * Until glibc 2.0.6 they would return -1 when the output was truncated.
+             */
 
-        /* Else try again with more space. */
-        if (expected > -1)    /* glibc 2.1 */
-            size = (size_t)expected + 1; /* precisely what is needed */
-        else           /* glibc 2.0 */
-            size *= 2;  /* twice the old size */
+            /* Else try again with more space. */
+            if (expected > -1)    /* glibc 2.1 */
+                size = static_cast<size_t>(expected + 1); /* precisely what is needed */
+            else           /* glibc 2.0 */
+                size *= 2;  /* twice the old size */
 
-        delete []buffer;
-        buffer = new char[size];
+            buffer.resize(size);
+            buffer_p = const_cast<char*>(buffer.data());
+        }
     }
 
-    std::string str = buffer;
-    delete []buffer;
-    return str;
+    // expected包含了字符串结尾符号，其值等于：strlen(buffer_p)+1
+    return std::string(buffer_p, expected>0?expected-1:0);
 }
 
 int parse_nodes(std::vector<std::pair<std::string, uint16_t> >* nodes, const std::string& nodes_string)
