@@ -438,8 +438,8 @@ std::string format_string(const char* format, ...)
         }
     }
 
-    // expected包含了字符串结尾符号，其值等于：strlen(buffer_p)+1
-    return std::string(buffer_p, expected>0?expected-1:0);
+    // expected不包含字符串结尾符号，其值等于：strlen(buffer_p)
+    return std::string(buffer_p, expected>0?expected:0);
 }
 
 int parse_nodes(std::vector<std::pair<std::string, uint16_t> >* nodes, const std::string& nodes_string)
@@ -522,6 +522,8 @@ int split(std::vector<std::string>* tokens, const std::string& source, const std
 
 bool parse_node_string(const std::string& node_string, std::string* ip, uint16_t* port)
 {
+    // node_string在3.0版本时的格式： 127.0.0.1:1381
+    // node_string在4.0版本时的格式：127.0.0.1:1381@11381
     const std::string::size_type colon_pos = node_string.find(':');
 
     if (colon_pos == std::string::npos)
@@ -531,7 +533,7 @@ bool parse_node_string(const std::string& node_string, std::string* ip, uint16_t
     else
     {
         const std::string& port_str = node_string.substr(colon_pos+1);
-        *port = atoi(port_str.c_str());
+        *port = atoi(port_str.c_str()); // 不管是1381或1381@11381，均可正确得到端口号
         *ip = node_string.substr(0, colon_pos);
         return true;
     }

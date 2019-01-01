@@ -14,7 +14,7 @@
 
 namespace r3c {
 
-#if 0
+#if 1
     static LOG_WRITE g_error_log = r3c_log_write;
     static LOG_WRITE g_info_log = r3c_log_write;
     static LOG_WRITE g_debug_log = r3c_log_write;
@@ -270,7 +270,8 @@ class CRedisNode
 public:
     CRedisNode(const Node& node, redisContext* redis_context)
         : _node(node),
-          _redis_context(redis_context)
+          _redis_context(redis_context),
+          _conn_errors(0)
     {
     }
 
@@ -292,6 +293,10 @@ public:
     void set_redis_context(redisContext* redis_context)
     {
         _redis_context = redis_context;
+        if (redis_context != NULL)
+            _conn_errors = 0;
+        else
+            ++_conn_errors;
     }
 
     void close()
@@ -305,12 +310,13 @@ public:
 
     std::string str() const
     {
-        return format_string("node://%s:%d", _node.first.c_str(), _node.second);
+        return format_string("node://(%u)%s:%d", _conn_errors, _node.first.c_str(), _node.second);
     }
 
 protected:
     Node _node;
     redisContext* _redis_context;
+    unsigned int _conn_errors; // 连续连接失败数
 };
 
 class CMasterNode;
@@ -2762,7 +2768,6 @@ CRedisClient::redis_command(
     Node node;
     RedisReplyHelper redis_reply;
     struct ErrorInfo errinfo;
-    CRedisNode* redis_node = NULL;
 
     if (key.empty() && cluster_mode())
     {
@@ -2777,39 +2782,41 @@ CRedisClient::redis_command(
     {
         const int slot = cluster_mode()? get_key_slot(&key): -1;
         HandleResult errcode;
-        redis_node = get_redis_node(slot, &errinfo);
-
+        CRedisNode* redis_node = get_redis_node(slot, &errinfo);
         if (NULL == redis_node)
         {
-            // 没有任何master
-            break;
+            break; // 没有任何master
         }
-        else if (NULL == redis_node->get_redis_context())
+
+        node = redis_node->get_node();
+        if (which != NULL)
+        {
+            *which = redis_node->get_node();
+        }
+        if (NULL == redis_node->get_redis_context())
         {
             // 连接master不成功
             errcode = HR_RECONN_UNCOND;
         }
         else
         {
-            if (which != NULL)
-                *which = redis_node->get_node();
             if (_command_monitor != NULL)
-                _command_monitor->before_execute(redis_node->get_node(), command_args.get_command_str(), command_args, readonly);
+                _command_monitor->before_execute(node, command_args.get_command_str(), command_args, readonly);
 
             redis_reply = (redisReply*)redisCommandArgv(
                     redis_node->get_redis_context(),
                     command_args.get_argc(), command_args.get_argv(), command_args.get_argvlen());
             if (!redis_reply)
-                errcode = handle_redis_command_error(node, command_args, redis_node->get_redis_context(), &errinfo);
+                errcode = handle_redis_command_error(redis_node, command_args, &errinfo);
             else
-                errcode = handle_redis_reply(node, command_args, redis_reply.get(), &errinfo);
+                errcode = handle_redis_reply(redis_node, command_args, redis_reply.get(), &errinfo);
         }
 
         if (HR_SUCCESS == errcode)
         {
             // 成功
             if (_command_monitor != NULL)
-                _command_monitor->after_execute(0, redis_node->get_node(), command_args.get_command_str(), redis_reply.get());
+                _command_monitor->after_execute(0, node, command_args.get_command_str(), redis_reply.get());
             return redis_reply;
         }
         else if (HR_ERROR == errcode)
@@ -2843,7 +2850,8 @@ CRedisClient::redis_command(
         }
 
         // 控制重试频率，以增强重试成功率
-        if (HR_RETRY_UNCOND == errcode)
+        if (HR_RETRY_UNCOND == errcode ||
+            HR_RECONN_UNCOND == errcode)
         {
             const int retry_sleep_milliseconds = get_retry_sleep_milliseconds(loop_counter);
             if (retry_sleep_milliseconds > 0)
@@ -2851,13 +2859,13 @@ CRedisClient::redis_command(
         }
         if (_command_monitor != NULL)
         {
-            _command_monitor->after_execute(1, redis_node->get_node(), command_args.get_command_str(), redis_reply.get());
+            _command_monitor->after_execute(1, node, command_args.get_command_str(), redis_reply.get());
         }
     }
 
     // 错误以异常方式抛出
     if (_command_monitor != NULL)
-        _command_monitor->after_execute(1, redis_node->get_node(), command_args.get_command_str(), redis_reply.get());
+        _command_monitor->after_execute(1, node, command_args.get_command_str(), redis_reply.get());
     THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(
             errinfo, node.first, node.second,
             command_args.get_command_str(), command_args.get_key_str());
@@ -2865,11 +2873,12 @@ CRedisClient::redis_command(
 
 CRedisClient::HandleResult
 CRedisClient::handle_redis_command_error(
-        const Node& node,
+        CRedisNode* redis_node,
         const CommandArgs& command_args,
-        redisContext* redis_context,
         struct ErrorInfo* errinfo)
 {
+    redisContext* redis_context = redis_node->get_redis_context();
+
     // REDIS_ERR_EOF (call read() return 0):
     // redis_context->err(3)
     // redis_context->errstr("Server closed the connection")
@@ -2883,8 +2892,8 @@ CRedisClient::handle_redis_command_error(
     // For other values, the "errstr" field will hold a description.
     const int redis_errcode = redis_context->err;
     errinfo->errcode = errno;
-    errinfo->raw_errmsg = format_string("[%s:%d] (%d)%s",
-            node.first.c_str(), node.second, redis_errcode, redis_context->errstr);
+    errinfo->raw_errmsg = format_string("[%s] (%d)%s",
+            redis_node->str().c_str(), redis_errcode, redis_context->errstr);
     errinfo->errmsg = format_string("[%s:%d][%s] %s",
             __FILE__, __LINE__, command_args.get_command(), errinfo->raw_errmsg.c_str());
     (*g_error_log)("%s\n", errinfo->errmsg.c_str());
@@ -2913,13 +2922,21 @@ CRedisClient::handle_redis_command_error(
     }
     else
     {
+        // $ redis-cli -p 1386 cluster nodes | grep master
+        // 49cadd758538f821b922738fd000b5a16ef64fc7 127.0.0.1:1384@11384 master - 0 1546317629187 14 connected 10923-16383
+        // 95ce22507d469ae84cb760505bba4be0283c5468 127.0.0.1:1381@11381 master - 0 1546317630190 1 connected 0-5460
+        // a27a1ce7f8c5c5f79a1d09227eb80b73919ec795 127.0.0.1:1383@11383 master,fail - 1546317518930 1546317515000 12 connected
+        // 03c4ada274ac137c710f3d514700c2e94649c131 127.0.0.1:1382@11382 master - 0 1546317631191 2 connected 5461-10922
+        // 错误期间，可能发生了主备切换，因此光重连接是不够的，
+        // 更严重的是，该master可能一直连接超时，比如进程被SIGSTOP了，
+        // 因此重试几次后，应当重刷新master
         return HR_RECONN_COND; // Retry conditionally
     }
 }
 
 CRedisClient::HandleResult
 CRedisClient::handle_redis_reply(
-        const Node& node,
+        CRedisNode* redis_node,
         const CommandArgs& command_args,
         const redisReply* redis_reply,
         struct ErrorInfo* errinfo)
@@ -2927,12 +2944,12 @@ CRedisClient::handle_redis_reply(
     if (redis_reply->type != REDIS_REPLY_ERROR)
         return HR_SUCCESS;
     else
-        return handle_redis_replay_error(node, command_args, redis_reply, errinfo);
+        return handle_redis_replay_error(redis_node, command_args, redis_reply, errinfo);
 }
 
 CRedisClient::HandleResult
 CRedisClient::handle_redis_replay_error(
-        const Node& node,
+        CRedisNode* redis_node,
         const CommandArgs& command_args,
         const redisReply* redis_reply,
         struct ErrorInfo* errinfo)
@@ -2945,7 +2962,7 @@ CRedisClient::handle_redis_replay_error(
     // NOSCRIPT No matching script. Please use EVAL.
     extract_errtype(redis_reply, &errinfo->errtype);
     errinfo->errcode = ERROR_COMMAND;
-    errinfo->raw_errmsg = format_string("[%s:%d] %s", node.first.c_str(), node.second, redis_reply->str);
+    errinfo->raw_errmsg = format_string("[%s] %s", redis_node->str().c_str(), redis_reply->str);
     errinfo->errmsg = format_string("[%s:%d][%s] %s", __FILE__, __LINE__, command_args.get_command(), errinfo->raw_errmsg.c_str());
     (*g_error_log)("%s\n", errinfo->errmsg.c_str());
 
@@ -3070,7 +3087,7 @@ bool CRedisClient::init_master_nodes(const std::vector<struct NodeInfo>& nodes_i
     {
         const struct NodeInfo& nodeinfo = nodes_info[i];
 
-        if (nodeinfo.is_master())
+        if (nodeinfo.is_master() && !nodeinfo.is_fail())
         {
             update_slots(nodeinfo);
             update_master_nodes_string(nodeinfo);
@@ -3137,24 +3154,21 @@ void CRedisClient::refresh_master_nodes(struct ErrorInfo* errinfo)
 
 void CRedisClient::clear_and_update_master_nodes(const std::vector<struct NodeInfo>& nodes_info, struct ErrorInfo* errinfo)
 {
-    NodeInfoTable node_info_table;
+    NodeInfoTable master_nodeinfo_table;
 
     _master_nodes_string.clear();
     for (std::vector<struct NodeInfo>::size_type i=0; i<nodes_info.size(); ++i)
     {
         const struct NodeInfo& nodeinfo = nodes_info[i];
 
-        if (!nodeinfo.is_master())
-        {
-            node_info_table.insert(std::make_pair(nodeinfo.node, nodeinfo));
-        }
-        else
+        if (nodeinfo.is_master() && !nodeinfo.is_fail())
         {
             // 可能只是一个或多个slot从一个master迁到另一个master，
             // 简单的全量更新slot和node间的关系，
             // 如果一对master和replica同时异常，则_slot2node会出现空洞
             update_slots(nodeinfo);
             update_master_nodes_string(nodeinfo);
+            master_nodeinfo_table.insert(std::make_pair(nodeinfo.node, nodeinfo));
 
             if (_master_nodes.count(nodeinfo.node) <= 0)
             {
@@ -3164,35 +3178,32 @@ void CRedisClient::clear_and_update_master_nodes(const std::vector<struct NodeIn
         }
     }
 
-    clear_invalid_master_nodes(node_info_table);
+    clear_invalid_master_nodes(master_nodeinfo_table);
 }
 
-void CRedisClient::clear_invalid_master_nodes(const NodeInfoTable& node_info_table)
+void CRedisClient::clear_invalid_master_nodes(const NodeInfoTable& master_nodeinfo_table)
 {
-    for (MasterNodeTable::iterator iter=_master_nodes.begin(); iter!=_master_nodes.end();)
+    for (MasterNodeTable::iterator node_iter=_master_nodes.begin(); node_iter!=_master_nodes.end();)
     {
-        const Node& node = iter->first;
-        const NodeInfoTable::const_iterator info_iter = node_info_table.find(node);
+        const Node& node = node_iter->first;
+        const NodeInfoTable::const_iterator info_iter = master_nodeinfo_table.find(node);
 
-        if (info_iter != node_info_table.end())
+        if (info_iter != master_nodeinfo_table.end())
         {
-            const struct NodeInfo& nodeinfo = info_iter->second;
+            // 保持不变，仍然是master
+            ++node_iter;
+        }
+        else
+        {
+            CMasterNode* master_node = node_iter->second;
+            (*g_info_log)("%s is removed because it is not a master now\n", master_node->str().c_str());
 
-            if (nodeinfo.is_master())
-            {
-                ++iter;
-            }
-            else
-            {
-                // 极端情况下，可能将所有的master都干掉了在，
-                // 而且可能原来参数传入的所有nodes都可能被删除了，
-                // 这个时候只有考虑从_master_nodes_string中恢复，
-                // 但是正常不应当出现，万一出现只需简单抛出异常终止执行即可，亦即要求时刻至少有一个可用的master。
-                CMasterNode* master_node = iter->second;
-                (*g_info_log)("%s deleted because it is not master now\n", master_node->str().c_str());
-                iter = _master_nodes.erase(iter);
-                delete master_node;
-            }
+#if __cplusplus < 201103L
+            _master_nodes.erase(node_iter++);
+#else
+            node_iter = _master_nodes.erase(node_iter);
+#endif
+            delete master_node;
         }
     }
 }
@@ -3483,10 +3494,10 @@ CRedisClient::list_cluster_nodes(
             }
             else
             {
-                NodeInfo node_info;
-                node_info.id = tokens[0];
+                NodeInfo nodeinfo;
+                nodeinfo.id = tokens[0];
 
-                if (!parse_node_string(tokens[1], &node_info.node.first, &node_info.node.second))
+                if (!parse_node_string(tokens[1], &nodeinfo.node.first, &nodeinfo.node.second))
                 {
                     nodes_info->clear();
                     errinfo->errcode = ERROR_REPLY_FORMAT;
@@ -3497,26 +3508,28 @@ CRedisClient::list_cluster_nodes(
                 }
                 else
                 {
-                    node_info.flags = tokens[2];
-                    node_info.master_id = tokens[3];
-                    node_info.ping_sent = atoi(tokens[4].c_str());
-                    node_info.pong_recv = atoi(tokens[5].c_str());
-                    node_info.epoch = atoi(tokens[6].c_str());
-                    node_info.connected = (tokens[7] == "connected");
+                    nodeinfo.flags = tokens[2];
+                    nodeinfo.master_id = tokens[3];
+                    nodeinfo.ping_sent = atoi(tokens[4].c_str());
+                    nodeinfo.pong_recv = atoi(tokens[5].c_str());
+                    nodeinfo.epoch = atoi(tokens[6].c_str());
+                    nodeinfo.connected = (tokens[7] == "connected");
 
-                    if (node_info.is_master())
+                    // 49cadd758538f821b922738fd000b5a16ef64fc7 127.0.0.1:1384@11384 master - 0 1546317629187 14 connected 10923-16383
+                    // a27a1ce7f8c5c5f79a1d09227eb80b73919ec795 127.0.0.1:1383@11383 master,fail - 1546317518930 1546317515000 12 connected
+                    if (nodeinfo.is_master() && !nodeinfo.is_fail())
                     {
                         for (int col=8; col<num_tokens; ++col)
                         {
                             std::pair<int, int> slot;
                             parse_slot_string(tokens[col], &slot.first, &slot.second);
-                            node_info.slots.push_back(slot);
+                            nodeinfo.slots.push_back(slot);
                         }
                     }
 
                     (*g_debug_log)("[%s:%d][%s:%d] %s\n",
-                            __FILE__, __LINE__, node.first.c_str(), node.second, node_info.str().c_str());
-                    nodes_info->push_back(node_info);
+                            __FILE__, __LINE__, node.first.c_str(), node.second, nodeinfo.str().c_str());
+                    nodes_info->push_back(nodeinfo);
                 }
             }
         }

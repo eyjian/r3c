@@ -753,14 +753,14 @@ private:
     // Handle the redis command error
     // Return -1 to break, return 1 to retry conditionally
     // 因为网络错误结果是未定义的，对于读操作一般可无条件的重试，对于写操作则需由调用者决定
-    HandleResult handle_redis_command_error(const Node& node, const CommandArgs& command_args, redisContext* redis_context, struct ErrorInfo* errinfo);
+    HandleResult handle_redis_command_error(CRedisNode* redis_node, const CommandArgs& command_args, struct ErrorInfo* errinfo);
 
     // Handle the redis reply
     // Success returns 0,
     // return -1 to break, return 2 to retry unconditionally
     // 对于明确的错误（如MOVED错误），可无条件地重试
-    HandleResult handle_redis_reply(const Node& node, const CommandArgs& command_args, const redisReply* redis_reply, struct ErrorInfo* errinfo);
-    HandleResult handle_redis_replay_error(const Node& node, const CommandArgs& command_args, const redisReply* redis_reply, struct ErrorInfo* errinfo);
+    HandleResult handle_redis_reply(CRedisNode* redis_node, const CommandArgs& command_args, const redisReply* redis_reply, struct ErrorInfo* errinfo);
+    HandleResult handle_redis_replay_error(CRedisNode* redis_node, const CommandArgs& command_args, const redisReply* redis_reply, struct ErrorInfo* errinfo);
 
 private:
     void init();
@@ -770,7 +770,7 @@ private:
     void update_slots(const struct NodeInfo& nodeinfo);
     void refresh_master_nodes(struct ErrorInfo* errinfo);
     void clear_and_update_master_nodes(const std::vector<struct NodeInfo>& nodes_info, struct ErrorInfo* errinfo);
-    void clear_invalid_master_nodes(const NodeInfoTable& node_info_table);
+    void clear_invalid_master_nodes(const NodeInfoTable& master_nodeinfo_table);
     bool add_master_node(const NodeInfo& nodeinfo, struct ErrorInfo* errinfo);
     void clear_all_master_nodes();
     void update_master_nodes_string(const NodeInfo& nodeinfo);
