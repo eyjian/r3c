@@ -91,7 +91,7 @@ size_t NodeHasher::operator ()(const Node& node) const
 
 std::string& node2string(const Node& node, std::string* str)
 {
-    *str = node.first + int2string(node.second);
+    *str = node.first + std::string(":") + int2string(node.second);
     return *str;
 }
 
@@ -293,9 +293,7 @@ public:
     void set_redis_context(redisContext* redis_context)
     {
         _redis_context = redis_context;
-        if (redis_context != NULL)
-            _conn_errors = 0;
-        else
+        if (NULL == _redis_context)
             ++_conn_errors;
     }
 
@@ -310,7 +308,27 @@ public:
 
     std::string str() const
     {
-        return format_string("node://(%u)%s:%d", _conn_errors, _node.first.c_str(), _node.second);
+        return format_string("node://(connerrors:%u)%s:%d", _conn_errors, _node.first.c_str(), _node.second);
+    }
+
+    void inc_conn_errors()
+    {
+        ++_conn_errors;
+    }
+
+    void reset_conn_errors()
+    {
+        _conn_errors = 0;
+    }
+
+    void set_conn_errors(unsigned int conn_errors)
+    {
+        _conn_errors = conn_errors;
+    }
+
+    bool need_refresh_master() const
+    {
+        return ((_conn_errors>3 && 0==_conn_errors%3) || (_conn_errors>2018));
     }
 
 protected:
@@ -503,6 +521,9 @@ bool is_ask_error(const std::string& errtype)
 
 bool is_clusterdown_error(const std::string& errtype)
 {
+    // CLUSTERDOWN The cluster is down
+    // 如果在从未成为主之前，将主和从同时干掉，则即使从正常了，从也无法成为主，
+    // 这个时候必须将原来的主恢复，否则该部分slots就不能再服务
     return (errtype.size() == sizeof("CLUSTERDOWN")-1) && (errtype == "CLUSTERDOWN");
 }
 
@@ -2831,7 +2852,14 @@ CRedisClient::redis_command(
             redis_node->close();
         }
 
-        // 决定是否重试
+        if (redis_node->need_refresh_master())
+        {
+            if (HR_RECONN_COND==errcode ||
+                HR_RECONN_UNCOND==errcode)
+                refresh_master_nodes(&errinfo, &node);
+            else
+                refresh_master_nodes(&errinfo, NULL);
+        }
         if (HR_RECONN_UNCOND == errcode)
         {
             // 保持至少重试一次（前提是先重新建立好连接）
@@ -2918,6 +2946,7 @@ CRedisClient::handle_redis_command_error(
     }
     else if (REDIS_ERR_EOF == redis_errcode)
     {
+        redis_node->inc_conn_errors();
         return HR_RECONN_COND; // Retry unconditionally and reconnect
     }
     else
@@ -2930,6 +2959,7 @@ CRedisClient::handle_redis_command_error(
         // 错误期间，可能发生了主备切换，因此光重连接是不够的，
         // 更严重的是，该master可能一直连接超时，比如进程被SIGSTOP了，
         // 因此重试几次后，应当重刷新master
+        redis_node->inc_conn_errors();
         return HR_RECONN_COND; // Retry conditionally
     }
 }
@@ -2941,6 +2971,8 @@ CRedisClient::handle_redis_reply(
         const redisReply* redis_reply,
         struct ErrorInfo* errinfo)
 {
+    redis_node->reset_conn_errors();
+
     if (redis_reply->type != REDIS_REPLY_ERROR)
         return HR_SUCCESS;
     else
@@ -2979,7 +3011,7 @@ CRedisClient::handle_redis_replay_error(
     {
         //Node ask_node;
         //parse_moved_string(redis_reply->str, &ask_node);
-        refresh_master_nodes(errinfo);
+        redis_node->set_conn_errors(2019); // Trigger to refresh master nodes
         return HR_RETRY_UNCOND;
     }
     else
@@ -3111,7 +3143,10 @@ void CRedisClient::update_slots(const struct NodeInfo& nodeinfo)
     }
 }
 
-void CRedisClient::refresh_master_nodes(struct ErrorInfo* errinfo)
+// 几种需要刷新master情况：
+// 1) 遇到MOVED错误（可立即重刷）
+// 2) master挂起（能够连接，但不能服务，立即重刷一般无效，得等主从切换后）
+void CRedisClient::refresh_master_nodes(struct ErrorInfo* errinfo, const Node* error_node)
 {
     const int num_nodes = static_cast<int>(_master_nodes.size());
     uint64_t seed = reinterpret_cast<uint64_t>(this) - num_nodes;
@@ -3128,21 +3163,27 @@ void CRedisClient::refresh_master_nodes(struct ErrorInfo* errinfo)
     {
         const Node& node = iter->first;
         CMasterNode* redis_node = iter->second;
-        redisContext* redis_context = redis_node->get_redis_context();
+        ++iter;
 
-        if (NULL == redis_context)
+        // error_node可能已是一个有问题的节点，所以最好避开它
+        if ((NULL==error_node) || (node!=*error_node))
         {
-            redis_context = connect_redis_node(node, errinfo);
-        }
-        if (redis_context != NULL)
-        {
-            std::vector<struct NodeInfo> nodes_info;
+            redisContext* redis_context = redis_node->get_redis_context();
 
-            redis_node->set_redis_context(redis_context);
-            if (list_cluster_nodes(&nodes_info, errinfo, redis_context, node))
+            if (NULL == redis_context)
             {
-                clear_and_update_master_nodes(nodes_info, errinfo);
-                break; // Continue is not safe, because `clear_and_update_master_nodes` will modify _master_nodes
+                redis_context = connect_redis_node(node, errinfo);
+            }
+            if (redis_context != NULL)
+            {
+                std::vector<struct NodeInfo> nodes_info;
+
+                redis_node->set_redis_context(redis_context);
+                if (list_cluster_nodes(&nodes_info, errinfo, redis_context, node))
+                {
+                    clear_and_update_master_nodes(nodes_info, errinfo);
+                    break; // Continue is not safe, because `clear_and_update_master_nodes` will modify _master_nodes
+                }
             }
         }
         if (iter == _master_nodes.end())
@@ -3244,6 +3285,7 @@ redisContext* CRedisClient::connect_redis_node(const Node& node, struct ErrorInf
 {
     redisContext* redis_context = NULL;
 
+    (*g_debug_log)("[%s:%d] To connect %s with timeout: %dms\n", __FILE__, __LINE__, node2string(node).c_str(), _connect_timeout_milliseconds);
     if (_connect_timeout_milliseconds <= 0)
     {
         redis_context = redisConnect(node.first.c_str(), node.second);
@@ -3294,6 +3336,8 @@ redisContext* CRedisClient::connect_redis_node(const Node& node, struct ErrorInf
     }
     else
     {
+        (*g_debug_log)("[%s:%d] Connect %s successfully with readwrite timeout: %dms\n", __FILE__, __LINE__, node2string(node).c_str(), _readwrite_timeout_milliseconds);
+
         if (_readwrite_timeout_milliseconds > 0)
         {
             struct timeval data_timeout;
@@ -3312,12 +3356,11 @@ redisContext* CRedisClient::connect_redis_node(const Node& node, struct ErrorInf
                 redis_context = NULL;
             }
         }
-
         if ((0 == errinfo->errcode) && !_password.empty())
         {
             const RedisReplyHelper redis_reply = (redisReply*)redisCommand(redis_context, "AUTH %s", _password.c_str());
 
-            if (redis_reply && 0==strcmp(redis_reply->str,"OK"))
+            if (redis_reply && 0==strcmp(redis_reply->str, "OK"))
             {
                 // AUTH success
                 (*g_info_log)("[%s:%d] connect redis://%s:%d success\n", __FILE__, __LINE__, node.first.c_str(), node.second);
@@ -3425,9 +3468,13 @@ CRedisClient::list_cluster_nodes(
     errinfo->clear();
     if (!redis_reply)
     {
+        const int redis_errcode = redis_context->err;
         errinfo->errcode = ERROR_COMMAND;
-        errinfo->raw_errmsg = "redisCommand failed";
-        errinfo->errmsg = format_string("[%s:%d] %s", __FILE__, __LINE__, "redisCommand failed");
+        if (redis_errcode != 0)
+            errinfo->raw_errmsg = redis_context->errstr;
+        else
+            errinfo->raw_errmsg = "redisCommand failed";
+        errinfo->errmsg = format_string("[%s:%d][%s] (%d)%s", __FILE__, __LINE__, node2string(node).c_str(), redis_errcode, "redisCommand failed");
         (*g_error_log)("%s\n", errinfo->errmsg.c_str());
     }
     else if (REDIS_REPLY_ERROR == redis_reply->type)
@@ -3435,7 +3482,7 @@ CRedisClient::list_cluster_nodes(
         // ERR This instance has cluster support disabled
         errinfo->errcode = ERROR_COMMAND;
         errinfo->raw_errmsg = redis_reply->str;
-        errinfo->errmsg = format_string("[%s:%d] %s", __FILE__, __LINE__, redis_reply->str);
+        errinfo->errmsg = format_string("[%s:%d][%s] %s", __FILE__, __LINE__, node2string(node).c_str(), redis_reply->str);
         (*g_error_log)("%s\n", errinfo->errmsg.c_str());
     }
     else if (redis_reply->type != REDIS_REPLY_STRING)
@@ -3443,7 +3490,7 @@ CRedisClient::list_cluster_nodes(
         // Unexpected reply type
         errinfo->errcode = ERROR_UNEXCEPTED_REPLY_TYPE;
         errinfo->raw_errmsg = redis_reply->str;
-        errinfo->errmsg = format_string("[%s:%d] (type:%d)%s", __FILE__, __LINE__, redis_reply->type, redis_reply->str);
+        errinfo->errmsg = format_string("[%s:%d][%s] (type:%d)%s", __FILE__, __LINE__, node2string(node).c_str(), redis_reply->type, redis_reply->str);
         (*g_error_log)("%s\n", errinfo->errmsg.c_str());
     }
     else
@@ -3468,7 +3515,7 @@ CRedisClient::list_cluster_nodes(
         {
             errinfo->errcode = ERROR_REPLY_FORMAT;
             errinfo->raw_errmsg = "reply nothing";
-            errinfo->errmsg = format_string("[%s:%d] %s", __FILE__, __LINE__, "reply nothing");
+            errinfo->errmsg = format_string("[%s:%d][%s] %s", __FILE__, __LINE__, node2string(node).c_str(), "reply nothing");
             (*g_error_log)("%s\n", errinfo->errmsg.c_str());
         }
         for (int row=0; row<num_lines; ++row)
@@ -3488,7 +3535,7 @@ CRedisClient::list_cluster_nodes(
                 nodes_info->clear();
                 errinfo->errcode = ERROR_REPLY_FORMAT;
                 errinfo->raw_errmsg = "reply format error";
-                errinfo->errmsg = format_string("[%s:%d] %s", __FILE__, __LINE__, "reply format error");
+                errinfo->errmsg = format_string("[%s:%d][%s] %s", __FILE__, __LINE__, node2string(node).c_str(), "reply format error");
                 (*g_error_log)("%s\n", errinfo->errmsg.c_str());
                 break;
             }
@@ -3502,7 +3549,7 @@ CRedisClient::list_cluster_nodes(
                     nodes_info->clear();
                     errinfo->errcode = ERROR_REPLY_FORMAT;
                     errinfo->raw_errmsg = "reply format error";
-                    errinfo->errmsg = format_string("[%s:%d] %s", __FILE__, __LINE__, "reply format error");
+                    errinfo->errmsg = format_string("[%s:%d][%s] %s", __FILE__, __LINE__, node2string(node).c_str(), "reply format error");
                     (*g_error_log)("%s\n", errinfo->errmsg.c_str());
                     break;
                 }
@@ -3527,8 +3574,8 @@ CRedisClient::list_cluster_nodes(
                         }
                     }
 
-                    (*g_debug_log)("[%s:%d][%s:%d] %s\n",
-                            __FILE__, __LINE__, node.first.c_str(), node.second, nodeinfo.str().c_str());
+                    (*g_debug_log)("[%s:%d][%s] %s\n",
+                            __FILE__, __LINE__, node2string(node).c_str(), nodeinfo.str().c_str());
                     nodes_info->push_back(nodeinfo);
                 }
             }

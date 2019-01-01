@@ -768,7 +768,7 @@ private:
     bool init_cluster(struct ErrorInfo* errinfo);
     bool init_master_nodes(const std::vector<struct NodeInfo>& nodes_info, struct ErrorInfo* errinfo);
     void update_slots(const struct NodeInfo& nodeinfo);
-    void refresh_master_nodes(struct ErrorInfo* errinfo);
+    void refresh_master_nodes(struct ErrorInfo* errinfo, const Node* error_node);
     void clear_and_update_master_nodes(const std::vector<struct NodeInfo>& nodes_info, struct ErrorInfo* errinfo);
     void clear_invalid_master_nodes(const NodeInfoTable& master_nodeinfo_table);
     bool add_master_node(const NodeInfo& nodeinfo, struct ErrorInfo* errinfo);
