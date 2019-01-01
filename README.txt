@@ -36,7 +36,7 @@ make dep
 如果传给CRedisClient的nodes参数为单个节点字符串，如192.168.1.31:6379则为单机模式，为多节点字符串时则为Redis Cluster模式。
 
 性能测试工具：
-https://github.com/eyjian/mooon/blob/master/mooon/tools/r3c_stress.cpp
+https://github.com/eyjian/libmooon/blob/master/tools/r3c_stress.cpp
 
 单机性能数据：
 r3c_stress --redis=192.168.0.88:6379 --requests=100000 --threads=20 
