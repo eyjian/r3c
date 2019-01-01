@@ -6,6 +6,7 @@
 #include <poll.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/time.h>
 #include <time.h>
 #include <ostream>
@@ -769,6 +770,14 @@ std::string int2string(uint32_t n)
 std::string int2string(uint16_t n)
 {
     return int2string(static_cast<uint64_t>(n));
+}
+
+uint64_t get_random_number(uint64_t base)
+{
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    srandom(tv.tv_usec);
+    return base + random();
 }
 
 } // namespace r3c {

@@ -246,7 +246,7 @@ public:
             ) throw (CRedisException);
     ~CRedisClient();
     const std::string& get_raw_nodes_string() const;
-    const std::string& get_master_nodes_string() const;
+    const std::string& get_nodes_string() const;
     std::string str() const;
 
     // Returns true if parameter nodes of ctor is composed of two or more nodes,
@@ -763,22 +763,23 @@ private:
     HandleResult handle_redis_replay_error(CRedisNode* redis_node, const CommandArgs& command_args, const redisReply* redis_reply, struct ErrorInfo* errinfo);
 
 private:
+    void fini();
     void init();
     bool init_standlone(struct ErrorInfo* errinfo);
     bool init_cluster(struct ErrorInfo* errinfo);
     bool init_master_nodes(const std::vector<struct NodeInfo>& nodes_info, struct ErrorInfo* errinfo);
     void update_slots(const struct NodeInfo& nodeinfo);
-    void refresh_master_nodes(struct ErrorInfo* errinfo, const Node* error_node);
+    void refresh_master_node_table(struct ErrorInfo* errinfo, const Node* error_node);
     void clear_and_update_master_nodes(const std::vector<struct NodeInfo>& nodes_info, struct ErrorInfo* errinfo);
     void clear_invalid_master_nodes(const NodeInfoTable& master_nodeinfo_table);
     bool add_master_node(const NodeInfo& nodeinfo, struct ErrorInfo* errinfo);
     void clear_all_master_nodes();
-    void update_master_nodes_string(const NodeInfo& nodeinfo);
+    void update_nodes_string(const NodeInfo& nodeinfo);
 
 private:
     // Connect the given node
     redisContext* connect_redis_node(const Node& node, struct ErrorInfo* errinfo) const;
-    CRedisNode* get_redis_node(int slot, struct ErrorInfo* errinfo) const;
+    CRedisNode* get_redis_node(int slot, struct ErrorInfo* errinfo);
     CMasterNode* random_master_node() const;
 
 private:
@@ -816,8 +817,8 @@ public:
 
 private:
     CommandMonitor* _command_monitor;
-    std::string _raw_nodes_string;
-    std::string _master_nodes_string;
+    std::string _raw_nodes_string; // 最原始的
+    std::string _nodes_string; // 长时间运行后，最原始的节点可能都不在了
     int _connect_timeout_milliseconds; // The connect timeout in milliseconds
     int _readwrite_timeout_milliseconds; // The receive and send timeout in milliseconds
     std::string _password;

@@ -14,7 +14,7 @@
 
 namespace r3c {
 
-#if 1
+#if 0 // for test
     static LOG_WRITE g_error_log = r3c_log_write;
     static LOG_WRITE g_info_log = r3c_log_write;
     static LOG_WRITE g_debug_log = r3c_log_write;
@@ -294,7 +294,10 @@ public:
     {
         _redis_context = redis_context;
         if (NULL == _redis_context)
+        {
             ++_conn_errors;
+            (*g_debug_log)("%s\n", str().c_str());
+        }
     }
 
     void close()
@@ -309,6 +312,11 @@ public:
     std::string str() const
     {
         return format_string("node://(connerrors:%u)%s:%d", _conn_errors, _node.first.c_str(), _node.second);
+    }
+
+    unsigned int get_conn_errors() const
+    {
+        return _conn_errors;
     }
 
     void inc_conn_errors()
@@ -587,7 +595,7 @@ CRedisClient::CRedisClient(
 
 CRedisClient::~CRedisClient()
 {
-    clear_all_master_nodes();
+    fini();
 }
 
 const std::string& CRedisClient::get_raw_nodes_string() const
@@ -595,9 +603,9 @@ const std::string& CRedisClient::get_raw_nodes_string() const
     return _raw_nodes_string;
 }
 
-const std::string& CRedisClient::get_master_nodes_string() const
+const std::string& CRedisClient::get_nodes_string() const
 {
-    return _master_nodes_string;
+    return _nodes_string;
 }
 
 std::string CRedisClient::str() const
@@ -2789,13 +2797,14 @@ CRedisClient::redis_command(
     Node node;
     RedisReplyHelper redis_reply;
     struct ErrorInfo errinfo;
+    bool need_monitor = false; // 用来防止重复调用after_execute
 
     if (key.empty() && cluster_mode())
     {
         // 集群模式必须指定key
         errinfo.errcode = ERROR_ZERO_KEY;
         errinfo.raw_errmsg = format_string("[%s] key is empty in cluster node", command_args.get_command());
-        errinfo.errmsg = format_string("[%s:%d] %s", __FILE__, __LINE__, errinfo.raw_errmsg.c_str());
+        errinfo.errmsg = format_string("[R3C_CMD][%s:%d] %s", __FILE__, __LINE__, errinfo.raw_errmsg.c_str());
         (*g_error_log)("%s\n", errinfo.errmsg.c_str());
         THROW_REDIS_EXCEPTION(errinfo);
     }
@@ -2822,7 +2831,10 @@ CRedisClient::redis_command(
         else
         {
             if (_command_monitor != NULL)
+            {
+                need_monitor = true;
                 _command_monitor->before_execute(node, command_args.get_command_str(), command_args, readonly);
+            }
 
             redis_reply = (redisReply*)redisCommandArgv(
                     redis_node->get_redis_context(),
@@ -2835,35 +2847,27 @@ CRedisClient::redis_command(
 
         if (HR_SUCCESS == errcode)
         {
-            // 成功
+            // 成功立即返回
             if (_command_monitor != NULL)
                 _command_monitor->after_execute(0, node, command_args.get_command_str(), redis_reply.get());
             return redis_reply;
         }
         else if (HR_ERROR == errcode)
         {
-            // 不需要重试的错误，比如：EVAL命令语法错误
+            // 不需要重试的错误立即返回，比如：EVAL命令语法错误
             break;
         }
         else if (HR_RECONN_COND == errcode ||
                  HR_RECONN_UNCOND == errcode)
         {
-            // 先调用close关闭连接，当调用get_redis_node时就会执行重连接
+            // 连接问题，先调用close关闭连接（调用get_redis_node时就会执行重连接）
             redis_node->close();
         }
 
-        if (redis_node->need_refresh_master())
-        {
-            if (HR_RECONN_COND==errcode ||
-                HR_RECONN_UNCOND==errcode)
-                refresh_master_nodes(&errinfo, &node);
-            else
-                refresh_master_nodes(&errinfo, NULL);
-        }
         if (HR_RECONN_UNCOND == errcode)
         {
             // 保持至少重试一次（前提是先重新建立好连接）
-            if (loop_counter >= num_retries+1)
+            if (loop_counter > num_retries)
                 break;
         }
         else if (HR_RETRY_UNCOND == errcode)
@@ -2885,14 +2889,23 @@ CRedisClient::redis_command(
             if (retry_sleep_milliseconds > 0)
                 millisleep(retry_sleep_milliseconds);
         }
+        if (redis_node->need_refresh_master())
+        {
+            if (HR_RECONN_COND==errcode ||
+                HR_RECONN_UNCOND==errcode)
+                refresh_master_node_table(&errinfo, &node);
+            else
+                refresh_master_node_table(&errinfo, NULL);
+        }
         if (_command_monitor != NULL)
         {
+            need_monitor = false;
             _command_monitor->after_execute(1, node, command_args.get_command_str(), redis_reply.get());
         }
     }
 
     // 错误以异常方式抛出
-    if (_command_monitor != NULL)
+    if (need_monitor && _command_monitor!=NULL)
         _command_monitor->after_execute(1, node, command_args.get_command_str(), redis_reply.get());
     THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(
             errinfo, node.first, node.second,
@@ -2922,7 +2935,7 @@ CRedisClient::handle_redis_command_error(
     errinfo->errcode = errno;
     errinfo->raw_errmsg = format_string("[%s] (%d)%s",
             redis_node->str().c_str(), redis_errcode, redis_context->errstr);
-    errinfo->errmsg = format_string("[%s:%d][%s] %s",
+    errinfo->errmsg = format_string("[COMMAND_ERROR][%s:%d][%s] %s",
             __FILE__, __LINE__, command_args.get_command(), errinfo->raw_errmsg.c_str());
     (*g_error_log)("%s\n", errinfo->errmsg.c_str());
 
@@ -2992,10 +3005,12 @@ CRedisClient::handle_redis_replay_error(
     // WRONGTYPE Operation against a key holding the wrong kind of value
     // CLUSTERDOWN The cluster is down
     // NOSCRIPT No matching script. Please use EVAL.
+    //
+    // ERR Error running script (call to f_64b2246244d60088e7351656c216c00cb1d7d2fd) : @user_script:1: @user_script: 1: Lua script attempted to access a non local key in a cluster node
     extract_errtype(redis_reply, &errinfo->errtype);
     errinfo->errcode = ERROR_COMMAND;
     errinfo->raw_errmsg = format_string("[%s] %s", redis_node->str().c_str(), redis_reply->str);
-    errinfo->errmsg = format_string("[%s:%d][%s] %s", __FILE__, __LINE__, command_args.get_command(), errinfo->raw_errmsg.c_str());
+    errinfo->errmsg = format_string("[REPLAY_ERROR][%s:%d][%s] %s", __FILE__, __LINE__, command_args.get_command(), errinfo->raw_errmsg.c_str());
     (*g_error_log)("%s\n", errinfo->errmsg.c_str());
 
     // EVAL不会返回“MOVED”的错误，需特别处理
@@ -3020,6 +3035,11 @@ CRedisClient::handle_redis_replay_error(
     }
 }
 
+void CRedisClient::fini()
+{
+    clear_all_master_nodes();
+}
+
 void CRedisClient::init()
 {
     try
@@ -3030,7 +3050,7 @@ void CRedisClient::init()
         if (0 == num_nodes)
         {
             errinfo.errcode = ERROR_PARAMETER;
-            errinfo.errmsg = format_string("[%s:%d] parameter[nodes] error: %s", __FILE__, __LINE__, _raw_nodes_string.c_str());
+            errinfo.errmsg = format_string("[R3C_INIT][%s:%d] parameter[nodes] error: %s", __FILE__, __LINE__, _raw_nodes_string.c_str());
             errinfo.raw_errmsg = format_string("parameter[nodes] error: %s", _raw_nodes_string.c_str());
             (*g_error_log)("%s\n", errinfo.errmsg.c_str());
             THROW_REDIS_EXCEPTION(errinfo);
@@ -3056,7 +3076,7 @@ void CRedisClient::init()
 bool CRedisClient::init_standlone(struct ErrorInfo* errinfo)
 {
     const Node& node = _nodes[0];
-    _master_nodes_string = _raw_nodes_string;
+    _nodes_string = _raw_nodes_string;
 
     redisContext* redis_context = connect_redis_node(node, errinfo);
     if (NULL == redis_context)
@@ -3076,12 +3096,13 @@ bool CRedisClient::init_standlone(struct ErrorInfo* errinfo)
 bool CRedisClient::init_cluster(struct ErrorInfo* errinfo)
 {
     const int num_nodes = static_cast<int>(_nodes.size());
-    uint64_t seed = reinterpret_cast<uint64_t>(this) - num_nodes;
+    const uint64_t base = reinterpret_cast<uint64_t>(this);
+    uint64_t seed = get_random_number(base);
 
     _slot2node.resize(CLUSTER_SLOTS);
     for (int i=0; i<num_nodes; ++i)
     {
-        const int j = static_cast<int>(seed++ % num_nodes);
+        const int j = static_cast<int>(++seed % num_nodes);
         const Node& node = _nodes[j];
         std::vector<struct NodeInfo> nodes_info;
 
@@ -3113,24 +3134,30 @@ bool CRedisClient::init_cluster(struct ErrorInfo* errinfo)
 
 bool CRedisClient::init_master_nodes(const std::vector<struct NodeInfo>& nodes_info, struct ErrorInfo* errinfo)
 {
-    int num = 0;
+    int connected = 0; // 成功连接的master个数
 
+    if (nodes_info.size() > 1)
+        _nodes_string.clear();
+    else
+        _nodes_string = _raw_nodes_string;
     for (std::vector<struct NodeInfo>::size_type i=0; i<nodes_info.size(); ++i)
     {
         const struct NodeInfo& nodeinfo = nodes_info[i];
 
+        if (nodes_info.size() > 1)
+        {
+            update_nodes_string(nodeinfo);
+        }
         if (nodeinfo.is_master() && !nodeinfo.is_fail())
         {
             update_slots(nodeinfo);
-            update_master_nodes_string(nodeinfo);
-
             if (add_master_node(nodeinfo, errinfo))
-                ++num;
+                ++connected;
         }
     }
 
     // 至少要有一个能够连接上
-    return num > 0;
+    return connected > 0;
 }
 
 void CRedisClient::update_slots(const struct NodeInfo& nodeinfo)
@@ -3146,7 +3173,7 @@ void CRedisClient::update_slots(const struct NodeInfo& nodeinfo)
 // 几种需要刷新master情况：
 // 1) 遇到MOVED错误（可立即重刷）
 // 2) master挂起（能够连接，但不能服务，立即重刷一般无效，得等主从切换后）
-void CRedisClient::refresh_master_nodes(struct ErrorInfo* errinfo, const Node* error_node)
+void CRedisClient::refresh_master_node_table(struct ErrorInfo* errinfo, const Node* error_node)
 {
     const int num_nodes = static_cast<int>(_master_nodes.size());
     uint64_t seed = reinterpret_cast<uint64_t>(this) - num_nodes;
@@ -3196,19 +3223,26 @@ void CRedisClient::refresh_master_nodes(struct ErrorInfo* errinfo, const Node* e
 void CRedisClient::clear_and_update_master_nodes(const std::vector<struct NodeInfo>& nodes_info, struct ErrorInfo* errinfo)
 {
     NodeInfoTable master_nodeinfo_table;
+    std::string nodes_string;
 
-    _master_nodes_string.clear();
+    if (nodes_info.size() > 1)
+    {
+        _nodes_string.clear();
+    }
     for (std::vector<struct NodeInfo>::size_type i=0; i<nodes_info.size(); ++i)
     {
         const struct NodeInfo& nodeinfo = nodes_info[i];
 
+        if (nodes_info.size() > 1)
+        {
+            update_nodes_string(nodeinfo);
+        }
         if (nodeinfo.is_master() && !nodeinfo.is_fail())
         {
             // 可能只是一个或多个slot从一个master迁到另一个master，
             // 简单的全量更新slot和node间的关系，
             // 如果一对master和replica同时异常，则_slot2node会出现空洞
             update_slots(nodeinfo);
-            update_master_nodes_string(nodeinfo);
             master_nodeinfo_table.insert(std::make_pair(nodeinfo.node, nodeinfo));
 
             if (_master_nodes.count(nodeinfo.node) <= 0)
@@ -3237,7 +3271,7 @@ void CRedisClient::clear_invalid_master_nodes(const NodeInfoTable& master_nodein
         else
         {
             CMasterNode* master_node = node_iter->second;
-            (*g_info_log)("%s is removed because it is not a master now\n", master_node->str().c_str());
+            (*g_info_log)("[R3C_CLEAR_INVALID][%s:%d] %s is removed because it is not a master now\n", __FILE__, __LINE__, master_node->str().c_str());
 
 #if __cplusplus < 201103L
             _master_nodes.erase(node_iter++);
@@ -3272,20 +3306,20 @@ void CRedisClient::clear_all_master_nodes()
     _master_nodes.clear();
 }
 
-void CRedisClient::update_master_nodes_string(const NodeInfo& nodeinfo)
+void CRedisClient::update_nodes_string(const NodeInfo& nodeinfo)
 {
     std::string node_str;
-    if (_master_nodes_string.empty())
-        _master_nodes_string = node2string(nodeinfo.node, &node_str);
+    if (_nodes_string.empty())
+        _nodes_string = node2string(nodeinfo.node, &node_str);
     else
-        _master_nodes_string = _master_nodes_string + std::string(",") + node2string(nodeinfo.node, &node_str);
+        _nodes_string = _nodes_string + std::string(",") + node2string(nodeinfo.node, &node_str);
 }
 
 redisContext* CRedisClient::connect_redis_node(const Node& node, struct ErrorInfo* errinfo) const
 {
     redisContext* redis_context = NULL;
 
-    (*g_debug_log)("[%s:%d] To connect %s with timeout: %dms\n", __FILE__, __LINE__, node2string(node).c_str(), _connect_timeout_milliseconds);
+    (*g_debug_log)("[R3C_CONN][%s:%d] To connect %s with timeout: %dms\n", __FILE__, __LINE__, node2string(node).c_str(), _connect_timeout_milliseconds);
     if (_connect_timeout_milliseconds <= 0)
     {
         redis_context = redisConnect(node.first.c_str(), node.second);
@@ -3303,7 +3337,7 @@ redisContext* CRedisClient::connect_redis_node(const Node& node, struct ErrorInf
         // can't allocate redis context
         errinfo->errcode = ERROR_REDIS_CONTEXT;
         errinfo->raw_errmsg = "can not allocate redis context";
-        errinfo->errmsg = format_string("[%s:%d][%s:%d] %s",
+        errinfo->errmsg = format_string("[R3C_CONN][%s:%d][%s:%d] %s",
                 __FILE__, __LINE__, node.first.c_str(), node.second, errinfo->raw_errmsg.c_str());
         (*g_error_log)("%s\n", errinfo->errmsg.c_str());
     }
@@ -3322,12 +3356,12 @@ redisContext* CRedisClient::connect_redis_node(const Node& node, struct ErrorInf
         errinfo->raw_errmsg = redis_context->errstr;
         if (REDIS_ERR_IO == redis_context->err)
         {
-            errinfo->errmsg = format_string("[%s:%d][%s:%d] (errno:%d,err:%d)%s",
+            errinfo->errmsg = format_string("[R3C_CONN][%s:%d][%s:%d] (errno:%d,err:%d)%s",
                     __FILE__, __LINE__, node.first.c_str(), node.second, errno, redis_context->err, errinfo->raw_errmsg.c_str());
         }
         else
         {
-            errinfo->errmsg = format_string("[%s:%d][%s:%d] (err:%d)%s",
+            errinfo->errmsg = format_string("[R3C_CONN][%s:%d][%s:%d] (err:%d)%s",
                     __FILE__, __LINE__, node.first.c_str(), node.second, redis_context->err, errinfo->raw_errmsg.c_str());
         }
         (*g_error_log)("%s\n", errinfo->errmsg.c_str());
@@ -3336,7 +3370,7 @@ redisContext* CRedisClient::connect_redis_node(const Node& node, struct ErrorInf
     }
     else
     {
-        (*g_debug_log)("[%s:%d] Connect %s successfully with readwrite timeout: %dms\n", __FILE__, __LINE__, node2string(node).c_str(), _readwrite_timeout_milliseconds);
+        (*g_debug_log)("[R3C_CONN][%s:%d] Connect %s successfully with readwrite timeout: %dms\n", __FILE__, __LINE__, node2string(node).c_str(), _readwrite_timeout_milliseconds);
 
         if (_readwrite_timeout_milliseconds > 0)
         {
@@ -3349,7 +3383,7 @@ redisContext* CRedisClient::connect_redis_node(const Node& node, struct ErrorInf
                 // REDIS_ERR_IO == redis_context->err
                 errinfo->errcode = ERROR_INIT_REDIS_CONN;
                 errinfo->raw_errmsg = redis_context->errstr;
-                errinfo->errmsg = format_string("[%s:%d][%s:%d] (errno:%d,err:%d)%s",
+                errinfo->errmsg = format_string("[R3C_CONN][%s:%d][%s:%d] (errno:%d,err:%d)%s",
                         __FILE__, __LINE__, node.first.c_str(), node.second, errno, redis_context->err, errinfo->raw_errmsg.c_str());
                 (*g_error_log)("%s\n", errinfo->errmsg.c_str());
                 redisFree(redis_context);
@@ -3363,7 +3397,7 @@ redisContext* CRedisClient::connect_redis_node(const Node& node, struct ErrorInf
             if (redis_reply && 0==strcmp(redis_reply->str, "OK"))
             {
                 // AUTH success
-                (*g_info_log)("[%s:%d] connect redis://%s:%d success\n", __FILE__, __LINE__, node.first.c_str(), node.second);
+                (*g_info_log)("[R3C_CONN][%s:%d] Connect redis://%s:%d success\n", __FILE__, __LINE__, node.first.c_str(), node.second);
             }
             else
             {
@@ -3380,7 +3414,7 @@ redisContext* CRedisClient::connect_redis_node(const Node& node, struct ErrorInf
                     errinfo->raw_errmsg = redis_reply->str;
                 }
 
-                errinfo->errmsg = format_string("[%s:%d][%s:%d] %s",
+                errinfo->errmsg = format_string("[R3C_CONN][%s:%d][%s:%d] %s",
                         __FILE__, __LINE__, node.first.c_str(), node.second, errinfo->raw_errmsg.c_str());
                 (*g_error_log)("%s\n", errinfo->errmsg.c_str());
                 redisFree(redis_context);
@@ -3392,44 +3426,62 @@ redisContext* CRedisClient::connect_redis_node(const Node& node, struct ErrorInf
     return redis_context;
 }
 
-CRedisNode* CRedisClient::get_redis_node(int slot, struct ErrorInfo* errinfo) const
+CRedisNode* CRedisClient::get_redis_node(int slot, struct ErrorInfo* errinfo)
 {
     CRedisNode* redis_node = NULL;
     redisContext* redis_context = NULL;
 
-    if (-1 == slot)
+    do
     {
-        // Standalone
-        R3C_ASSERT(!_master_nodes.empty());
-        redis_node = _master_nodes.begin()->second;
-    }
-    else
-    {
-        // Cluster
-        R3C_ASSERT(slot>=0 && CLUSTER_SLOTS<=CLUSTER_SLOTS);
-
-        const Node& node = _slot2node[slot];
-        MasterNodeTable::const_iterator iter = _master_nodes.find(node);
-        if (iter != _master_nodes.end())
+        if (-1 == slot)
         {
-            redis_node = iter->second;
+            // Standalone（单机redis）
+            R3C_ASSERT(!_master_nodes.empty());
+            redis_node = _master_nodes.begin()->second;
+            break;
         }
-    }
-
-    if (NULL == redis_node)
-    {
-        // 遇到空的slot，随机选一个
-        redis_node = random_master_node();
-    }
-    else
-    {
-        redis_context = redis_node->get_redis_context();
-        if (NULL == redis_context)
+        else
         {
-            redis_context = connect_redis_node(redis_node->get_node(), errinfo);
-            redis_node->set_redis_context(redis_context);
+            // Cluster（集群redis）
+            R3C_ASSERT(slot>=0 && CLUSTER_SLOTS<=CLUSTER_SLOTS);
+
+            // clear_invalid_master_nodes可能将整个_master_nodes清空了，比如当整个集群短暂不可用时
+            if (_master_nodes.empty())
+            {
+                const int num_nodes = parse_nodes(&_nodes, _nodes_string);
+
+                R3C_ASSERT(num_nodes > 1);
+                if (!init_cluster(errinfo))
+                {
+                    break;
+                }
+            }
+            {
+                const Node& node = _slot2node[slot];
+                const MasterNodeTable::const_iterator iter = _master_nodes.find(node);
+                if (iter != _master_nodes.end())
+                {
+                    redis_node = iter->second;
+                }
+            }
         }
-    }
+
+        if (NULL == redis_node)
+        {
+            // 遇到空的slot，随机选一个
+            redis_node = random_master_node();
+        }
+        if (redis_node != NULL)
+        {
+            redis_context = redis_node->get_redis_context();
+            if (NULL == redis_context)
+            {
+                redis_context = connect_redis_node(redis_node->get_node(), errinfo);
+                redis_node->set_redis_context(redis_context);
+            }
+        }
+    } while(false);
+
     return redis_node;
 }
 
@@ -3442,11 +3494,12 @@ CMasterNode* CRedisClient::random_master_node() const
     else
     {
         const int num_nodes = static_cast<int>(_nodes.size());
-        uint64_t seed = reinterpret_cast<uint64_t>(this) - num_nodes;
-        const int k = static_cast<int>(seed % num_nodes);
-        MasterNodeTable::const_iterator iter = _master_nodes.begin();
+        const uint64_t base = reinterpret_cast<uint64_t>(this);
+        const uint64_t seed = get_random_number(base);
+        const int K = static_cast<int>(seed % num_nodes);
 
-        for (int i=0; i<k; ++i)
+        MasterNodeTable::const_iterator iter = _master_nodes.begin();
+        for (int i=0; i<K; ++i)
         {
             ++iter;
             if (iter == _master_nodes.end())
@@ -3468,21 +3521,23 @@ CRedisClient::list_cluster_nodes(
     errinfo->clear();
     if (!redis_reply)
     {
+        const int sys_errcode = errno;
         const int redis_errcode = redis_context->err;
         errinfo->errcode = ERROR_COMMAND;
         if (redis_errcode != 0)
             errinfo->raw_errmsg = redis_context->errstr;
         else
             errinfo->raw_errmsg = "redisCommand failed";
-        errinfo->errmsg = format_string("[%s:%d][%s] (%d)%s", __FILE__, __LINE__, node2string(node).c_str(), redis_errcode, "redisCommand failed");
+        errinfo->errmsg = format_string("[R3C_LIST_NODES][%s:%d][%s] (sys:%d,redis:%d)%s", __FILE__, __LINE__, node2string(node).c_str(), sys_errcode, redis_errcode, errinfo->raw_errmsg.c_str());
         (*g_error_log)("%s\n", errinfo->errmsg.c_str());
+        (*g_info_log)("[%s:%d] %s\n", __FILE__, __LINE__, _nodes_string.c_str());
     }
     else if (REDIS_REPLY_ERROR == redis_reply->type)
     {
         // ERR This instance has cluster support disabled
         errinfo->errcode = ERROR_COMMAND;
         errinfo->raw_errmsg = redis_reply->str;
-        errinfo->errmsg = format_string("[%s:%d][%s] %s", __FILE__, __LINE__, node2string(node).c_str(), redis_reply->str);
+        errinfo->errmsg = format_string("[R3C_LIST_NODES][%s:%d][%s] %s", __FILE__, __LINE__, node2string(node).c_str(), redis_reply->str);
         (*g_error_log)("%s\n", errinfo->errmsg.c_str());
     }
     else if (redis_reply->type != REDIS_REPLY_STRING)
@@ -3490,7 +3545,7 @@ CRedisClient::list_cluster_nodes(
         // Unexpected reply type
         errinfo->errcode = ERROR_UNEXCEPTED_REPLY_TYPE;
         errinfo->raw_errmsg = redis_reply->str;
-        errinfo->errmsg = format_string("[%s:%d][%s] (type:%d)%s", __FILE__, __LINE__, node2string(node).c_str(), redis_reply->type, redis_reply->str);
+        errinfo->errmsg = format_string("[R3C_LIST_NODES][%s:%d][%s] (type:%d)%s", __FILE__, __LINE__, node2string(node).c_str(), redis_reply->type, redis_reply->str);
         (*g_error_log)("%s\n", errinfo->errmsg.c_str());
     }
     else
@@ -3515,7 +3570,7 @@ CRedisClient::list_cluster_nodes(
         {
             errinfo->errcode = ERROR_REPLY_FORMAT;
             errinfo->raw_errmsg = "reply nothing";
-            errinfo->errmsg = format_string("[%s:%d][%s] %s", __FILE__, __LINE__, node2string(node).c_str(), "reply nothing");
+            errinfo->errmsg = format_string("[R3C_LIST_NODES][%s:%d][%s] %s", __FILE__, __LINE__, node2string(node).c_str(), "reply nothing");
             (*g_error_log)("%s\n", errinfo->errmsg.c_str());
         }
         for (int row=0; row<num_lines; ++row)
@@ -3535,7 +3590,7 @@ CRedisClient::list_cluster_nodes(
                 nodes_info->clear();
                 errinfo->errcode = ERROR_REPLY_FORMAT;
                 errinfo->raw_errmsg = "reply format error";
-                errinfo->errmsg = format_string("[%s:%d][%s] %s", __FILE__, __LINE__, node2string(node).c_str(), "reply format error");
+                errinfo->errmsg = format_string("[R3C_LIST_NODES][%s:%d][%s] %s", __FILE__, __LINE__, node2string(node).c_str(), "reply format error");
                 (*g_error_log)("%s\n", errinfo->errmsg.c_str());
                 break;
             }
@@ -3549,7 +3604,7 @@ CRedisClient::list_cluster_nodes(
                     nodes_info->clear();
                     errinfo->errcode = ERROR_REPLY_FORMAT;
                     errinfo->raw_errmsg = "reply format error";
-                    errinfo->errmsg = format_string("[%s:%d][%s] %s", __FILE__, __LINE__, node2string(node).c_str(), "reply format error");
+                    errinfo->errmsg = format_string("[R3C_LIST_NODES][%s:%d][%s] %s", __FILE__, __LINE__, node2string(node).c_str(), "reply format error");
                     (*g_error_log)("%s\n", errinfo->errmsg.c_str());
                     break;
                 }
@@ -3574,7 +3629,7 @@ CRedisClient::list_cluster_nodes(
                         }
                     }
 
-                    (*g_debug_log)("[%s:%d][%s] %s\n",
+                    (*g_debug_log)("[R3C_LIST_NODES][%s:%d][%s] %s\n",
                             __FILE__, __LINE__, node2string(node).c_str(), nodeinfo.str().c_str());
                     nodes_info->push_back(nodeinfo);
                 }
