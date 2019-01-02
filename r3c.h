@@ -834,7 +834,6 @@ private:
 
 private:
     std::vector<Node> _nodes;
-    std::vector<NodeInfo> _nodes_info;
     std::vector<Node> _slot2node; // The map of slot to Node
 };
 
