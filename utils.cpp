@@ -80,6 +80,9 @@ void null_log_write(const char* UNUSED(format), ...)
 
 void r3c_log_write(const char* format, ...)
 {
+    const std::string& current_datetime = get_formatted_current_datetime(true);
+    printf("[%s]", current_datetime.c_str());
+
     va_list ap;
     va_start(ap, format);
     vprintf(format, ap);

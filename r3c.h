@@ -38,7 +38,7 @@ std::string zaddflag2str(ZADDFLAG zaddflag);
 // Consts
 enum
 {
-    NUM_RETRIES = 10, // Number of retries (CLUSTERDOWN need more than 6s)
+    NUM_RETRIES = 16, // Number of retries (CLUSTERDOWN need more than 6s)
     CONNECT_TIMEOUT_MILLISECONDS = 1000,  // Connection timeout in milliseconds
     READWRITE_TIMEOUT_MILLISECONDS = 1000 // Receive and send timeout in milliseconds
 };
