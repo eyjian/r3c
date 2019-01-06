@@ -2935,7 +2935,7 @@ CRedisClient::handle_redis_command_error(
     errinfo->errcode = errno;
     errinfo->raw_errmsg = format_string("[%s] (%d)%s",
             redis_node->str().c_str(), redis_errcode, redis_context->errstr);
-    errinfo->errmsg = format_string("[COMMAND_ERROR][%s:%d][%s] %s",
+    errinfo->errmsg = format_string("[R3C_CMD_ERROR][%s:%d][%s] %s",
             __FILE__, __LINE__, command_args.get_command(), errinfo->raw_errmsg.c_str());
     (*g_error_log)("%s\n", errinfo->errmsg.c_str());
 
@@ -3010,7 +3010,7 @@ CRedisClient::handle_redis_replay_error(
     extract_errtype(redis_reply, &errinfo->errtype);
     errinfo->errcode = ERROR_COMMAND;
     errinfo->raw_errmsg = format_string("[%s] %s", redis_node->str().c_str(), redis_reply->str);
-    errinfo->errmsg = format_string("[REPLAY_ERROR][%s:%d][%s] %s", __FILE__, __LINE__, command_args.get_command(), errinfo->raw_errmsg.c_str());
+    errinfo->errmsg = format_string("[R3C_REPLAY_ERROR][%s:%d][%s] %s", __FILE__, __LINE__, command_args.get_command(), errinfo->raw_errmsg.c_str());
     (*g_error_log)("%s\n", errinfo->errmsg.c_str());
 
     // EVAL不会返回“MOVED”的错误，需特别处理
