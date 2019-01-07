@@ -654,30 +654,50 @@ void CRedisClient::flushall() throw (CRedisException)
     redis_command(true, num_retries, key, cmd_args, NULL);
 }
 
-void CRedisClient::multi(const std::string& key, Node* which)
+void CRedisClient::multi(const std::string& key, Node* which) throw (CRedisException)
 {
-    const int num_retries = 0;
-    CommandArgs cmd_args;
-    cmd_args.set_key(key);
-    cmd_args.add_arg("MULTI");
-    cmd_args.final();
+    if (cluster_mode())
+    {
+        struct ErrorInfo errinfo;
+        errinfo.errcode = ERROR_NOT_SUPPORT;
+        errinfo.errmsg = "MULTI not supported in cluster mode";
+        THROW_REDIS_EXCEPTION(errinfo);
+    }
+    else
+    {
+        const int num_retries = 0;
+        CommandArgs cmd_args;
+        cmd_args.set_key(key);
+        cmd_args.add_arg("MULTI");
+        cmd_args.final();
 
-    // Simple string reply (REDIS_REPLY_STATUS):
-    // always OK.
-    redis_command(false, num_retries, key, cmd_args, which);
+        // Simple string reply (REDIS_REPLY_STATUS):
+        // always OK.
+        redis_command(false, num_retries, key, cmd_args, which);
+    }
 }
 
-const RedisReplyHelper CRedisClient::exec(const std::string& key, Node* which)
+const RedisReplyHelper CRedisClient::exec(const std::string& key, Node* which) throw (CRedisException)
 {
-    const int num_retries = 0;
-    CommandArgs cmd_args;
-    cmd_args.set_key(key);
-    cmd_args.add_arg("EXEC");
-    cmd_args.final();
+    if (cluster_mode())
+    {
+        struct ErrorInfo errinfo;
+        errinfo.errcode = ERROR_NOT_SUPPORT;
+        errinfo.errmsg = "EXEC not supported in cluster mode";
+        THROW_REDIS_EXCEPTION(errinfo);
+    }
+    else
+    {
+        const int num_retries = 0;
+        CommandArgs cmd_args;
+        cmd_args.set_key(key);
+        cmd_args.add_arg("EXEC");
+        cmd_args.final();
 
-    // Array reply:
-    // each element being the reply to each of the commands in the atomic transaction.
-    return redis_command(false, num_retries, key, cmd_args, which);
+        // Array reply:
+        // each element being the reply to each of the commands in the atomic transaction.
+        return redis_command(false, num_retries, key, cmd_args, which);
+    }
 }
 
 //

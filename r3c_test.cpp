@@ -398,7 +398,10 @@ void test_transaction(const std::string& redis_cluster_nodes, const std::string&
     }
     catch (r3c::CRedisException& ex)
     {
-        ERROR_PRINT("ERROR: %s", ex.str().c_str());
+        if (ex.errcode() != r3c::ERROR_NOT_SUPPORT)
+            ERROR_PRINT("ERROR: %s", ex.str().c_str());
+        else
+            SUCCESS_PRINT("%s", ex.str().c_str());
     }
 }
 

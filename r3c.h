@@ -219,8 +219,6 @@ private:
 
 // NOTICE:
 // 1) ALL keys and values can be binary except EVAL commands.
-// 2) DO NOT use the return values of any command in MULTI & EXEC transaction.
-// 3) ALWAYS set number of retries to 0 of any command  in MULTI & EXEC transaction.
 class CRedisClient
 {
 public:
@@ -263,11 +261,11 @@ public:
     // The time-complexity for this operation is O(N), N being the number of keys in all existing databases.
     void flushall() throw (CRedisException);
 
-    // Is not safe in cluster mode if num_retries is not equal 0
-    void multi(const std::string& key=std::string(""), Node* which=NULL);
+    // NOT SUPPORT cluster mode
+    void multi(const std::string& key=std::string(""), Node* which=NULL) throw (CRedisException);
 
-    // Is not safe in cluster mode if num_retries is not equal 0
-    const RedisReplyHelper exec(const std::string& key=std::string(""), Node* which=NULL);
+    // NOT SUPPORT cluster mode
+    const RedisReplyHelper exec(const std::string& key=std::string(""), Node* which=NULL) throw (CRedisException);
 
 public: // KV
     // Set a key's time to live in seconds.
