@@ -561,13 +561,28 @@ void parse_slot_string(const std::string& slot_string, int* start_slot, int* end
 }
 
 // MOVED 9166 10.240.84.140:6379
-void parse_moved_string(const std::string& moved_string, std::pair<std::string, uint16_t>* node)
+bool parse_moved_string(const std::string& moved_string, std::pair<std::string, uint16_t>* node)
 {
-    const std::string::size_type space_pos = moved_string.rfind(' ');
-    const std::string& ip_and_port_string = moved_string.substr(space_pos+1);
-    const std::string::size_type colon_pos = ip_and_port_string.find(':');
-    node->first = ip_and_port_string.substr(0, colon_pos);
-    node->second = (uint16_t)atoi(ip_and_port_string.substr(colon_pos+1).c_str());
+    do
+    {
+        const std::string::size_type space_pos = moved_string.rfind(' ');
+        if (space_pos == std::string::npos)
+            break;
+
+        const std::string& ip_and_port_string = moved_string.substr(space_pos+1);
+        const std::string::size_type colon_pos = ip_and_port_string.find(':');
+        if (colon_pos == std::string::npos)
+            break;
+
+        node->first = ip_and_port_string.substr(0, colon_pos);
+        node->second = (uint16_t)atoi(ip_and_port_string.substr(colon_pos+1).c_str());
+        if (0 == node->second)
+            break;
+
+        return true;
+    } while(false);
+
+    return false;
 }
 
 /* Copy from util.c

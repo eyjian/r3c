@@ -48,7 +48,7 @@ namespace r3c {
     extern int parse_nodes(std::vector<std::pair<std::string, uint16_t> >* nodes, const std::string& nodes_string);
     extern bool parse_node_string(const std::string& node_string, std::string* ip, uint16_t* port);
     extern void parse_slot_string(const std::string& slot_string, int* start_slot, int* end_slot);
-    extern void parse_moved_string(const std::string& moved_string, std::pair<std::string, uint16_t>* node);
+    extern bool parse_moved_string(const std::string& moved_string, std::pair<std::string, uint16_t>* node);
     extern uint64_t get_random_number(uint64_t base);
 
 } // namespace r3c {

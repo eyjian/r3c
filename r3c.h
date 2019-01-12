@@ -746,7 +746,7 @@ private:
     // HR_RETRY_UNCOND 需要无条件重试
     // HR_RECONN_COND 有条件重连接并重试
     // HR_RECONN_UNCOND 无条件重连接并重试
-    enum HandleResult { HR_SUCCESS, HR_ERROR, HR_RETRY_COND, HR_RETRY_UNCOND, HR_RECONN_COND, HR_RECONN_UNCOND };
+    enum HandleResult { HR_SUCCESS, HR_ERROR, HR_RETRY_COND, HR_RETRY_UNCOND, HR_RECONN_COND, HR_RECONN_UNCOND, HR_REDIRECT };
 
     // Handle the redis command error
     // Return -1 to break, return 1 to retry conditionally
@@ -777,7 +777,7 @@ private:
 private:
     // Connect the given node
     redisContext* connect_redis_node(const Node& node, struct ErrorInfo* errinfo) const;
-    CRedisNode* get_redis_node(int slot, struct ErrorInfo* errinfo);
+    CRedisNode* get_redis_node(const Node* ask_node, int slot, struct ErrorInfo* errinfo);
     CMasterNode* random_master_node() const;
 
 private:

@@ -2815,9 +2815,9 @@ CRedisClient::redis_command(
         Node* which)
 {
     Node node;
+    Node* ask_node = NULL;
     RedisReplyHelper redis_reply;
     struct ErrorInfo errinfo;
-    bool need_monitor = false; // 用来防止重复调用after_execute
 
     if (key.empty() && cluster_mode())
     {
@@ -2831,17 +2831,28 @@ CRedisClient::redis_command(
     for (int loop_counter=0;;++loop_counter)
     {
         const int slot = cluster_mode()? get_key_slot(&key): -1;
+        CRedisNode* redis_node = get_redis_node(ask_node, slot, &errinfo);
         HandleResult errcode;
-        CRedisNode* redis_node = get_redis_node(slot, &errinfo);
+
+        if (NULL == redis_node)
+        {
+            node.first.clear(); node.second = 0;
+        }
+        else
+        {
+            node = redis_node->get_node();
+        }
+        if (which != NULL)
+        {
+            *which = node;
+        }
+        if (0==loop_counter && _command_monitor!= NULL)
+        {
+            _command_monitor->before_execute(node, command_args.get_command_str(), command_args, readonly);
+        }
         if (NULL == redis_node)
         {
             break; // 没有任何master
-        }
-
-        node = redis_node->get_node();
-        if (which != NULL)
-        {
-            *which = redis_node->get_node();
         }
         if (NULL == redis_node->get_redis_context())
         {
@@ -2850,12 +2861,22 @@ CRedisClient::redis_command(
         }
         else
         {
-            if (_command_monitor != NULL)
+            if (ask_node != NULL)
             {
-                need_monitor = true;
-                _command_monitor->before_execute(node, command_args.get_command_str(), command_args, readonly);
+                // When a slot is set as MIGRATING, the node will accept all queries that are about this hash slot,
+                // but only if the key in question exists,
+                // otherwise the query is forwarded using a -ASK redirection to the node that is target of the migration.
+                // 当一个槽状态为 MIGRATING时，原来负责该哈希槽的节点仍会接受所有跟这个哈希槽有关的请求，但只处理仍然在该节点上的键，
+                // 否则类似于MOVED，返回ASK重定向到目标节点。
+                //
+                // When a slot is set as IMPORTING, the node will accept all queries that are about this hash slot,
+                // but only if the request is preceded by an ASKING command.
+                // If the ASKING command was not given by the client, the query is redirected to the real hash slot owner via a -MOVED redirection error,
+                // as would happen normally.
+                // 当一个槽状态为 IMPORTING时，只有在接受到 ASKING命令之后节点才会接受所有查询这个哈希槽的请求，
+                // 如果客户端一直没有发送 ASKING命令，那么查询都会通过MOVED重定向错误转发到真正处理这个哈希槽的节点那里。
+                (void)redisCommand(redis_node->get_redis_context(), "ASKING");
             }
-
             redis_reply = (redisReply*)redisCommandArgv(
                     redis_node->get_redis_context(),
                     command_args.get_argc(), command_args.get_argv(), command_args.get_argvlen());
@@ -2865,10 +2886,11 @@ CRedisClient::redis_command(
                 errcode = handle_redis_reply(redis_node, command_args, redis_reply.get(), &errinfo);
         }
 
+        ask_node = NULL;
         if (HR_SUCCESS == errcode)
         {
             // 成功立即返回
-            if (_command_monitor != NULL)
+            if (_command_monitor!=NULL)
                 _command_monitor->after_execute(0, node, command_args.get_command_str(), redis_reply.get());
             return redis_reply;
         }
@@ -2882,6 +2904,22 @@ CRedisClient::redis_command(
         {
             // 连接问题，先调用close关闭连接（调用get_redis_node时就会执行重连接）
             redis_node->close();
+        }
+        else if (HR_REDIRECT == errcode)
+        {
+            if (!parse_moved_string(redis_reply->str, &node))
+            {
+                (*g_error_log)("[%s:%d] node string error: %s\n", __FILE__, __LINE__, redis_reply->str);
+                break;
+            }
+            else
+            {
+                ask_node = &node;
+                if (loop_counter > 2)
+                    break;
+                else
+                    continue;
+            }
         }
 
         if (HR_RECONN_UNCOND == errcode)
@@ -2917,15 +2955,10 @@ CRedisClient::redis_command(
             else
                 refresh_master_node_table(&errinfo, NULL);
         }
-        if (_command_monitor != NULL)
-        {
-            need_monitor = false;
-            _command_monitor->after_execute(1, node, command_args.get_command_str(), redis_reply.get());
-        }
     }
 
     // 错误以异常方式抛出
-    if (need_monitor && _command_monitor!=NULL)
+    if (_command_monitor!=NULL)
         _command_monitor->after_execute(1, node, command_args.get_command_str(), redis_reply.get());
     THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(
             errinfo, node.first, node.second,
@@ -3040,10 +3073,13 @@ CRedisClient::handle_redis_replay_error(
     }
     else if (is_ask_error(errinfo->errtype))
     {
-        return HR_RETRY_UNCOND;
+        // ASK 6474 127.0.0.1:6380
+        return HR_REDIRECT;
     }
     else if (is_moved_error(errinfo->errtype))
     {
+        // MOVED 6474 127.0.0.1:6380
+        //
         //Node ask_node;
         //parse_moved_string(redis_reply->str, &ask_node);
         redis_node->set_conn_errors(2019); // Trigger to refresh master nodes
@@ -3446,7 +3482,7 @@ redisContext* CRedisClient::connect_redis_node(const Node& node, struct ErrorInf
     return redis_context;
 }
 
-CRedisNode* CRedisClient::get_redis_node(int slot, struct ErrorInfo* errinfo)
+CRedisNode* CRedisClient::get_redis_node(const Node* ask_node, int slot, struct ErrorInfo* errinfo)
 {
     CRedisNode* redis_node = NULL;
     redisContext* redis_context = NULL;
@@ -3477,7 +3513,7 @@ CRedisNode* CRedisClient::get_redis_node(int slot, struct ErrorInfo* errinfo)
                 }
             }
             {
-                const Node& node = _slot2node[slot];
+                const Node& node = (NULL==ask_node)? _slot2node[slot]: *ask_node;
                 const MasterNodeTable::const_iterator iter = _master_nodes.find(node);
                 if (iter != _master_nodes.end())
                 {
