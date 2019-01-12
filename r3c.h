@@ -46,6 +46,7 @@ enum
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef std::pair<std::string, uint16_t> Node; // first is IP, second is port
+typedef std::string NodeId;
 typedef std::vector<std::pair<int, int> > SlotSegment; // first is begin slot, second is end slot
 
 struct NodeHasher
@@ -825,14 +826,17 @@ private:
 private:
 #if __cplusplus < 201103L
     typedef std::tr1::unordered_map<Node, CMasterNode*, NodeHasher> MasterNodeTable;
+    typedef std::tr1::unordered_map<NodeId, Node> MasterNodeIdTable;
 #else
     typedef std::unordered_map<Node, CMasterNode*, NodeHasher> MasterNodeTable;
+    typedef std::unordered_map<NodeId, Node> MasterNodeIdTable;
 #endif // __cplusplus < 201103L
-    MasterNodeTable _master_nodes; // Cluster
+    MasterNodeTable _master_nodes; // Node -> CMasterNode
+    MasterNodeIdTable _master_nodes_id; // NodeId -> Node
 
 private:
-    std::vector<Node> _nodes;
-    std::vector<Node> _slot2node; // The map of slot to Node
+    std::vector<Node> _nodes; // All nodes array
+    std::vector<Node> _slot2node; // Slot -> Node
 };
 
 // Monitor the execution of the command by setting a CommandMonitor.

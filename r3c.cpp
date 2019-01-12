@@ -268,8 +268,9 @@ std::string CommandArgs::get_key_str() const
 class CRedisNode
 {
 public:
-    CRedisNode(const Node& node, redisContext* redis_context)
-        : _node(node),
+    CRedisNode(const NodeId& node_id, const Node& node, redisContext* redis_context)
+        : _node_id(node_id),
+          _node(node),
           _redis_context(redis_context),
           _conn_errors(0)
     {
@@ -278,6 +279,11 @@ public:
     ~CRedisNode()
     {
         close();
+    }
+
+    const NodeId& get_node_id() const
+    {
+        return _node_id;
     }
 
     const Node& get_node() const
@@ -340,6 +346,7 @@ public:
     }
 
 protected:
+    NodeId _node_id;
     Node _node;
     redisContext* _redis_context;
     unsigned int _conn_errors; // 连续连接失败数
@@ -350,8 +357,8 @@ class CMasterNode;
 class CReplicaNode: public CRedisNode
 {
 public:
-    CReplicaNode(const Node& node, redisContext* redis_context)
-        : CRedisNode(node, redis_context),
+    CReplicaNode(const NodeId& node_id, const Node& node, redisContext* redis_context)
+        : CRedisNode(node_id, node, redis_context),
           _master_node(NULL)
     {
     }
@@ -363,8 +370,8 @@ private:
 class CMasterNode: public CRedisNode
 {
 public:
-    CMasterNode(const Node& node, redisContext* redis_context)
-        : CRedisNode(node, redis_context)
+    CMasterNode(const NodeId& node_id, const Node& node, redisContext* redis_context)
+        : CRedisNode(node_id, node, redis_context)
     {
     }
 
@@ -3141,7 +3148,7 @@ bool CRedisClient::init_standlone(struct ErrorInfo* errinfo)
     }
     else
     {
-        CMasterNode* redis_node = new CMasterNode(node, redis_context);
+        CMasterNode* redis_node = new CMasterNode(std::string(""), node, redis_context);
         const std::pair<MasterNodeTable::iterator, bool> ret =
                 _master_nodes.insert(std::make_pair(node, redis_node));
         R3C_ASSERT(ret.second);
@@ -3209,6 +3216,10 @@ bool CRedisClient::init_master_nodes(const std::vector<struct NodeInfo>& nodes_i
             update_slots(nodeinfo);
             if (add_master_node(nodeinfo, errinfo))
                 ++connected;
+        }
+        else if (nodeinfo.is_replica() && !nodeinfo.is_fail())
+        {
+            ;
         }
     }
 
@@ -3327,6 +3338,7 @@ void CRedisClient::clear_invalid_master_nodes(const NodeInfoTable& master_nodein
         else
         {
             CMasterNode* master_node = node_iter->second;
+            const NodeId node_id = master_node->get_node_id();
             (*g_info_log)("[R3C_CLEAR_INVALID][%s:%d] %s is removed because it is not a master now\n", __FILE__, __LINE__, master_node->str().c_str());
 
 #if __cplusplus < 201103L
@@ -3335,20 +3347,24 @@ void CRedisClient::clear_invalid_master_nodes(const NodeInfoTable& master_nodein
             node_iter = _master_nodes.erase(node_iter);
 #endif
             delete master_node;
+            _master_nodes_id.erase(node_id);
         }
     }
 }
 
 bool CRedisClient::add_master_node(const NodeInfo& nodeinfo, struct ErrorInfo* errinfo)
 {
-    redisContext* redis_context = connect_redis_node(nodeinfo.node, errinfo);
-    CMasterNode* master_node = new CMasterNode(nodeinfo.node, redis_context);
+    const NodeId& node_id = nodeinfo.id;
+    const Node& node = nodeinfo.node;
+    redisContext* redis_context = connect_redis_node(node, errinfo);
+    CMasterNode* master_node = new CMasterNode(node_id, node, redis_context);
 
     const std::pair<MasterNodeTable::iterator, bool> ret =
-            _master_nodes.insert(std::make_pair(nodeinfo.node, master_node));
+            _master_nodes.insert(std::make_pair(node, master_node));
     R3C_ASSERT(ret.second);
     if (!ret.second)
         delete master_node;
+    _master_nodes_id[node_id] = node;
     return redis_context != NULL;
 }
 
@@ -3360,6 +3376,7 @@ void CRedisClient::clear_all_master_nodes()
         delete master_node;
     }
     _master_nodes.clear();
+    _master_nodes_id.clear();
 }
 
 void CRedisClient::update_nodes_string(const NodeInfo& nodeinfo)
