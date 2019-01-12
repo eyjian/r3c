@@ -108,7 +108,7 @@ int main(int argc, char* argv[])
         }
         else if (0 == strcasecmp(cmd, "flushall"))
         {
-            fprintf(stdout, "["PRINT_COLOR_YELLOW"NOTICE"PRINT_COLOR_NONE"] To clear only a node, set `HOSTS` to a single node\n\n");
+            fprintf(stdout, "[" PRINT_COLOR_YELLOW"NOTICE" PRINT_COLOR_NONE"] To clear only a node, set `HOSTS` to a single node\n\n");
             redis_client.flushall();
         }
         ////////////////////////////////////////////////////////////////////////////
@@ -1177,7 +1177,7 @@ int main(int argc, char* argv[])
     }
     catch (r3c::CRedisException& ex)
     {
-        fprintf(stderr, PRINT_COLOR_RED"%s"PRINT_COLOR_NONE"\n", ex.str().c_str());
+        fprintf(stderr, PRINT_COLOR_RED"%s" PRINT_COLOR_NONE"\n", ex.str().c_str());
         exit(1);
     }
 

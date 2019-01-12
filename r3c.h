@@ -15,15 +15,20 @@
 #   include <unordered_map>
 #endif // __cplusplus < 201103L
 
-#define R3C_VERSION 20181231L
+#define R3C_VERSION 0x000019
 
 namespace r3c {
 
+extern int NUM_RETRIES /*=15*/; // The default number of retries is 16 (CLUSTERDOWN cost more than 6s)
+extern int CONNECT_TIMEOUT_MILLISECONDS /*=2000*/; // Connection timeout in milliseconds
+extern int READWRITE_TIMEOUT_MILLISECONDS /*=2000*/; // Receive and send timeout in milliseconds
+
 enum ReadPolicy
 {
-    RP_ONLY_MASTER  // Always read from master
-    //RP_PRIORITY_REPLICA,
-    //RP_PRIORITY_MASTER
+    RP_ONLY_MASTER, // Always read from master
+    RP_PRIORITY_MASTER,
+    RP_PRIORITY_REPLICA,
+    RP_READ_REPLICA
 };
 
 enum ZADDFLAG
@@ -33,15 +38,7 @@ enum ZADDFLAG
     Z_NX, // Don't update already existing elements. Always add new elements.
     Z_CH  // Modify the return value from the number of new elements added
 };
-std::string zaddflag2str(ZADDFLAG zaddflag);
-
-// Consts
-enum
-{
-    NUM_RETRIES = 16, // Number of retries (CLUSTERDOWN need more than 6s)
-    CONNECT_TIMEOUT_MILLISECONDS = 1000,  // Connection timeout in milliseconds
-    READWRITE_TIMEOUT_MILLISECONDS = 1000 // Receive and send timeout in milliseconds
-};
+extern std::string zaddflag2str(ZADDFLAG zaddflag);
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -54,8 +51,8 @@ struct NodeHasher
     size_t operator ()(const Node& node) const;
 };
 
-std::string& node2string(const Node& node, std::string* str);
-std::string node2string(const Node& node);
+extern std::string& node2string(const Node& node, std::string* str);
+extern std::string node2string(const Node& node);
 
 struct NodeInfo
 {
@@ -103,12 +100,12 @@ private:
     mutable const redisReply* _redis_reply;
 };
 
-bool is_ask_error(const std::string& errtype);
-bool is_clusterdown_error(const std::string& errtype);
-bool is_moved_error(const std::string& errtype);
-bool is_noauth_error(const std::string& errtype);
-bool is_noscript_error(const std::string& errtype);
-bool is_wrongtype_error(const std::string& errtype);
+extern bool is_ask_error(const std::string& errtype);
+extern bool is_clusterdown_error(const std::string& errtype);
+extern bool is_moved_error(const std::string& errtype);
+extern bool is_noauth_error(const std::string& errtype);
+extern bool is_noscript_error(const std::string& errtype);
+extern bool is_wrongtype_error(const std::string& errtype);
 
 // NOTICE: not thread safe
 // A redis client than support redis cluster
@@ -766,19 +763,18 @@ private:
     void init();
     bool init_standlone(struct ErrorInfo* errinfo);
     bool init_cluster(struct ErrorInfo* errinfo);
-    bool init_master_nodes(const std::vector<struct NodeInfo>& nodes_info, struct ErrorInfo* errinfo);
+    bool init_master_nodes(const std::vector<struct NodeInfo>& nodes_info, std::vector<struct NodeInfo>* replication_nodes_info, struct ErrorInfo* errinfo);
+    void init_replica_nodes(const std::vector<struct NodeInfo>& replication_nodes_info);
     void update_slots(const struct NodeInfo& nodeinfo);
     void refresh_master_node_table(struct ErrorInfo* errinfo, const Node* error_node);
-    void clear_and_update_master_nodes(const std::vector<struct NodeInfo>& nodes_info, struct ErrorInfo* errinfo);
+    void clear_and_update_master_nodes(const std::vector<struct NodeInfo>& nodes_info, std::vector<struct NodeInfo>* replication_nodes_info, struct ErrorInfo* errinfo);
     void clear_invalid_master_nodes(const NodeInfoTable& master_nodeinfo_table);
     bool add_master_node(const NodeInfo& nodeinfo, struct ErrorInfo* errinfo);
     void clear_all_master_nodes();
     void update_nodes_string(const NodeInfo& nodeinfo);
-
-private:
-    // Connect the given node
-    redisContext* connect_redis_node(const Node& node, struct ErrorInfo* errinfo) const;
-    CRedisNode* get_redis_node(const Node* ask_node, int slot, struct ErrorInfo* errinfo);
+    redisContext* connect_redis_node(const Node& node, struct ErrorInfo* errinfo, bool readonly) const;
+    CRedisNode* get_redis_node(int slot, bool readonly, const Node* ask_node, struct ErrorInfo* errinfo);
+    CMasterNode* get_master_node(const Node& node) const;
     CMasterNode* random_master_node() const;
 
 private:
@@ -876,7 +872,8 @@ enum
     ERROR_REDIS_CONTEXT = -13,         // Can't allocate redis context
     ERROR_REDIS_AUTH = 14,             // Authorization failed
     ERROR_UNEXCEPTED_REPLY_TYPE = -15, // Unexcepted reply type
-    ERROR_REPLY_FORMAT = -16           // Reply format error
+    ERROR_REPLY_FORMAT = -16,          // Reply format error
+    ERROR_REDIS_READONLY = -17
 };
 
 // Set NULL to discard log

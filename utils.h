@@ -37,7 +37,7 @@
 std::ostream& operator <<(std::ostream& os, const struct redisReply& redis_reply);
 
 namespace r3c {
-    std::ostream& operator <<(std::ostream& os, const struct NodeInfo& nodeinfo);
+    extern std::ostream& operator <<(std::ostream& os, const struct NodeInfo& nodeinfo);
 
     extern void null_log_write(const char* UNUSED(format), ...) __attribute__((format(printf, 1, 2))); // Discard log
     extern void r3c_log_write(const char* format, ...) __attribute__((format(printf, 1, 2))); // Ouput log to stdout

@@ -14,6 +14,10 @@
 
 namespace r3c {
 
+int NUM_RETRIES = 16; // The default number of retries is 16 (CLUSTERDOWN cost more than 6s)
+int CONNECT_TIMEOUT_MILLISECONDS = 2000; // Connection timeout in milliseconds
+int READWRITE_TIMEOUT_MILLISECONDS = 2000; // Receive and send timeout in milliseconds
+
 #if 0 // for test
     static LOG_WRITE g_error_log = r3c_log_write;
     static LOG_WRITE g_info_log = r3c_log_write;
@@ -268,8 +272,8 @@ std::string CommandArgs::get_key_str() const
 class CRedisNode
 {
 public:
-    CRedisNode(const NodeId& node_id, const Node& node, redisContext* redis_context)
-        : _node_id(node_id),
+    CRedisNode(const NodeId& nodeid, const Node& node, redisContext* redis_context)
+        : _nodeid(nodeid),
           _node(node),
           _redis_context(redis_context),
           _conn_errors(0)
@@ -281,9 +285,11 @@ public:
         close();
     }
 
-    const NodeId& get_node_id() const
+    //virtual bool is_replica() const = 0;
+
+    const NodeId& get_nodeid() const
     {
-        return _node_id;
+        return _nodeid;
     }
 
     const Node& get_node() const
@@ -346,7 +352,7 @@ public:
     }
 
 protected:
-    NodeId _node_id;
+    NodeId _nodeid;
     Node _node;
     redisContext* _redis_context;
     unsigned int _conn_errors; // 连续连接失败数
@@ -371,7 +377,8 @@ class CMasterNode: public CRedisNode
 {
 public:
     CMasterNode(const NodeId& node_id, const Node& node, redisContext* redis_context)
-        : CRedisNode(node_id, node, redis_context)
+        : CRedisNode(node_id, node, redis_context),
+          _index(0)
     {
     }
 
@@ -390,9 +397,59 @@ public:
         _replica_nodes.clear();
     }
 
+    void add_replica_node(CReplicaNode* replica_node)
+    {
+        const Node& node = replica_node->get_node();
+        const std::pair<ReplicaNodeTable::iterator, bool> ret = _replica_nodes.insert(std::make_pair(node, replica_node));
+        if (!ret.second)
+        {
+            CReplicaNode* old_replica_node = ret.first->second;
+            delete old_replica_node;
+            ret.first->second = replica_node;
+        }
+    }
+
+    CRedisNode* choose_node(ReadPolicy read_policy)
+    {
+        CRedisNode* redis_node = NULL;
+        const unsigned int num_replica_nodes = static_cast<unsigned int>(_replica_nodes.size());
+        unsigned int K = _index++ % num_replica_nodes;
+
+        if (0==K && RP_READ_REPLICA==read_policy)
+        {
+            redis_node = this;
+        }
+        else if (!_replica_nodes.empty())
+        {
+
+            ReplicaNodeTable::iterator iter = _replica_nodes.begin();
+
+            for (unsigned int i=0; i<K; ++i)
+            {
+                if (++iter == _replica_nodes.end())
+                    _replica_nodes.begin();
+            }
+            if (iter == _replica_nodes.end())
+            {
+                redis_node = iter->second;
+            }
+            if (NULL == redis_node)
+            {
+                redis_node = this;
+            }
+        }
+
+        return redis_node;
+    }
+
 private:
-    typedef std::map<Node, CReplicaNode*> ReplicaNodeTable;
+#if __cplusplus < 201103L
+    typedef std::tr1::unordered_map<Node, CReplicaNode*, NodeHasher> ReplicaNodeTable;
+#else
+    typedef std::unordered_map<Node, CReplicaNode*, NodeHasher> ReplicaNodeTable;
+#endif // __cplusplus < 201103L
     ReplicaNodeTable _replica_nodes;
+    unsigned int _index;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2838,7 +2895,7 @@ CRedisClient::redis_command(
     for (int loop_counter=0;;++loop_counter)
     {
         const int slot = cluster_mode()? get_key_slot(&key): -1;
-        CRedisNode* redis_node = get_redis_node(ask_node, slot, &errinfo);
+        CRedisNode* redis_node = get_redis_node(slot, readonly, ask_node, &errinfo);
         HandleResult errcode;
 
         if (NULL == redis_node)
@@ -3141,7 +3198,7 @@ bool CRedisClient::init_standlone(struct ErrorInfo* errinfo)
     const Node& node = _nodes[0];
     _nodes_string = _raw_nodes_string;
 
-    redisContext* redis_context = connect_redis_node(node, errinfo);
+    redisContext* redis_context = connect_redis_node(node, errinfo, false);
     if (NULL == redis_context)
     {
         return false;
@@ -3169,7 +3226,7 @@ bool CRedisClient::init_cluster(struct ErrorInfo* errinfo)
         const Node& node = _nodes[j];
         std::vector<struct NodeInfo> nodes_info;
 
-        redisContext* redis_context = connect_redis_node(node, errinfo);
+        redisContext* redis_context = connect_redis_node(node, errinfo, false);
         if (NULL == redis_context)
         {
             continue;
@@ -3181,12 +3238,14 @@ bool CRedisClient::init_cluster(struct ErrorInfo* errinfo)
         }
         else
         {
+            std::vector<struct NodeInfo> replication_nodes_info;
+
             redisFree(redis_context);
             redis_context = NULL;
-
-            // MASTER
-            if (init_master_nodes(nodes_info, errinfo))
+            if (init_master_nodes(nodes_info, &replication_nodes_info, errinfo))
             {
+                if (_read_policy != RP_ONLY_MASTER)
+                    init_replica_nodes(replication_nodes_info);
                 break;
             }
         }
@@ -3195,15 +3254,22 @@ bool CRedisClient::init_cluster(struct ErrorInfo* errinfo)
     return !_master_nodes.empty();
 }
 
-bool CRedisClient::init_master_nodes(const std::vector<struct NodeInfo>& nodes_info, struct ErrorInfo* errinfo)
+bool CRedisClient::init_master_nodes(
+        const std::vector<struct NodeInfo>& nodes_info,
+        std::vector<struct NodeInfo>* replication_nodes_info,
+        struct ErrorInfo* errinfo)
 {
     int connected = 0; // 成功连接的master个数
 
     if (nodes_info.size() > 1)
+    {
         _nodes_string.clear();
+    }
     else
+    {
         _nodes_string = _raw_nodes_string;
-    for (std::vector<struct NodeInfo>::size_type i=0; i<nodes_info.size(); ++i)
+    }
+    for (std::vector<struct NodeInfo>::size_type i=0; i<nodes_info.size(); ++i) // Traversing all master nodes
     {
         const struct NodeInfo& nodeinfo = nodes_info[i];
 
@@ -3219,12 +3285,34 @@ bool CRedisClient::init_master_nodes(const std::vector<struct NodeInfo>& nodes_i
         }
         else if (nodeinfo.is_replica() && !nodeinfo.is_fail())
         {
-            ;
+            replication_nodes_info->push_back(nodeinfo);
         }
     }
 
     // 至少要有一个能够连接上
     return connected > 0;
+}
+
+void CRedisClient::init_replica_nodes(const std::vector<struct NodeInfo>& replication_nodes_info)
+{
+    for (std::vector<struct NodeInfo>::size_type i=0; i<replication_nodes_info.size(); ++i)
+    {
+        const struct NodeInfo& nodeinfo = replication_nodes_info[i];
+        const NodeId& nodeid = nodeinfo.id;
+        const Node& node = nodeinfo.node;
+
+        CMasterNode* master_node = get_master_node(node);
+        if (master_node != NULL)
+        {
+            struct ErrorInfo errinfo;
+            redisContext* redis_context = connect_redis_node(node, &errinfo, true);
+            if (redis_context != NULL)
+            {
+                CReplicaNode* replica_node = new CReplicaNode(nodeid, node, redis_context);
+                master_node->add_replica_node(replica_node);
+            }
+        }
+    }
 }
 
 void CRedisClient::update_slots(const struct NodeInfo& nodeinfo)
@@ -3266,7 +3354,7 @@ void CRedisClient::refresh_master_node_table(struct ErrorInfo* errinfo, const No
 
             if (NULL == redis_context)
             {
-                redis_context = connect_redis_node(node, errinfo);
+                redis_context = connect_redis_node(node, errinfo, false);
             }
             if (redis_context != NULL)
             {
@@ -3275,7 +3363,10 @@ void CRedisClient::refresh_master_node_table(struct ErrorInfo* errinfo, const No
                 redis_node->set_redis_context(redis_context);
                 if (list_cluster_nodes(&nodes_info, errinfo, redis_context, node))
                 {
-                    clear_and_update_master_nodes(nodes_info, errinfo);
+                    std::vector<struct NodeInfo> replication_nodes_info;
+                    clear_and_update_master_nodes(nodes_info, &replication_nodes_info, errinfo);
+                    if (_read_policy != RP_ONLY_MASTER)
+                        init_replica_nodes(replication_nodes_info);
                     break; // Continue is not safe, because `clear_and_update_master_nodes` will modify _master_nodes
                 }
             }
@@ -3287,7 +3378,10 @@ void CRedisClient::refresh_master_node_table(struct ErrorInfo* errinfo, const No
     }
 }
 
-void CRedisClient::clear_and_update_master_nodes(const std::vector<struct NodeInfo>& nodes_info, struct ErrorInfo* errinfo)
+void CRedisClient::clear_and_update_master_nodes(
+        const std::vector<struct NodeInfo>& nodes_info,
+        std::vector<struct NodeInfo>* replication_nodes_info,
+        struct ErrorInfo* errinfo)
 {
     NodeInfoTable master_nodeinfo_table;
     std::string nodes_string;
@@ -3296,7 +3390,7 @@ void CRedisClient::clear_and_update_master_nodes(const std::vector<struct NodeIn
     {
         _nodes_string.clear();
     }
-    for (std::vector<struct NodeInfo>::size_type i=0; i<nodes_info.size(); ++i)
+    for (std::vector<struct NodeInfo>::size_type i=0; i<nodes_info.size(); ++i) // Traversing all master nodes
     {
         const struct NodeInfo& nodeinfo = nodes_info[i];
 
@@ -3318,6 +3412,10 @@ void CRedisClient::clear_and_update_master_nodes(const std::vector<struct NodeIn
                 add_master_node(nodeinfo, errinfo);
             }
         }
+        else if (nodeinfo.is_replica() && !nodeinfo.is_fail())
+        {
+            replication_nodes_info->push_back(nodeinfo);
+        }
     }
 
     clear_invalid_master_nodes(master_nodeinfo_table);
@@ -3338,7 +3436,7 @@ void CRedisClient::clear_invalid_master_nodes(const NodeInfoTable& master_nodein
         else
         {
             CMasterNode* master_node = node_iter->second;
-            const NodeId node_id = master_node->get_node_id();
+            const NodeId nodeid = master_node->get_nodeid();
             (*g_info_log)("[R3C_CLEAR_INVALID][%s:%d] %s is removed because it is not a master now\n", __FILE__, __LINE__, master_node->str().c_str());
 
 #if __cplusplus < 201103L
@@ -3347,24 +3445,24 @@ void CRedisClient::clear_invalid_master_nodes(const NodeInfoTable& master_nodein
             node_iter = _master_nodes.erase(node_iter);
 #endif
             delete master_node;
-            _master_nodes_id.erase(node_id);
+            _master_nodes_id.erase(nodeid);
         }
     }
 }
 
 bool CRedisClient::add_master_node(const NodeInfo& nodeinfo, struct ErrorInfo* errinfo)
 {
-    const NodeId& node_id = nodeinfo.id;
+    const NodeId& nodeid = nodeinfo.id;
     const Node& node = nodeinfo.node;
-    redisContext* redis_context = connect_redis_node(node, errinfo);
-    CMasterNode* master_node = new CMasterNode(node_id, node, redis_context);
+    redisContext* redis_context = connect_redis_node(node, errinfo, false);
+    CMasterNode* master_node = new CMasterNode(nodeid, node, redis_context);
 
     const std::pair<MasterNodeTable::iterator, bool> ret =
             _master_nodes.insert(std::make_pair(node, master_node));
     R3C_ASSERT(ret.second);
     if (!ret.second)
         delete master_node;
-    _master_nodes_id[node_id] = node;
+    _master_nodes_id[nodeid] = node;
     return redis_context != NULL;
 }
 
@@ -3388,11 +3486,12 @@ void CRedisClient::update_nodes_string(const NodeInfo& nodeinfo)
         _nodes_string = _nodes_string + std::string(",") + node2string(nodeinfo.node, &node_str);
 }
 
-redisContext* CRedisClient::connect_redis_node(const Node& node, struct ErrorInfo* errinfo) const
+redisContext* CRedisClient::connect_redis_node(const Node& node, struct ErrorInfo* errinfo, bool readonly) const
 {
     redisContext* redis_context = NULL;
 
-    (*g_debug_log)("[R3C_CONN][%s:%d] To connect %s with timeout: %dms\n", __FILE__, __LINE__, node2string(node).c_str(), _connect_timeout_milliseconds);
+    (*g_debug_log)("[R3C_CONN][%s:%d] To connect %s with timeout: %dms\n",
+            __FILE__, __LINE__, node2string(node).c_str(), _connect_timeout_milliseconds);
     if (_connect_timeout_milliseconds <= 0)
     {
         redis_context = redisConnect(node.first.c_str(), node.second);
@@ -3430,12 +3529,14 @@ redisContext* CRedisClient::connect_redis_node(const Node& node, struct ErrorInf
         if (REDIS_ERR_IO == redis_context->err)
         {
             errinfo->errmsg = format_string("[R3C_CONN][%s:%d][%s:%d] (errno:%d,err:%d)%s",
-                    __FILE__, __LINE__, node.first.c_str(), node.second, errno, redis_context->err, errinfo->raw_errmsg.c_str());
+                    __FILE__, __LINE__, node.first.c_str(), node.second,
+                    errno, redis_context->err, errinfo->raw_errmsg.c_str());
         }
         else
         {
             errinfo->errmsg = format_string("[R3C_CONN][%s:%d][%s:%d] (err:%d)%s",
-                    __FILE__, __LINE__, node.first.c_str(), node.second, redis_context->err, errinfo->raw_errmsg.c_str());
+                    __FILE__, __LINE__, node.first.c_str(), node.second,
+                    redis_context->err, errinfo->raw_errmsg.c_str());
         }
         (*g_error_log)("%s\n", errinfo->errmsg.c_str());
         redisFree(redis_context);
@@ -3443,7 +3544,8 @@ redisContext* CRedisClient::connect_redis_node(const Node& node, struct ErrorInf
     }
     else
     {
-        (*g_debug_log)("[R3C_CONN][%s:%d] Connect %s successfully with readwrite timeout: %dms\n", __FILE__, __LINE__, node2string(node).c_str(), _readwrite_timeout_milliseconds);
+        (*g_debug_log)("[R3C_CONN][%s:%d] Connect %s successfully with readwrite timeout: %dms\n",
+                __FILE__, __LINE__, node2string(node).c_str(), _readwrite_timeout_milliseconds);
 
         if (_readwrite_timeout_milliseconds > 0)
         {
@@ -3457,7 +3559,8 @@ redisContext* CRedisClient::connect_redis_node(const Node& node, struct ErrorInf
                 errinfo->errcode = ERROR_INIT_REDIS_CONN;
                 errinfo->raw_errmsg = redis_context->errstr;
                 errinfo->errmsg = format_string("[R3C_CONN][%s:%d][%s:%d] (errno:%d,err:%d)%s",
-                        __FILE__, __LINE__, node.first.c_str(), node.second, errno, redis_context->err, errinfo->raw_errmsg.c_str());
+                        __FILE__, __LINE__, node.first.c_str(), node.second,
+                        errno, redis_context->err, errinfo->raw_errmsg.c_str());
                 (*g_error_log)("%s\n", errinfo->errmsg.c_str());
                 redisFree(redis_context);
                 redis_context = NULL;
@@ -3470,7 +3573,8 @@ redisContext* CRedisClient::connect_redis_node(const Node& node, struct ErrorInf
             if (redis_reply && 0==strcmp(redis_reply->str, "OK"))
             {
                 // AUTH success
-                (*g_info_log)("[R3C_CONN][%s:%d] Connect redis://%s:%d success\n", __FILE__, __LINE__, node.first.c_str(), node.second);
+                (*g_info_log)("[R3C_AUTH][%s:%d] Connect redis://%s:%d success\n",
+                        __FILE__, __LINE__, node.first.c_str(), node.second);
             }
             else
             {
@@ -3487,7 +3591,7 @@ redisContext* CRedisClient::connect_redis_node(const Node& node, struct ErrorInf
                     errinfo->raw_errmsg = redis_reply->str;
                 }
 
-                errinfo->errmsg = format_string("[R3C_CONN][%s:%d][%s:%d] %s",
+                errinfo->errmsg = format_string("[R3C_AUTH][%s:%d][%s:%d] %s",
                         __FILE__, __LINE__, node.first.c_str(), node.second, errinfo->raw_errmsg.c_str());
                 (*g_error_log)("%s\n", errinfo->errmsg.c_str());
                 redisFree(redis_context);
@@ -3495,11 +3599,45 @@ redisContext* CRedisClient::connect_redis_node(const Node& node, struct ErrorInf
             }
         }
     }
+    if (readonly && redis_context!=NULL)
+    {
+        const RedisReplyHelper redis_reply = (redisReply*)redisCommand(redis_context, "READONLY");
+
+        if (redis_reply && 0==strcmp(redis_reply->str, "OK"))
+        {
+            // READONLY success
+            (*g_info_log)("[R3C_READONLY][%s:%d] READONLY redis://%s:%d success\n",
+                    __FILE__, __LINE__, node.first.c_str(), node.second);
+        }
+        else
+        {
+            // READONLY failed
+            if (!redis_reply)
+            {
+                errinfo->errcode = ERROR_REDIS_READONLY;
+                errinfo->raw_errmsg = "readonly failed";
+            }
+            else
+            {
+                extract_errtype(redis_reply.get(), &errinfo->errtype);
+                errinfo->errcode = ERROR_REDIS_READONLY;
+                errinfo->raw_errmsg = redis_reply->str;
+            }
+
+            errinfo->errmsg = format_string("[R3C_READONLY][%s:%d][%s:%d] %s",
+                    __FILE__, __LINE__, node.first.c_str(), node.second, errinfo->raw_errmsg.c_str());
+            (*g_error_log)("%s\n", errinfo->errmsg.c_str());
+            redisFree(redis_context);
+            redis_context = NULL;
+        }
+    }
 
     return redis_context;
 }
 
-CRedisNode* CRedisClient::get_redis_node(const Node* ask_node, int slot, struct ErrorInfo* errinfo)
+CRedisNode* CRedisClient::get_redis_node(
+        int slot, bool readonly,
+        const Node* ask_node, struct ErrorInfo* errinfo)
 {
     CRedisNode* redis_node = NULL;
     redisContext* redis_context = NULL;
@@ -3547,15 +3685,46 @@ CRedisNode* CRedisClient::get_redis_node(const Node* ask_node, int slot, struct 
         if (redis_node != NULL)
         {
             redis_context = redis_node->get_redis_context();
+
             if (NULL == redis_context)
             {
-                redis_context = connect_redis_node(redis_node->get_node(), errinfo);
+                redis_context = connect_redis_node(redis_node->get_node(), errinfo, false);
                 redis_node->set_redis_context(redis_context);
+            }
+            if (!readonly || RP_ONLY_MASTER==_read_policy)
+            {
+                break;
+            }
+            if (redis_context!=NULL && RP_PRIORITY_MASTER==_read_policy)
+            {
+                break;
+            }
+
+            CMasterNode* master_node = (CMasterNode*)redis_node;
+            redis_node = master_node->choose_node(_read_policy);
+            redis_context = redis_node->get_redis_context();
+            if (NULL == redis_context)
+            {
+                redis_context = connect_redis_node(redis_node->get_node(), errinfo, false);
+                redis_node->set_redis_context(redis_context);
+            }
+            if (NULL == redis_context)
+            {
+                redis_node = master_node;
             }
         }
     } while(false);
 
     return redis_node;
+}
+
+CMasterNode* CRedisClient::get_master_node(const Node& node) const
+{
+    CMasterNode* master_node = NULL;
+    MasterNodeTable::const_iterator iter = _master_nodes.find(node);
+    if (iter != _master_nodes.end())
+        master_node = iter->second;
+    return master_node;
 }
 
 CMasterNode* CRedisClient::random_master_node() const
