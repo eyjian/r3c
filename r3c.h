@@ -135,8 +135,8 @@ extern bool is_wrongtype_error(const std::string& errtype);
 
 struct SlotInfo;
 class CRedisNode;
-class CMasterNode;
-class CReplicaNode;
+class CRedisMasterNode;
+class CRedisReplicaNode;
 class CommandMonitor;
 
 // Redis命令参数
@@ -774,8 +774,8 @@ private:
     void update_nodes_string(const NodeInfo& nodeinfo);
     redisContext* connect_redis_node(const Node& node, struct ErrorInfo* errinfo, bool readonly) const;
     CRedisNode* get_redis_node(int slot, bool readonly, const Node* ask_node, struct ErrorInfo* errinfo);
-    CMasterNode* get_redis_master_node(const NodeId& nodeid) const;
-    CMasterNode* random_master_node() const;
+    CRedisMasterNode* get_redis_master_node(const NodeId& nodeid) const;
+    CRedisMasterNode* random_redis_master_node() const;
 
 private:
     // List the information of all cluster nodes
@@ -821,14 +821,14 @@ private:
 
 private:
 #if __cplusplus < 201103L
-    typedef std::tr1::unordered_map<Node, CMasterNode*, NodeHasher> MasterNodeTable;
-    typedef std::tr1::unordered_map<NodeId, Node> MasterNodeIdTable;
+    typedef std::tr1::unordered_map<Node, CRedisMasterNode*, NodeHasher> RedisMasterNodeTable;
+    typedef std::tr1::unordered_map<NodeId, Node> RedisMasterNodeIdTable;
 #else
-    typedef std::unordered_map<Node, CMasterNode*, NodeHasher> MasterNodeTable;
-    typedef std::unordered_map<NodeId, Node> MasterNodeIdTable;
+    typedef std::unordered_map<Node, CRedisMasterNode*, NodeHasher> RedisMasterNodeTable;
+    typedef std::unordered_map<NodeId, Node> RedisMasterNodeIdTable;
 #endif // __cplusplus < 201103L
-    MasterNodeTable _master_nodes; // Node -> CMasterNode
-    MasterNodeIdTable _master_nodes_id; // NodeId -> Node
+    RedisMasterNodeTable _redis_master_nodes; // Node -> CMasterNode
+    RedisMasterNodeIdTable _redis_master_nodes_id; // NodeId -> Node
 
 private:
     std::vector<Node> _nodes; // All nodes array
