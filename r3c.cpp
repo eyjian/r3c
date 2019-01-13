@@ -662,6 +662,22 @@ CRedisClient::CRedisClient(
     init();
 }
 
+CRedisClient::CRedisClient(
+        const std::string& raw_nodes_string,
+        ReadPolicy read_policy,
+        const std::string& password,
+        int connect_timeout_milliseconds,
+        int readwrite_timeout_milliseconds) throw (CRedisException)
+            : _command_monitor(NULL),
+              _raw_nodes_string(raw_nodes_string),
+              _connect_timeout_milliseconds(connect_timeout_milliseconds),
+              _readwrite_timeout_milliseconds(readwrite_timeout_milliseconds),
+              _password(password),
+              _read_policy(read_policy)
+{
+    init();
+}
+
 CRedisClient::~CRedisClient()
 {
     fini();

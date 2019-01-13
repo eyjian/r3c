@@ -240,6 +240,13 @@ public:
             int readwrite_timeout_milliseconds=READWRITE_TIMEOUT_MILLISECONDS,
             ReadPolicy read_policy=RP_ONLY_MASTER
             ) throw (CRedisException);
+    CRedisClient(
+            const std::string& raw_nodes_string,
+            ReadPolicy read_policy,
+            const std::string& password=std::string(""),
+            int connect_timeout_milliseconds=CONNECT_TIMEOUT_MILLISECONDS,
+            int readwrite_timeout_milliseconds=READWRITE_TIMEOUT_MILLISECONDS
+            ) throw (CRedisException);
     ~CRedisClient();
     const std::string& get_raw_nodes_string() const;
     const std::string& get_nodes_string() const;
