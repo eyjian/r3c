@@ -3159,6 +3159,11 @@ CRedisClient::handle_redis_replay_error(
     else if (is_ask_error(errinfo->errtype))
     {
         // ASK 6474 127.0.0.1:6380
+        //
+        // 如下所示，如果此时向10.212.2.72:6379请求slot为14148的keys时，将得到：
+        // ASK 6474 10.212.2.71:6381
+        // 其中ec19be9a50b5416999ac0305c744d9b6c957c18d为10.212.2.71:6381的NodeId
+        // e008649f6f8340a495fc860f7a9a8155f91fcb93 10.212.2.72:6379@16379 myself,master - 0 1547374698000 35 connected 5461-10922 14148 [14148->-ec19be9a50b5416999ac0305c744d9b6c957c18d]
         return HR_REDIRECT;
     }
     else if (is_moved_error(errinfo->errtype))
@@ -3831,6 +3836,8 @@ CRedisClient::list_cluster_nodes(
          * 56686c7baad565d4370b8f1f6518a67b6cedb210 10.225.168.52:6381 slave 150f77d1000003811fb3c38c3768526a0b25ec31 0 1464662426768 22 connected
          * 150f77d1000003811fb3c38c3768526a0b25ec31 10.225.168.51:6379 myself,master - 0 0 22 connected 3278-5687 11092-11958
          * 6a7709bc680f7b224d0d20bdf7dd14db1f013baf 10.212.2.71:6381 master - 0 1464662429775 24 connected 8795-10922 11959-13107
+         *
+         * e008649f6f8340a495fc860f7a9a8155f91fcb93 10.212.2.72:6379@11382 myself,master - 0 1547374698000 35 connected 5461-10922 14148 [14148->-ec19be9a50b5416999ac0305c744d9b6c957c18d]
          */
         std::vector<std::string> lines;
         const int num_lines = split(&lines, std::string(redis_reply->str), std::string("\n"));
@@ -3892,9 +3899,16 @@ CRedisClient::list_cluster_nodes(
                     {
                         for (int col=8; col<num_tokens; ++col)
                         {
-                            std::pair<int, int> slot;
-                            parse_slot_string(tokens[col], &slot.first, &slot.second);
-                            nodeinfo.slots.push_back(slot);
+                            const std::string& token = tokens[col];
+
+                            // 排除掉正在迁移的：
+                            // [14148->-ec19be9a50b5416999ac0305c744d9b6c957c18d]
+                            if (token[0] != '[')
+                            {
+                                std::pair<int, int> slot;
+                                parse_slot_string(token, &slot.first, &slot.second);
+                                nodeinfo.slots.push_back(slot);
+                            }
                         }
                     }
 
