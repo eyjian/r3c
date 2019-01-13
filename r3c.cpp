@@ -14,7 +14,7 @@
 
 namespace r3c {
 
-int NUM_RETRIES = 16; // The default number of retries is 16 (CLUSTERDOWN cost more than 6s)
+int NUM_RETRIES = 15; // The default number of retries is 15 (CLUSTERDOWN cost more than 6s)
 int CONNECT_TIMEOUT_MILLISECONDS = 2000; // Connection timeout in milliseconds
 int READWRITE_TIMEOUT_MILLISECONDS = 2000; // Receive and send timeout in milliseconds
 
