@@ -774,7 +774,7 @@ private:
     void update_nodes_string(const NodeInfo& nodeinfo);
     redisContext* connect_redis_node(const Node& node, struct ErrorInfo* errinfo, bool readonly) const;
     CRedisNode* get_redis_node(int slot, bool readonly, const Node* ask_node, struct ErrorInfo* errinfo);
-    CMasterNode* get_master_node(const Node& node) const;
+    CMasterNode* get_redis_master_node(const NodeId& nodeid) const;
     CMasterNode* random_master_node() const;
 
 private:

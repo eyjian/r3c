@@ -411,31 +411,38 @@ public:
 
     CRedisNode* choose_node(ReadPolicy read_policy)
     {
-        CRedisNode* redis_node = NULL;
         const unsigned int num_replica_nodes = static_cast<unsigned int>(_replica_nodes.size());
-        unsigned int K = _index++ % num_replica_nodes;
+        CRedisNode* redis_node = NULL;
 
-        if (0==K && RP_READ_REPLICA==read_policy)
+        if (0 == num_replica_nodes)
         {
             redis_node = this;
         }
-        else if (!_replica_nodes.empty())
+        else
         {
+            unsigned int K = _index++ % (num_replica_nodes+1); // Included master
 
-            ReplicaNodeTable::iterator iter = _replica_nodes.begin();
-
-            for (unsigned int i=0; i<K; ++i)
-            {
-                if (++iter == _replica_nodes.end())
-                    _replica_nodes.begin();
-            }
-            if (iter == _replica_nodes.end())
-            {
-                redis_node = iter->second;
-            }
-            if (NULL == redis_node)
+            if (RP_READ_REPLICA==read_policy && K==num_replica_nodes)
             {
                 redis_node = this;
+            }
+            else
+            {
+                ReplicaNodeTable::iterator iter = _replica_nodes.begin();
+
+                for (unsigned int i=0; i<K; ++i)
+                {
+                    if (++iter == _replica_nodes.end())
+                        iter = _replica_nodes.begin();
+                }
+                if (iter != _replica_nodes.end())
+                {
+                    redis_node = iter->second;
+                }
+                if (NULL == redis_node)
+                {
+                    redis_node = this;
+                }
             }
         }
 
@@ -3298,18 +3305,19 @@ void CRedisClient::init_replica_nodes(const std::vector<struct NodeInfo>& replic
     for (std::vector<struct NodeInfo>::size_type i=0; i<replication_nodes_info.size(); ++i)
     {
         const struct NodeInfo& nodeinfo = replication_nodes_info[i];
-        const NodeId& nodeid = nodeinfo.id;
-        const Node& node = nodeinfo.node;
+        const NodeId& master_nodeid = nodeinfo.master_id;
+        const NodeId& replica_nodeid = nodeinfo.id;
+        const Node& replica_node = nodeinfo.node;
 
-        CMasterNode* master_node = get_master_node(node);
-        if (master_node != NULL)
+        CMasterNode* redis_master_node = get_redis_master_node(master_nodeid);
+        if (redis_master_node != NULL)
         {
             struct ErrorInfo errinfo;
-            redisContext* redis_context = connect_redis_node(node, &errinfo, true);
+            redisContext* redis_context = connect_redis_node(replica_node, &errinfo, true);
             if (redis_context != NULL)
             {
-                CReplicaNode* replica_node = new CReplicaNode(nodeid, node, redis_context);
-                master_node->add_replica_node(replica_node);
+                CReplicaNode* redis_replica_node = new CReplicaNode(replica_nodeid, replica_node, redis_context);
+                redis_master_node->add_replica_node(redis_replica_node);
             }
         }
     }
@@ -3718,12 +3726,17 @@ CRedisNode* CRedisClient::get_redis_node(
     return redis_node;
 }
 
-CMasterNode* CRedisClient::get_master_node(const Node& node) const
+CMasterNode* CRedisClient::get_redis_master_node(const NodeId& nodeid) const
 {
     CMasterNode* master_node = NULL;
-    MasterNodeTable::const_iterator iter = _master_nodes.find(node);
-    if (iter != _master_nodes.end())
-        master_node = iter->second;
+    MasterNodeIdTable::const_iterator nodeid_iter = _master_nodes_id.find(nodeid);
+    if (nodeid_iter != _master_nodes_id.end())
+    {
+        const Node& node = nodeid_iter->second;
+        MasterNodeTable::const_iterator node_iter = _master_nodes.find(node);
+        if (node_iter != _master_nodes.end())
+            master_node = node_iter->second;
+    }
     return master_node;
 }
 
