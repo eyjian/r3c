@@ -3342,7 +3342,7 @@ void CRedisClient::update_slots(const struct NodeInfo& nodeinfo)
     for (SlotSegment::size_type i=0; i<nodeinfo.slots.size(); ++i)
     {
         const std::pair<int, int>& slot_segment = nodeinfo.slots[i];
-        for (int slot=slot_segment.first; slot<slot_segment.second; ++slot)
+        for (int slot=slot_segment.first; slot<=slot_segment.second; ++slot)
             _slot2node[slot] = nodeinfo.node;
     }
 }

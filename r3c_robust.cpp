@@ -70,19 +70,29 @@ int main(int argc, char* argv[])
 // 3) 运行中，master和replica都异常
 void f0(r3c::CRedisClient& redis)
 {
+    const std::string k1 = "K1";
+    const std::string k2 = "{K1}K2";
     std::string v;
     r3c::Node which;
 
     // k1
+    redis.setex(k1, "11", 1800);
+    redis.setex(k2, "22", 1800);
     for (int i=0; i<600; ++i)
     {
         try
         {
-            const std::string k1 = "K1";
+            // k1
             redis.get(k1, &v, &which);
             fprintf(stdout, "[%s][slot://%d][key://%s][redis://%s] %s => %s\n",
                     r3c::get_formatted_current_datetime(true).c_str(), r3c::get_key_slot(&k1),
                     k1.c_str(), r3c::node2string(which).c_str(), k1.c_str(), v.c_str());
+
+            // k2
+            redis.get(k2, &v, &which);
+            fprintf(stdout, "[%s][slot://%d][key://%s][redis://%s] %s => %s\n",
+                    r3c::get_formatted_current_datetime(true).c_str(), r3c::get_key_slot(&k2),
+                    k2.c_str(), r3c::node2string(which).c_str(), k2.c_str(), v.c_str());
         }
         catch (r3c::CRedisException& ex)
         {
@@ -98,18 +108,28 @@ void f0(r3c::CRedisClient& redis)
 void f1(r3c::CRedisClient& redis)
 {
     const std::string lua_scripts = "local v=redis.call('get',KEYS[1]);return v;";
+    const std::string k1 = "K1";
+    const std::string k2 = "{K1}K2";
     r3c::Node which;
 
     // k1
-    for (int i=0; i<600; ++i)
+    redis.setex(k1, "11", 1800);
+    redis.setex(k2, "22", 1800);
+    for (int i=0; i<1800; ++i)
     {
         try
         {
-            const std::string k1 = "K1";
+            // k1
             redis.eval(k1, lua_scripts, &which);
             fprintf(stdout, "[%s][slot://%d][key://%s][redis://%s] %s => %s\n",
                     r3c::get_formatted_current_datetime(true).c_str(), r3c::get_key_slot(&k1),
                     k1.c_str(), r3c::node2string(which).c_str(), k1.c_str(), lua_scripts.c_str());
+
+            // k2
+            redis.eval(k2, lua_scripts, &which);
+            fprintf(stdout, "[%s][slot://%d][key://%s][redis://%s] %s => %s\n",
+                    r3c::get_formatted_current_datetime(true).c_str(), r3c::get_key_slot(&k2),
+                    k2.c_str(), r3c::node2string(which).c_str(), k2.c_str(), lua_scripts.c_str());
         }
         catch (r3c::CRedisException& ex)
         {
