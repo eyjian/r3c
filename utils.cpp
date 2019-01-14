@@ -110,6 +110,62 @@ std::string strsha1(const std::string& str)
     return result;
 }
 
+void debug_redis_reply(const char* command, const redisReply* redis_reply, int depth)
+{
+    if (0==depth && command!=NULL)
+    {
+        fprintf(stderr, "%s\n", command);
+    }
+    if (NULL == redis_reply)
+    {
+        fprintf(stderr, "REPLY_NULL\n");
+    }
+    else
+    {
+        for (int j=0; j<depth; ++j)
+        {
+            fprintf(stderr, " ");
+        }
+        if (REDIS_REPLY_NIL == redis_reply->type)
+        {
+            fprintf(stderr, "REPLY_NIL\n");
+        }
+        else if (REDIS_REPLY_STATUS == redis_reply->type)
+        {
+            fprintf(stderr, "REPLY_STATUS: %s\n", redis_reply->str);
+        }
+        else if (REDIS_REPLY_ERROR == redis_reply->type)
+        {
+            fprintf(stderr, "REPLY_ERROR: %s\n", redis_reply->str);
+        }
+        else if (REDIS_REPLY_INTEGER == redis_reply->type)
+        {
+            fprintf(stderr, "REPLY_INTEGER: %lld\n", redis_reply->integer);
+        }
+        else if (REDIS_REPLY_STRING == redis_reply->type)
+        {
+            fprintf(stderr, "REPLY_STRING: %s\n", redis_reply->str);
+        }
+        else if (REDIS_REPLY_ARRAY == redis_reply->type)
+        {
+            const int depth_ = depth + 1;
+            for (size_t i=0; i<redis_reply->elements; ++i)
+            {
+                const struct redisReply* child_redis_reply = redis_reply->element[i];
+                debug_redis_reply(NULL, child_redis_reply, depth_);
+            }
+        }
+        else
+        {
+            fprintf(stderr, "REPLY_UNKNOWN: %d\n", redis_reply->type);
+        }
+    }
+    if (command != NULL)
+    {
+        fprintf(stderr, "\n");
+    }
+}
+
 /* Copy from crc16.c
  *
  * CRC16 implementation according to CCITT standards.

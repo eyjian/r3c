@@ -178,6 +178,17 @@ void CommandArgs::add_args(const std::vector<std::string>& args)
     }
 }
 
+void CommandArgs::add_args(const std::vector<std::pair<std::string, std::string> >& values)
+{
+    for (std::vector<std::string>::size_type i=0; i<values.size(); ++i)
+    {
+        const std::string& field = values[i].first;
+        const std::string& value = values[i].second;
+        add_arg(field);
+        add_arg(value);
+    }
+}
+
 void CommandArgs::add_args(const std::map<std::string, std::string>& map)
 {
     for (std::map<std::string, std::string>::const_iterator iter=map.begin(); iter!=map.end(); ++iter)
@@ -624,6 +635,11 @@ bool is_noscript_error(const std::string& errtype)
 bool is_wrongtype_error(const std::string& errtype)
 {
     return (errtype.size() == sizeof("WRONGTYPE")-1) && (errtype == "WRONGTYPE");
+}
+
+bool is_busygroup_error(const std::string& errtype)
+{
+    return (errtype.size() == sizeof("BUSYGROUP")-1) && (errtype == "BUSYGROUP");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2893,6 +2909,201 @@ int64_t CRedisClient::zscan(
     return 0;
 }
 
+//
+// STREAM
+//
+
+// Time complexity: O(1) for each message ID processed.
+// XACK key group ID [ID ...]
+int CRedisClient::xack(const std::string& key, const std::string& groupname, const std::string& id, Node* which, int num_retries) throw (CRedisException)
+{
+    std::string value;
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XACK");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(groupname);
+    cmd_args.add_arg(id);
+
+    const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+    if (REDIS_REPLY_INTEGER == redis_reply->type)
+        return redis_reply->integer;
+    return 0;
+}
+
+int CRedisClient::xack(const std::string& key, const std::string& groupname, const std::vector<std::string>& ids, Node* which, int num_retries) throw (CRedisException)
+{
+    std::string value;
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XACK");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(groupname);
+    cmd_args.add_args(ids);
+
+    const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+    if (REDIS_REPLY_INTEGER == redis_reply->type)
+        return redis_reply->integer;
+    return 0;
+}
+
+// Time complexity: O(1)
+// XADD key ID field string [field string ...]
+std::string CRedisClient::xadd(const std::string& key, const std::vector<std::pair<std::string, std::string> >& values, Node* which, int num_retries) throw (CRedisException)
+{
+    const std::string id = "*";
+    return xadd(key, id, values, which, num_retries);
+}
+
+std::string CRedisClient::xadd(const std::string& key, const std::string& id, const std::vector<std::pair<std::string, std::string> >& values, Node* which, int num_retries) throw (CRedisException)
+{
+    std::string value;
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XADD");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(id);
+    cmd_args.add_args(values);
+    cmd_args.final();
+
+    // The command returns the number of messages successfully acknowledged.
+    const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+    //if (REDIS_REPLY_STRING == redis_reply->type)
+    (void)get_value(redis_reply.get(), &value);
+    return value;
+}
+
+// Time complexity: O(1) for all the subcommands, with the exception of the
+// DESTROY subcommand which takes an additional O(M) time in order to delete
+// the M entries inside the consumer group pending entries list (PEL).
+//
+// XGROUP CREATE key(topic) groupname id-or-$
+void CRedisClient::xgroup_create(const std::string& key, const std::string& groupname, const std::string& id, Node* which, int num_retries) throw (CRedisException)
+{
+    // xgroup CREATE key groupname id-or-$
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XGROUP");
+    cmd_args.add_arg("CREATE");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(groupname);
+    cmd_args.add_arg(id);
+    cmd_args.final();
+
+    // If the specified consumer group already exists, the command returns a -BUSYGROUP error.
+    // Otherwise the operation is performed and OK is returned.
+    // There are no hard limits to the number of consumer groups you can associate to a given stream.
+    //
+    // Consumers in a consumer group are auto-created every time a new consumer name is mentioned by some command.
+    (void)redis_command(false, num_retries, key, cmd_args, which);
+}
+
+// To just remove a given consumer from a consumer group.
+// Consumers in a consumer group are auto-created every time a new consumer name is mentioned by some command.
+//
+// XGROUP DESTROY key groupname
+void CRedisClient::xgroup_destroy(const std::string& key, const std::string& groupname, Node* which, int num_retries) throw (CRedisException)
+{
+    // xgroup DESTROY key groupname
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XGROUP");
+    cmd_args.add_arg("DESTROY");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(groupname);
+    cmd_args.final();
+
+    // The consumer group will be destroyed even if there are active consumers
+    // and pending messages, so make sure to call this command only when really needed.
+    (void)redis_command(false, num_retries, key, cmd_args, which);
+}
+
+// XGROUP SETID key groupname id-or-$
+void CRedisClient::xgroup_setid(const std::string& key, const std::string& id, Node* which, int num_retries) throw (CRedisException)
+{
+    // xgroup SETID key id-or-$
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XGROUP");
+    cmd_args.add_arg("SETID");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(id);
+    cmd_args.final();
+
+    (void)redis_command(false, num_retries, key, cmd_args, which);
+}
+
+// XGROUP DELCONSUMER key groupname consumername
+void CRedisClient::xgroup_delconsumer(const std::string& key, const std::string& groupname, const std::string& consumername, Node* which, int num_retries) throw (CRedisException)
+{
+    // xgroup DELCONSUMER key groupname consumername
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XGROUP");
+    cmd_args.add_arg("DELCONSUMER");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(groupname);
+    cmd_args.add_arg(consumername);
+    cmd_args.final();
+
+    (void)redis_command(false, num_retries, key, cmd_args, which);
+}
+
+// Available since 5.0.0.
+// Time complexity: For each stream mentioned: O(M) with M being the number
+// of elements returned. If M is constant (e.g. always asking for the first 10
+// elements with COUNT), you can consider it O(1). On the other side when
+// XREADGROUP blocks, XADD will pay the O(N) time in order to serve the N
+// clients blocked on the stream getting new data.
+//
+// XREADGROUP GROUP group consumer [COUNT count] [BLOCK milliseconds] STREAMS key [key ...] ID [ID ...]
+void CRedisClient::xreadgroup(
+        const std::string& groupname, const std::string& consumername, const std::string& key,
+        const std::string& id, int count,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    std::vector<std::string> keys(1);
+    keys[0] = key;
+    xreadgroup(groupname, consumername, keys, id, count, which, num_retries);
+}
+
+void CRedisClient::xreadgroup(
+        const std::string& groupname, const std::string& consumername,
+        const std::vector<std::string>& keys, const std::string& id, int count,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    std::vector<std::string> ids(1);
+    ids[0] = id; // ">"
+    xreadgroup(groupname, consumername, keys, ids, count, which, num_retries);
+}
+
+void CRedisClient::xreadgroup(
+        const std::string& groupname, const std::string& consumername,
+        const std::vector<std::string>& keys, const std::vector<std::string>& ids, int count,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    if (keys.empty() || ids.empty())
+    {
+        struct ErrorInfo errinfo;
+        errinfo.errtype = "ERR";
+        errinfo.errcode = ERROR_PARAMETER;
+        errinfo.errmsg = "wrong number of arguments for 'xreadgroup' command";
+        THROW_REDIS_EXCEPTION(errinfo);
+    }
+    else
+    {
+        const std::string key = cluster_mode()? keys[0]: std::string("");
+        std::string value;
+        CommandArgs cmd_args;
+        cmd_args.add_arg("XREADGROUP");
+        cmd_args.add_arg("GROUP");
+        cmd_args.add_arg(groupname);
+        cmd_args.add_arg(consumername);
+        cmd_args.add_arg("COUNT");
+        cmd_args.add_arg(count);
+        cmd_args.add_arg("STREAMS");
+        cmd_args.add_args(keys);
+        cmd_args.add_args(ids);
+        cmd_args.final();
+
+        // REDIS_REPLY_ARRAY
+        const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+    }
+}
+
 const RedisReplyHelper
 CRedisClient::redis_command(
         bool readonly, int num_retries,
@@ -2965,6 +3176,7 @@ CRedisClient::redis_command(
             redis_reply = (redisReply*)redisCommandArgv(
                     redis_node->get_redis_context(),
                     command_args.get_argc(), command_args.get_argv(), command_args.get_argvlen());
+            //debug_redis_reply(command_args.get_command(), redis_reply.get());
             if (!redis_reply)
                 errcode = handle_redis_command_error(redis_node, command_args, &errinfo);
             else

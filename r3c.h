@@ -105,6 +105,7 @@ extern bool is_moved_error(const std::string& errtype);
 extern bool is_noauth_error(const std::string& errtype);
 extern bool is_noscript_error(const std::string& errtype);
 extern bool is_wrongtype_error(const std::string& errtype);
+extern bool is_busygroup_error(const std::string& errtype);
 
 // NOTICE: not thread safe
 // A redis client than support redis cluster
@@ -150,6 +151,7 @@ public:
     void add_arg(uint32_t arg);
     void add_arg(int64_t arg);
     void add_args(const std::vector<std::string>& args);
+    void add_args(const std::vector<std::pair<std::string, std::string> >& values);
     void add_args(const std::map<std::string, std::string>& map);
     void add_args(const std::map<std::string, int64_t>& map, bool reverse);
     void final();
@@ -729,6 +731,28 @@ public: // ZSET
     // If pattern is empty, then not using MATCH,
     // If count is 0, then not using COUNT
     int64_t zscan(const std::string& key, int64_t cursor, const std::string& pattern, int count, std::vector<std::pair<std::string, int64_t> >* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+
+public: // STREAM (key like kafka topic), Available since 5.0.0.
+    // Removes one or multiple messages from the pending entries list (PEL) of a stream consumer group.
+    // The command returns the number of messages successfully acknowledged.
+    int xack(const std::string& key, const std::string& groupname, const std::string& id, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int xack(const std::string& key, const std::string& groupname, const std::vector<std::string>& ids, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+
+    // Returns the ID of the added entry. The ID is the one auto-
+    // generated if * is passed as ID argument, otherwise the command just
+    // returns the same ID specified by the user during insertion.
+    std::string xadd(const std::string& key, const std::vector<std::pair<std::string, std::string> >& values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    std::string xadd(const std::string& key, const std::string& id, const std::vector<std::pair<std::string, std::string> >& values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+
+    // Create a new consumer group associated with a stream.
+    // There are no hard limits to the number of consumer groups you can associate to a given stream.
+    void xgroup_create(const std::string& key, const std::string& groupname, const std::string& id=std::string("$"), Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xgroup_destroy(const std::string& key, const std::string& groupname, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xgroup_setid(const std::string& key, const std::string& id=std::string("$"), Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xgroup_delconsumer(const std::string& key, const std::string& groupname, const std::string& consumername, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xreadgroup(const std::string& groupname, const std::string& consumername, const std::string& key, const std::string& id, int count, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xreadgroup(const std::string& groupname, const std::string& consumername, const std::vector<std::string>& keys, const std::string& id, int count, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xreadgroup(const std::string& groupname, const std::string& consumername, const std::vector<std::string>& keys, const std::vector<std::string>& ids, int count, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
 public:
     // Standlone: key should be empty

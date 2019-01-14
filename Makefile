@@ -10,6 +10,7 @@ CMD=r3c_cmd
 TEST=r3c_test
 STRESS=r3c_stress
 ROBUST=r3c_robust
+STREAM=r3c_stream
 EXTENSION=redis_command_extension.so
 
 HIREDIS?=/usr/local/hiredis
@@ -39,7 +40,7 @@ STLIBSUFFIX=a
 STLIBNAME=$(LIBNAME).$(STLIBSUFFIX)
 STLIB_MAKE_CMD=ar rcs
 
-all: $(STLIBNAME) $(CMD) $(TEST) $(STRESS) $(ROBUST) $(EXTENSION)
+all: $(STLIBNAME) $(CMD) $(TEST) $(STRESS) $(ROBUST) $(STREAM) $(EXTENSION)
 
 # Deps (use make dep to generate this)
 sha1.o: sha1.cpp
@@ -50,6 +51,7 @@ r3c_test.o: r3c_test.cpp r3c.h r3c.cpp utils.h utils.cpp
 r3c_stress.o: r3c_stress.cpp r3c.h r3c.cpp utils.cpp
 r3c_test.o: r3c_test.cpp r3c.h r3c.cpp utils.h utils.cpp
 r3c_robust.o: r3c_robust.cpp r3c.h r3c.cpp utils.h utils.cpp
+r3c_stream.o: r3c_stream.cpp r3c.h r3c.cpp utils.h utils.cpp
 redis_command_extension.o: redis_command_extension.cpp r3c.h r3c.cpp utils.h utils.cpp
 
 %.o: %.cpp
@@ -70,11 +72,14 @@ $(STRESS): r3c_stress.o $(STLIBNAME)
 $(ROBUST): r3c_robust.o $(STLIBNAME)
 	$(CXX) -o $@ $^ $(REAL_LDFLAGS) -pthread
 
+$(STREAM): r3c_stream.o $(STLIBNAME)
+	$(CXX) -o $@ $^ $(REAL_LDFLAGS) -pthread
+
 $(EXTENSION): redis_command_extension.o $(STLIBNAME)
 	$(CXX) -o $@ -shared $^ $(REAL_LDFLAGS)
 
 clean:
-	rm -f $(STLIBNAME) $(CMD) $(TEST) $(STRESS) $(ROBUST) $(EXTENSION) *.o core core.*
+	rm -f $(STLIBNAME) $(CMD) $(TEST) $(STRESS) $(ROBUST) $(STREAM) $(EXTENSION) *.o core core.*
 
 install:
 	mkdir -p $(INSTALL_BIN)
