@@ -110,49 +110,66 @@ std::string strsha1(const std::string& str)
     return result;
 }
 
-void debug_redis_reply(const char* command, const redisReply* redis_reply, int depth)
+void debug_redis_reply(const char* command, const redisReply* redis_reply, int depth, int index)
 {
     if (0==depth && command!=NULL)
     {
-        fprintf(stderr, "%s\n", command);
+        fprintf(stderr, "[%d]\033[0;32;31m%s\033[m\n", depth, command);
     }
     if (NULL == redis_reply)
     {
-        fprintf(stderr, "REPLY_NULL\n");
+        fprintf(stderr, "[%d]REPLY_NULL\n", depth);
     }
     else
     {
-        for (int j=0; j<depth; ++j)
-        {
-            fprintf(stderr, " ");
-        }
+        const std::string spaces((depth+1)*2, ' ');
+
         if (REDIS_REPLY_NIL == redis_reply->type)
         {
-            fprintf(stderr, "REPLY_NIL\n");
+            fprintf(stderr, "%s[%d]REPLY_NIL\n", spaces.c_str(), depth);
         }
         else if (REDIS_REPLY_STATUS == redis_reply->type)
         {
-            fprintf(stderr, "REPLY_STATUS: %s\n", redis_reply->str);
+            fprintf(stderr, "%s[%d]REPLY_STATUS: %s\n", spaces.c_str(), depth, redis_reply->str);
         }
         else if (REDIS_REPLY_ERROR == redis_reply->type)
         {
-            fprintf(stderr, "REPLY_ERROR: %s\n", redis_reply->str);
+            fprintf(stderr, "%s[%d]REPLY_ERROR: %s\n", spaces.c_str(), depth, redis_reply->str);
         }
         else if (REDIS_REPLY_INTEGER == redis_reply->type)
         {
-            fprintf(stderr, "REPLY_INTEGER: %lld\n", redis_reply->integer);
+            fprintf(stderr, "%s[%d]REPLY_INTEGER: %lld\n", spaces.c_str(), depth, redis_reply->integer);
         }
         else if (REDIS_REPLY_STRING == redis_reply->type)
         {
-            fprintf(stderr, "REPLY_STRING: %s\n", redis_reply->str);
+            fprintf(stderr, "%s[%d:%d]\033[0;32;32mREPLY_STRING\033[m: %.*s\n", spaces.c_str(), depth, index, redis_reply->len, redis_reply->str);
         }
         else if (REDIS_REPLY_ARRAY == redis_reply->type)
         {
             const int depth_ = depth + 1;
+
             for (size_t i=0; i<redis_reply->elements; ++i)
             {
                 const struct redisReply* child_redis_reply = redis_reply->element[i];
-                debug_redis_reply(NULL, child_redis_reply, depth_);
+
+                if (REDIS_REPLY_ARRAY == child_redis_reply->type)
+                {
+                    fprintf(stderr, "%s[%d:%zu]\033[1;33mREPLY_ARRAY\033[m(%zu)\n", spaces.c_str(), depth, i, child_redis_reply->elements);
+                    debug_redis_reply(NULL, child_redis_reply, depth_, i);
+                }
+                else if (REDIS_REPLY_INTEGER == child_redis_reply->type)
+                {
+                    fprintf(stderr, "%s[%d:%zu]REPLY_INTEGER: %lld\n", spaces.c_str(), depth, i, child_redis_reply->integer);
+                }
+                else if (REDIS_REPLY_STRING == child_redis_reply->type ||
+                         REDIS_REPLY_STATUS == redis_reply->type)
+                {
+                    fprintf(stderr, "%s[%d:%zu]\033[0;32;32mREPLY_STRING\033[m: %.*s\n", spaces.c_str(), depth, i, child_redis_reply->len, child_redis_reply->str);
+                }
+                else
+                {
+                    fprintf(stderr, "%s[%d:%zu]REPLY_UNKNOWN: %d\n", spaces.c_str(), depth, i, redis_reply->type);
+                }
             }
         }
         else

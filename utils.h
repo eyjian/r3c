@@ -43,7 +43,7 @@ namespace r3c {
     extern void null_log_write(const char* UNUSED(format), ...) __attribute__((format(printf, 1, 2))); // Discard log
     extern void r3c_log_write(const char* format, ...) __attribute__((format(printf, 1, 2))); // Ouput log to stdout
     extern std::string strsha1(const std::string& str);
-    extern void debug_redis_reply(const char* command, const redisReply* redis_reply, int depth=0);
+    extern void debug_redis_reply(const char* command, const redisReply* redis_reply, int depth=0, int index=0);
     extern uint16_t crc16(const char *buf, int len);
     extern uint64_t crc64(uint64_t crc, const unsigned char *s, uint64_t l);
     extern int keyHashSlot(const char *key, size_t keylen);
