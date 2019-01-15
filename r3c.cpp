@@ -3056,12 +3056,20 @@ void CRedisClient::xreadgroup(
         StreamTopicsValues* values,
         Node* which, int num_retries) throw (CRedisException)
 {
-    if (keys.empty() || ids.empty())
+    if (keys.empty())
     {
         struct ErrorInfo errinfo;
         errinfo.errtype = "ERR";
         errinfo.errcode = ERROR_PARAMETER;
         errinfo.errmsg = "wrong number of arguments for 'xreadgroup' command";
+        THROW_REDIS_EXCEPTION(errinfo);
+    }
+    else if (keys.size() != ids.size())
+    {
+        struct ErrorInfo errinfo;
+        errinfo.errtype = "ERR";
+        errinfo.errcode = ERROR_PARAMETER;
+        errinfo.errmsg = "unbalanced XREADGROUP list of streams: for each stream key an ID or '$' must be specified";
         THROW_REDIS_EXCEPTION(errinfo);
     }
     else
