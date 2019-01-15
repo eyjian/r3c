@@ -108,6 +108,7 @@ extern bool is_noauth_error(const std::string& errtype);
 extern bool is_noscript_error(const std::string& errtype);
 extern bool is_wrongtype_error(const std::string& errtype);
 extern bool is_busygroup_error(const std::string& errtype);
+extern bool is_crossslot_error(const std::string& errtype);
 
 // NOTICE: not thread safe
 // A redis client than support redis cluster

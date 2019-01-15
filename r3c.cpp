@@ -642,6 +642,11 @@ bool is_busygroup_error(const std::string& errtype)
     return (errtype.size() == sizeof("BUSYGROUP")-1) && (errtype == "BUSYGROUP");
 }
 
+bool is_crossslot_error(const std::string& errtype)
+{
+    return (errtype.size() == sizeof("CROSSSLOT")-1) && (errtype == "CROSSSLOT");
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // CRedisClient
 
