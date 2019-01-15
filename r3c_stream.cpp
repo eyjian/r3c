@@ -1,6 +1,7 @@
 // Writed by yijian (eyjian@qq.com)
 #include "r3c.h"
 #include "utils.h"
+#include <iostream>
 
 typedef void (*TESTCASE)(r3c::CRedisClient&);
 static void init_testcase(TESTCASE testcase[]);
@@ -56,18 +57,27 @@ static void testcase1(r3c::CRedisClient& redis)
     const std::string consumer = "consumer";
     std::vector<std::string> topics(2);
     std::vector<std::string> ids(2);
-    std::vector<std::pair<std::string, std::string> > values(2);
+    std::vector<std::pair<std::string, std::string> > values(3);
     int count = 10;
 
     topics[0] = "topic0";
     topics[1] = "topic1";
 
     // XADD
-    values[0].first = "field0";
-    values[0].second = "value0";
-    values[1].first = "field1";
-    values[1].second = "value1";
+    values[0].first = "field00";
+    values[0].second = "value00";
+    values[1].first = "field01";
+    values[1].second = "value01";
+    values[2].first = "field02";
+    values[2].second = "value02";
     ids[0] = redis.xadd(topics[0], "*", values);
+
+    values[0].first = "field10";
+    values[0].second = "value10";
+    values[1].first = "field11";
+    values[1].second = "value11";
+    values[2].first = "field12";
+    values[2].second = "value12";
     ids[1] = redis.xadd(topics[1], "*", values);
 
     // XGROUP CREATE
@@ -91,7 +101,11 @@ static void testcase1(r3c::CRedisClient& redis)
     }
 
     // XREADGROUP
-    redis.xreadgroup(group, consumer, topics, ids, count);
+    ids[0] = ">";
+    ids[1] = ">";
+    r3c::StreamTopicsValues stream_values;
+    redis.xreadgroup(group, consumer, topics, ids, count, &stream_values);
+    std::cout << stream_values << std::endl;
 }
 
 void init_testcase(TESTCASE testcase[])

@@ -77,6 +77,8 @@ struct NodeInfo
     typedef std::unordered_map<Node, NodeInfo, NodeHasher> NodeInfoTable;
 #endif // __cplusplus < 201103L
 
+extern std::ostream& operator <<(std::ostream& os, const struct NodeInfo& nodeinfo);
+
 // The helper for freeing redisReply automatically
 // DO NOT use RedisReplyHelper for any nested redisReply
 class RedisReplyHelper
@@ -215,6 +217,32 @@ private:
     std::string _command;
     std::string _key;
 };
+
+// The value of stream ID
+struct StreamIDValue
+{
+    std::string field;
+    std::string value;
+};
+
+// The value of a stream topic (Topic is the key of stream)
+struct StreamTopicValues
+{
+    std::string id;
+    std::vector<StreamIDValue> id_values;
+};
+
+// The map of a topic to it's values
+struct StreamTopic2Values
+{
+    std::string topic;
+    std::vector<StreamTopicValues> topic_values;
+};
+
+// The values of a stream topics
+typedef std::vector<StreamTopic2Values> StreamTopicsValues;
+
+extern std::ostream& operator <<(std::ostream& os, const StreamTopicsValues& values);
 
 // NOTICE:
 // 1) ALL keys and values can be binary except EVAL commands.
@@ -732,7 +760,7 @@ public: // ZSET
     // If count is 0, then not using COUNT
     int64_t zscan(const std::string& key, int64_t cursor, const std::string& pattern, int count, std::vector<std::pair<std::string, int64_t> >* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
-public: // STREAM (key like kafka topic), Available since 5.0.0.
+public: // STREAM (key like kafka's topic), available since 5.0.0.
     // Removes one or multiple messages from the pending entries list (PEL) of a stream consumer group.
     // The command returns the number of messages successfully acknowledged.
     int xack(const std::string& key, const std::string& groupname, const std::string& id, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
@@ -750,9 +778,7 @@ public: // STREAM (key like kafka topic), Available since 5.0.0.
     void xgroup_destroy(const std::string& key, const std::string& groupname, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
     void xgroup_setid(const std::string& key, const std::string& id=std::string("$"), Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
     void xgroup_delconsumer(const std::string& key, const std::string& groupname, const std::string& consumername, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    void xreadgroup(const std::string& groupname, const std::string& consumername, const std::string& key, const std::string& id, int count, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    void xreadgroup(const std::string& groupname, const std::string& consumername, const std::vector<std::string>& keys, const std::string& id, int count, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    void xreadgroup(const std::string& groupname, const std::string& consumername, const std::vector<std::string>& keys, const std::vector<std::string>& ids, int count, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xreadgroup(const std::string& groupname, const std::string& consumername, const std::vector<std::string>& keys, const std::vector<std::string>& ids, int count, StreamTopicsValues* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
 public:
     // Standlone: key should be empty
@@ -835,6 +861,9 @@ public:
 
     // Called by: hmincrby
     int get_values(const redisReply* redis_reply, std::vector<int64_t>* values);
+
+    // Called by: xreadgroup
+    int get_values(const redisReply* redis_reply, StreamTopicsValues* values);
 
 public:
     void set_command_monitor(CommandMonitor* command_monitor) { _command_monitor = command_monitor; }

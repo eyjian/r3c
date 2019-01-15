@@ -3051,28 +3051,9 @@ void CRedisClient::xgroup_delconsumer(const std::string& key, const std::string&
 //
 // XREADGROUP GROUP group consumer [COUNT count] [BLOCK milliseconds] STREAMS key [key ...] ID [ID ...]
 void CRedisClient::xreadgroup(
-        const std::string& groupname, const std::string& consumername, const std::string& key,
-        const std::string& id, int count,
-        Node* which, int num_retries) throw (CRedisException)
-{
-    std::vector<std::string> keys(1);
-    keys[0] = key;
-    xreadgroup(groupname, consumername, keys, id, count, which, num_retries);
-}
-
-void CRedisClient::xreadgroup(
-        const std::string& groupname, const std::string& consumername,
-        const std::vector<std::string>& keys, const std::string& id, int count,
-        Node* which, int num_retries) throw (CRedisException)
-{
-    std::vector<std::string> ids(1);
-    ids[0] = id; // ">"
-    xreadgroup(groupname, consumername, keys, ids, count, which, num_retries);
-}
-
-void CRedisClient::xreadgroup(
         const std::string& groupname, const std::string& consumername,
         const std::vector<std::string>& keys, const std::vector<std::string>& ids, int count,
+        StreamTopicsValues* values,
         Node* which, int num_retries) throw (CRedisException)
 {
     if (keys.empty() || ids.empty())
@@ -3101,8 +3082,11 @@ void CRedisClient::xreadgroup(
 
         // REDIS_REPLY_ARRAY
         const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+        get_values(redis_reply.get(), values);
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////
 
 const RedisReplyHelper
 CRedisClient::redis_command(
@@ -4319,6 +4303,102 @@ int CRedisClient::get_values(const redisReply* redis_reply, std::vector<int64_t>
     }
 
     return static_cast<int>(redis_reply->elements);
+}
+
+// Example:
+//
+// [0]XREADGROUP
+//   [0:0]REPLY_ARRAY(2)
+//     [1:0]REPLY_STRING: topic0
+//     [1:1]REPLY_ARRAY(2)
+//       [2:0]REPLY_ARRAY(2)
+//         [3:0]REPLY_STRING: 1547510218547-0
+//         [3:1]REPLY_ARRAY(6)
+//           [4:0]REPLY_STRING: field00
+//           [4:1]REPLY_STRING: value00
+//           [4:2]REPLY_STRING: field01
+//           [4:3]REPLY_STRING: value01
+//           [4:4]REPLY_STRING: field02
+//           [4:5]REPLY_STRING: value02
+//       [2:1]REPLY_ARRAY(2)
+//         [3:0]REPLY_STRING: 1547510237790-0
+//         [3:1]REPLY_ARRAY(6)
+//           [4:0]REPLY_STRING: field00
+//           [4:1]REPLY_STRING: value00
+//           [4:2]REPLY_STRING: field01
+//           [4:3]REPLY_STRING: value01
+//           [4:4]REPLY_STRING: field02
+//           [4:5]REPLY_STRING: value02
+//   [0:1]REPLY_ARRAY(2)
+//     [1:0]REPLY_STRING: topic1
+//     [1:1]REPLY_ARRAY(2)
+//       [2:0]REPLY_ARRAY(2)
+//         [3:0]REPLY_STRING: 1547510218547-0
+//         [3:1]REPLY_ARRAY(6)
+//           [4:0]REPLY_STRING: field10
+//           [4:1]REPLY_STRING: value10
+//           [4:2]REPLY_STRING: field11
+//           [4:3]REPLY_STRING: value11
+//           [4:4]REPLY_STRING: field12
+//           [4:5]REPLY_STRING: value12
+//       [2:1]REPLY_ARRAY(2)
+//         [3:0]REPLY_STRING: 1547510237790-0
+//         [3:1]REPLY_ARRAY(6)
+//           [4:0]REPLY_STRING: field10
+//           [4:1]REPLY_STRING: value10
+//           [4:2]REPLY_STRING: field11
+//           [4:3]REPLY_STRING: value11
+//           [4:4]REPLY_STRING: field12
+//           [4:5]REPLY_STRING: value12
+int CRedisClient::get_values(const redisReply* redis_reply, StreamTopicsValues* values)
+{
+    const redisReply* topics_redis_reply = redis_reply;
+    R3C_ASSERT(REDIS_REPLY_ARRAY == topics_redis_reply->type);
+
+    if (NULL == values)
+    {
+        return -1;
+    }
+    if (REDIS_REPLY_NIL == redis_reply->type)
+    {
+        return 0;
+    }
+
+    const size_t num_topics = topics_redis_reply->elements;
+    StreamTopicsValues& topics_values_ref = *values;
+    topics_values_ref.resize(num_topics);
+    for (size_t i=0; i<num_topics; ++i) // Traversing all topics
+    {
+        const redisReply* topic_redis_reply = topics_redis_reply->element[i]; // Topic
+        const redisReply* topicname_redis_reply = topic_redis_reply->element[0];
+        const redisReply* ids_redis_reply = topic_redis_reply->element[1];
+        const size_t num_ids = ids_redis_reply->elements;
+        StreamTopic2Values& topic2values = topics_values_ref[i];
+
+        topic2values.topic.assign(topicname_redis_reply->str, topicname_redis_reply->len); // Topic
+        topic2values.topic_values.resize(num_ids);
+        for (size_t j=0; j<num_ids; ++j) // Traversing all IDs
+        {
+            const redisReply* id_redis_reply = ids_redis_reply->element[j]; // ID
+            const redisReply* idname_redis_reply = id_redis_reply->element[0];
+            const redisReply* values_redis_reply = id_redis_reply->element[1];
+            StreamTopicValues& topic_values = topic2values.topic_values[j];
+
+            topic_values.id.assign(idname_redis_reply->str, idname_redis_reply->len);
+            topic_values.id_values.resize(values_redis_reply->elements/2);
+            for (size_t k=0,h=0; k<values_redis_reply->elements; k+=2,++h) // Traversing all values
+            {
+                const redisReply* field_redis_reply = values_redis_reply->element[k]; // Field
+                const redisReply* value_redis_reply = values_redis_reply->element[k+1]; // Value
+                StreamIDValue& id_value = topic_values.id_values[h];
+
+                id_value.field.assign(field_redis_reply->str, field_redis_reply->len);
+                id_value.value.assign(value_redis_reply->str, value_redis_reply->len);
+            }
+        }
+    }
+
+    return static_cast<int>(num_topics);
 }
 
 } // namespace r3c {

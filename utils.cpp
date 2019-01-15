@@ -74,6 +74,32 @@ std::ostream& operator <<(std::ostream& os, const struct NodeInfo& node_info)
     return os;
 }
 
+std::ostream& operator <<(std::ostream& os, const StreamTopicsValues& values)
+{
+    for (StreamTopicsValues::size_type i=0; i<values.size(); ++i)
+    {
+        // topic
+        const StreamTopic2Values& topic2values = values[i];
+
+        os << topic2values.topic << std::endl;
+        for (std::vector<StreamTopicValues>::size_type j=0; j<topic2values.topic_values.size(); ++j)
+        {
+            // id
+            const StreamTopicValues& topic_values = topic2values.topic_values[j];
+            os << "\t" << topic_values.id << std::endl;
+
+            for (std::vector<StreamIDValue>::size_type k=0; k<topic_values.id_values.size(); ++k)
+            {
+                // value
+                const StreamIDValue& id_value = topic_values.id_values[k];
+                os << "\t\t" << id_value.field << " => " << id_value.value << std::endl;
+            }
+        }
+    }
+
+    return os;
+}
+
 void null_log_write(const char* UNUSED(format), ...)
 {
 }
