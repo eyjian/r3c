@@ -2920,22 +2920,10 @@ int64_t CRedisClient::zscan(
 
 // Time complexity: O(1) for each message ID processed.
 // XACK key group ID [ID ...]
-int CRedisClient::xack(const std::string& key, const std::string& groupname, const std::string& id, Node* which, int num_retries) throw (CRedisException)
-{
-    std::string value;
-    CommandArgs cmd_args;
-    cmd_args.add_arg("XACK");
-    cmd_args.add_arg(key);
-    cmd_args.add_arg(groupname);
-    cmd_args.add_arg(id);
-
-    const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
-    if (REDIS_REPLY_INTEGER == redis_reply->type)
-        return redis_reply->integer;
-    return 0;
-}
-
-int CRedisClient::xack(const std::string& key, const std::string& groupname, const std::vector<std::string>& ids, Node* which, int num_retries) throw (CRedisException)
+int CRedisClient::xack(
+        const std::string& key, const std::string& groupname,
+        const std::vector<std::string>& ids,
+        Node* which, int num_retries) throw (CRedisException)
 {
     std::string value;
     CommandArgs cmd_args;
@@ -2950,15 +2938,46 @@ int CRedisClient::xack(const std::string& key, const std::string& groupname, con
     return 0;
 }
 
-// Time complexity: O(1)
-// XADD key ID field string [field string ...]
-std::string CRedisClient::xadd(const std::string& key, const std::vector<std::pair<std::string, std::string> >& values, Node* which, int num_retries) throw (CRedisException)
+int CRedisClient::xack(
+        const std::string& key, const std::string& groupname,
+        const std::string& id,
+        Node* which, int num_retries) throw (CRedisException)
 {
-    const std::string id = "*";
-    return xadd(key, id, values, which, num_retries);
+    std::vector<std::string> ids(1);
+    ids[0] = id;
+    return xack(key, groupname, ids, which, num_retries);
 }
 
-std::string CRedisClient::xadd(const std::string& key, const std::string& id, const std::vector<std::pair<std::string, std::string> >& values, Node* which, int num_retries) throw (CRedisException)
+// Time complexity: O(1)
+// XADD key [MAXLEN [~|=] <count>] <ID or *> [field value] [field value] ...
+std::string CRedisClient::xadd(
+        const std::string& key, const std::string& id,
+        const std::vector<std::pair<std::string, std::string> >& values,
+        int64_t maxlen, char c,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    std::string value;
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XADD");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg("MAXLEN");
+    cmd_args.add_arg(c);
+    cmd_args.add_arg(maxlen);
+    cmd_args.add_arg(id);
+    cmd_args.add_args(values);
+    cmd_args.final();
+
+    // The command returns the number of messages successfully acknowledged.
+    const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+    //if (REDIS_REPLY_STRING == redis_reply->type)
+    (void)get_value(redis_reply.get(), &value);
+    return value;
+}
+
+std::string CRedisClient::xadd(
+        const std::string& key, const std::string& id,
+        const std::vector<std::pair<std::string, std::string> >& values,
+        Node* which, int num_retries) throw (CRedisException)
 {
     std::string value;
     CommandArgs cmd_args;
@@ -3211,6 +3230,142 @@ void CRedisClient::xreadgroup(
     const int64_t count = 0;
     const int64_t block_milliseconds = -1; // -1 means, no BLOCK argument given
     xreadgroup(groupname, consumername, keys, ids, count, block_milliseconds, noack, values, which, num_retries);
+}
+
+// XDEL <key> [<ID1> <ID2> ... <IDN>]
+int CRedisClient::xdel(const std::string& key, const std::vector<std::string>& ids, Node* which, int num_retries) throw (CRedisException)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XDEL");
+    cmd_args.add_arg(key);
+    cmd_args.add_args(ids);
+    cmd_args.final();
+
+    // Integer reply: the number of entries actually deleted.
+    const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+    if (REDIS_REPLY_INTEGER == redis_reply->type)
+        return static_cast<int>(redis_reply->integer);
+    return 0;
+}
+
+int CRedisClient::xdel(const std::string& key, const std::string& id, Node* which, int num_retries) throw (CRedisException)
+{
+    std::vector<std::string> ids(1);
+    ids[0] = id;
+    return xdel(key, ids, which, num_retries);
+}
+
+// XTRIM key MAXLEN [~] count
+int64_t CRedisClient::xtrim(const std::string& key, int64_t maxlen, char c, Node* which, int num_retries) throw (CRedisException)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XTRIM");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg("MAXLEN");
+    cmd_args.add_arg(c);
+    cmd_args.add_arg(maxlen);
+    cmd_args.final();
+
+    const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+    if (REDIS_REPLY_INTEGER == redis_reply->type)
+        return static_cast<int>(redis_reply->integer);
+    return 0;
+}
+
+int64_t CRedisClient::xtrim(const std::string& key, int64_t maxlen, Node* which, int num_retries) throw (CRedisException)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XTRIM");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg("MAXLEN");
+    cmd_args.add_arg(maxlen);
+    cmd_args.final();
+
+    const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+    if (REDIS_REPLY_INTEGER == redis_reply->type)
+        return static_cast<int>(redis_reply->integer);
+    return 0;
+}
+
+// XLEN key
+int64_t CRedisClient::xlen(const std::string& key, Node* which, int num_retries) throw (CRedisException)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XLEN");
+    cmd_args.add_arg(key);
+    cmd_args.final();
+
+    // Integer reply: the number of entries of the stream at key.
+    const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+    if (REDIS_REPLY_INTEGER == redis_reply->type)
+        return static_cast<int>(redis_reply->integer);
+    return 0;
+}
+
+// XRANGE key start end [COUNT count]
+void CRedisClient::xrange(
+        const std::string& key,
+        const std::string& start, const std::string& end, int64_t count,
+        std::vector<StreamTopicValues>* values,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XRANGE");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(start);
+    cmd_args.add_arg(end);
+    if (count >= 0)
+    {
+        cmd_args.add_arg("COUNT");
+        cmd_args.add_arg(count);
+    }
+    cmd_args.final();
+
+    const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+    get_values(redis_reply.get(), values);
+}
+
+void CRedisClient::xrange(
+        const std::string& key,
+        const std::string& start, const std::string& end,
+        std::vector<StreamTopicValues>* values,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    const int64_t count = -1;
+    xrange(key, start, end, count, values, which, num_retries);
+}
+
+// XREVRANGE key end start [COUNT count]
+void CRedisClient::xrevrange(
+        const std::string& key,
+        const std::string& end, const std::string& start, int64_t count,
+        std::vector<StreamTopicValues>* values,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XRANGE");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(end);
+    cmd_args.add_arg(start);
+    if (count >= 0)
+    {
+        cmd_args.add_arg("COUNT");
+        cmd_args.add_arg(count);
+    }
+    cmd_args.final();
+
+    const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+    get_values(redis_reply.get(), values);
+}
+
+void CRedisClient::xrevrange(
+        const std::string& key,
+        const std::string& end, const std::string& start,
+        std::vector<StreamTopicValues>* values,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    const int64_t count = -1;
+    xrevrange(key, start, end, count, values, which, num_retries);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4528,6 +4683,64 @@ int CRedisClient::get_values(const redisReply* redis_reply, StreamTopicsValues* 
     }
 
     return static_cast<int>(num_topics);
+}
+
+// [0]XRANGE
+//   [0:0]REPLY_ARRAY(2)
+//     [1:0]REPLY_STRING: 1547557754696-0
+//     [1:1]REPLY_ARRAY(6)
+//       [2:0]REPLY_STRING: field00
+//       [2:1]REPLY_STRING: value00
+//       [2:2]REPLY_STRING: field01
+//       [2:3]REPLY_STRING: value01
+//       [2:4]REPLY_STRING: field02
+//       [2:5]REPLY_STRING: value02
+//   [0:1]REPLY_ARRAY(2)
+//     [1:0]REPLY_STRING: 1547557754697-0
+//     [1:1]REPLY_ARRAY(6)
+//       [2:0]REPLY_STRING: field10
+//       [2:1]REPLY_STRING: value10
+//       [2:2]REPLY_STRING: field11
+//       [2:3]REPLY_STRING: value11
+//       [2:4]REPLY_STRING: field12
+//       [2:5]REPLY_STRING: value12
+int CRedisClient::get_values(const redisReply* redis_reply, std::vector<StreamTopicValues>* values)
+{
+    const redisReply* topics_redis_reply = redis_reply;
+    R3C_ASSERT(REDIS_REPLY_ARRAY == topics_redis_reply->type);
+
+    if (NULL == values)
+    {
+        return -1;
+    }
+    if (REDIS_REPLY_NIL == redis_reply->type)
+    {
+        return 0;
+    }
+
+    const size_t num_ids = topics_redis_reply->elements;
+    std::vector<StreamTopicValues>& values_ref = *values;
+    values_ref.resize(num_ids);
+    for (size_t j=0; j<num_ids; ++j) // Traversing all IDs
+    {
+        const redisReply* idname_redis_reply = topics_redis_reply->element[j]->element[0];
+        const redisReply* values_redis_reply = topics_redis_reply->element[j]->element[1];
+        StreamTopicValues& topic_values = values_ref[j];
+
+        topic_values.id.assign(idname_redis_reply->str, idname_redis_reply->len);
+        topic_values.id_values.resize(values_redis_reply->elements/2);
+        for (size_t k=0,h=0; k<values_redis_reply->elements; k+=2,++h) // Traversing all values
+        {
+            const redisReply* field_redis_reply = values_redis_reply->element[k]; // Field
+            const redisReply* value_redis_reply = values_redis_reply->element[k+1]; // Value
+            StreamIDValue& id_value = topic_values.id_values[h];
+
+            id_value.field.assign(field_redis_reply->str, field_redis_reply->len);
+            id_value.value.assign(value_redis_reply->str, value_redis_reply->len);
+        }
+    }
+
+    return static_cast<int>(num_ids);
 }
 
 } // namespace r3c {

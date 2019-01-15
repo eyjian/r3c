@@ -16,7 +16,13 @@
 #endif // __cplusplus < 201103L
 namespace r3c {
 
-enum { R3C_VERSION = 0x000019 };
+enum
+{
+    R3C_VERSION = 0x000020,
+    R3C_MAJOR = 0x00,
+    R3C_MINOR = 0x00,
+    R3C_PATCH = 0x20
+};
 
 extern int NUM_RETRIES /*=15*/; // The default number of retries is 15 (CLUSTERDOWN cost more than 6s)
 extern int CONNECT_TIMEOUT_MILLISECONDS /*=2000*/; // Connection timeout in milliseconds
@@ -244,6 +250,7 @@ struct StreamTopic2Values
 typedef std::vector<StreamTopic2Values> StreamTopicsValues;
 
 extern std::ostream& operator <<(std::ostream& os, const StreamTopicsValues& values);
+extern std::ostream& operator <<(std::ostream& os, const std::vector<StreamTopicValues>& values);
 
 // NOTICE:
 // 1) ALL keys and values can be binary except EVAL commands.
@@ -764,13 +771,15 @@ public: // ZSET
 public: // STREAM (key like kafka's topic), available since 5.0.0.
     // Removes one or multiple messages from the pending entries list (PEL) of a stream consumer group.
     // The command returns the number of messages successfully acknowledged.
-    int xack(const std::string& key, const std::string& groupname, const std::string& id, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
     int xack(const std::string& key, const std::string& groupname, const std::vector<std::string>& ids, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int xack(const std::string& key, const std::string& groupname, const std::string& id, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
     // Returns the ID of the added entry. The ID is the one auto-
     // generated if * is passed as ID argument, otherwise the command just
     // returns the same ID specified by the user during insertion.
-    std::string xadd(const std::string& key, const std::vector<std::pair<std::string, std::string> >& values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    //
+    // c '~' or '='
+    std::string xadd(const std::string& key, const std::string& id, const std::vector<std::pair<std::string, std::string> >& values, int64_t maxlen, char c, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
     std::string xadd(const std::string& key, const std::string& id, const std::vector<std::pair<std::string, std::string> >& values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
     // xread is a read command, can be called on slaves, xreadgroup is not
@@ -789,6 +798,29 @@ public: // STREAM (key like kafka's topic), available since 5.0.0.
     void xreadgroup(const std::string& groupname, const std::string& consumername, const std::vector<std::string>& keys, const std::vector<std::string>& ids, int64_t count, int64_t block_milliseconds, bool noack, StreamTopicsValues* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
     void xreadgroup(const std::string& groupname, const std::string& consumername, const std::vector<std::string>& keys, const std::vector<std::string>& ids, int64_t count, bool noack, StreamTopicsValues* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
     void xreadgroup(const std::string& groupname, const std::string& consumername, const std::vector<std::string>& keys, const std::vector<std::string>& ids, bool noack, StreamTopicsValues* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+
+    // Removes the specified entries from a stream, and returns the number of
+    // entries deleted, that may be different from the number of IDs passed to the
+    // command in case certain IDs do not exist.
+    int xdel(const std::string& key, const std::vector<std::string>& ids, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int xdel(const std::string& key, const std::string& id, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+
+    // Trims the stream to a given number of items, evicting older items (items with lower IDs) if needed
+    // Returns the number of entries deleted from the stream
+    int64_t xtrim(const std::string& key, int64_t maxlen, char c, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int64_t xtrim(const std::string& key, int64_t maxlen, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+
+    // Returns the number of entries inside a stream. If the specified key does not
+    // exist the command returns zero, as if the stream was empty.
+    int64_t xlen(const std::string& key, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+
+    // Returns the stream entries matching a given range of IDs
+    // start The '-' special ID mean respectively the minimum ID possible inside a stream
+    // end The '+' special ID mean respectively the maximum ID possible inside a stream
+    void xrange(const std::string& key, const std::string& start, const std::string& end, int64_t count, std::vector<StreamTopicValues>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xrange(const std::string& key, const std::string& start, const std::string& end, std::vector<StreamTopicValues>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xrevrange(const std::string& key, const std::string& end, const std::string& start, int64_t count, std::vector<StreamTopicValues>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xrevrange(const std::string& key, const std::string& end, const std::string& start, std::vector<StreamTopicValues>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
 public:
     // Standlone: key should be empty
@@ -874,6 +906,9 @@ public:
 
     // Called by: xreadgroup
     int get_values(const redisReply* redis_reply, StreamTopicsValues* values);
+
+    // Called by xrange & xrevrange
+    int get_values(const redisReply* redis_reply, std::vector<StreamTopicValues>* values);
 
 public:
     void set_command_monitor(CommandMonitor* command_monitor) { _command_monitor = command_monitor; }

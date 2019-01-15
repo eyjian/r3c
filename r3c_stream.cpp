@@ -53,7 +53,7 @@ void usage(char* argv[])
 
 
 // test xreadgroup
-static void testcase1(r3c::CRedisClient& redis)
+static void testcase0(r3c::CRedisClient& redis)
 {
     const std::string group = "group";
     const std::string consumer = "consumer";
@@ -111,7 +111,7 @@ static void testcase1(r3c::CRedisClient& redis)
 }
 
 // test xread
-static void testcase2(r3c::CRedisClient& redis)
+static void testcase1(r3c::CRedisClient& redis)
 {
     std::vector<std::string> topics(2);
     std::vector<std::string> ids(2);
@@ -146,10 +146,43 @@ static void testcase2(r3c::CRedisClient& redis)
     std::cout << stream_values << std::endl;
 }
 
+// test xrange
+static void testcase2(r3c::CRedisClient& redis)
+{
+    std::string topic = "topic4";
+    std::string start, end;
+    std::vector<std::pair<std::string, std::string> > values(3);
+    std::vector<std::string> ids(2);
+    std::vector<r3c::StreamTopicValues> topic_values;
+
+    // XADD
+    values[0].first = "field00";
+    values[0].second = "value00";
+    values[1].first = "field01";
+    values[1].second = "value01";
+    values[2].first = "field02";
+    values[2].second = "value02";
+    redis.xadd(topic, "*", values);
+
+    // XADD
+    values[0].first = "field10";
+    values[0].second = "value10";
+    values[1].first = "field11";
+    values[1].second = "value11";
+    values[2].first = "field12";
+    values[2].second = "value12";
+    redis.xadd(topic, "*", values);
+
+    start = "-";
+    end = "+";
+    redis.xrange(topic, start, end, &topic_values);
+    std::cout << topic_values << std::endl;
+}
+
 void init_testcase(TESTCASE testcase[])
 {
     int i = 0;
+    testcase[i++] = testcase0;
     testcase[i++] = testcase1;
     testcase[i++] = testcase2;
-    //testcase[i++] = testcase3;
 }

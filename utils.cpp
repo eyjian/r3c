@@ -100,6 +100,24 @@ std::ostream& operator <<(std::ostream& os, const StreamTopicsValues& values)
     return os;
 }
 
+std::ostream& operator <<(std::ostream& os, const std::vector<r3c::StreamTopicValues>& values)
+{
+    for (std::vector<r3c::StreamTopicValues>::size_type j=0; j<values.size(); ++j)
+    {
+        const r3c::StreamTopicValues& topic_values = values[j];
+        os << topic_values.id << std::endl;
+
+        for (std::vector<StreamIDValue>::size_type k=0; k<topic_values.id_values.size(); ++k)
+        {
+            // value
+            const StreamIDValue& id_value = topic_values.id_values[k];
+            os << "\t\t" << id_value.field << " => " << id_value.value << std::endl;
+        }
+    }
+
+    return os;
+}
+
 void null_log_write(const char* UNUSED(format), ...)
 {
 }
