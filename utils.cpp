@@ -459,6 +459,22 @@ int get_key_slot(const std::string* key) {
     }
 }
 
+bool keys_crossslots(const std::vector<std::string>& keys)
+{
+    if (!keys.empty())
+    {
+        const int first_key_slot = get_key_slot(&keys[0]);
+        for (std::vector<std::string>::size_type i=1; i<keys.size(); ++i)
+        {
+            const int cur_key_slot = get_key_slot(&keys[i]);
+            if (cur_key_slot != first_key_slot)
+                return true;
+        }
+    }
+
+    return false;
+}
+
 void millisleep(int milliseconds)
 {
 #if SLEEP_USE_POLL==1

@@ -3077,6 +3077,14 @@ void CRedisClient::xreadgroup(
         errinfo.errmsg = "unbalanced XREADGROUP list of streams: for each stream key an ID or '$' must be specified";
         THROW_REDIS_EXCEPTION(errinfo);
     }
+    else if (cluster_mode() && keys_crossslots(keys))
+    {
+        struct ErrorInfo errinfo;
+        errinfo.errtype = "CROSSSLOT";
+        errinfo.errcode = ERROR_PARAMETER;
+        errinfo.errmsg = "keys in request don't hash to the same slot";
+        THROW_REDIS_EXCEPTION(errinfo);
+    }
     else
     {
         const std::string key = cluster_mode()? keys[0]: std::string("");

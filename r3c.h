@@ -947,6 +947,7 @@ extern std::string get_formatted_current_datetime(bool with_milliseconds=false);
 extern std::string format_string(const char* format, ...) __attribute__((format(printf, 1, 2)));
 extern int split(std::vector<std::string>* tokens, const std::string& source, const std::string& sep, bool skip_sep=false);
 extern int get_key_slot(const std::string* key);
+extern bool keys_crossslots(const std::vector<std::string>& keys);
 extern std::string int2string(int64_t n);
 extern std::string int2string(int32_t n);
 extern std::string int2string(int16_t n);
