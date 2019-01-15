@@ -30,7 +30,7 @@ INSTALL?= cp -a
 CPLUSPLUSONEONE=$(shell gcc --version|awk -F[\ .]+ '/GCC/{if($$3>=4&&$$4>=7) printf("-std=c++11");}')
 
 #OPTIMIZATION?=-O2
-DEBUG?= -g -ggdb $(CPLUSPLUSONEONE) # -DSLEEP_USE_POLL=1
+DEBUG?= -g -ggdb $(CPLUSPLUSONEONE) -DSLEEP_USE_POLL # -DR3C_TEST
 WARNINGS=-Wall -W -Wwrite-strings -Wno-missing-field-initializers
 REAL_CPPFLAGS=$(CPPFLAGS) $(ARCH) -I$(HIREDIS)/include -DSLEEP_USE_POLL=1 -D__STDC_FORMAT_MACROS=1 -D__STDC_CONSTANT_MACROS -fstrict-aliasing -fPIC  -pthread $(DEBUG) $(OPTIMIZATION) $(WARNINGS)
 REAL_LDFLAGS=$(LDFLAGS) $(ARCH) -fPIC -pthread $(HIREDIS)/lib/libhiredis.a

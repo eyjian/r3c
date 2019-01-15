@@ -477,9 +477,11 @@ bool keys_crossslots(const std::vector<std::string>& keys)
 
 void millisleep(int milliseconds)
 {
-#if SLEEP_USE_POLL==1
-    poll(NULL, 0, milliseconds); // 可能被中断提前结束
+#if SLEEP_USE_POLL
+    // 可配合libco协程库，但可能被中断提前结束而不足milliseconds
+    (void)poll(NULL, 0, milliseconds);
 #else
+    // 无法配合libco协程库
     struct timespec ts = { milliseconds / 1000, (milliseconds % 1000) * 1000000 };
     while ((-1 == nanosleep(&ts, &ts)) && (EINTR == errno));
 #endif

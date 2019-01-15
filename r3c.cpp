@@ -18,7 +18,7 @@ int NUM_RETRIES = 15; // The default number of retries is 15 (CLUSTERDOWN cost m
 int CONNECT_TIMEOUT_MILLISECONDS = 2000; // Connection timeout in milliseconds
 int READWRITE_TIMEOUT_MILLISECONDS = 2000; // Receive and send timeout in milliseconds
 
-#if 0 // for test
+#if R3C_TEST // for test
     static LOG_WRITE g_error_log = r3c_log_write;
     static LOG_WRITE g_info_log = r3c_log_write;
     static LOG_WRITE g_debug_log = r3c_log_write;
@@ -26,7 +26,7 @@ int READWRITE_TIMEOUT_MILLISECONDS = 2000; // Receive and send timeout in millis
     static LOG_WRITE g_error_log = null_log_write;
     static LOG_WRITE g_info_log = null_log_write;
     static LOG_WRITE g_debug_log = null_log_write;
-#endif
+#endif // R3C_TEST
 
 void set_error_log_write(LOG_WRITE info_log)
 {
@@ -2975,12 +2975,85 @@ std::string CRedisClient::xadd(const std::string& key, const std::string& id, co
     return value;
 }
 
+// XREAD [COUNT count] [BLOCK milliseconds] STREAMS key [key ...] ID [ID ...]
+void CRedisClient::xread(
+        const std::vector<std::string>& keys, const std::vector<std::string>& ids,
+        int64_t count, int64_t block_milliseconds,
+        StreamTopicsValues* values, Node* which, int num_retries) throw (CRedisException)
+{
+    if (keys.empty())
+    {
+        struct ErrorInfo errinfo;
+        errinfo.errtype = "ERR";
+        errinfo.errcode = ERROR_PARAMETER;
+        errinfo.errmsg = "wrong number of arguments for 'xread' command";
+        THROW_REDIS_EXCEPTION(errinfo);
+    }
+    else if (keys.size() != ids.size())
+    {
+        struct ErrorInfo errinfo;
+        errinfo.errtype = "ERR";
+        errinfo.errcode = ERROR_PARAMETER;
+        errinfo.errmsg = "unbalanced XREAD list of streams: for each stream key an ID or '$' must be specified";
+        THROW_REDIS_EXCEPTION(errinfo);
+    }
+    else if (cluster_mode() && keys_crossslots(keys))
+    {
+        struct ErrorInfo errinfo;
+        errinfo.errtype = "CROSSSLOT";
+        errinfo.errcode = ERROR_PARAMETER;
+        errinfo.errmsg = "keys in request don't hash to the same slot";
+        THROW_REDIS_EXCEPTION(errinfo);
+    }
+    else
+    {
+        const std::string key = cluster_mode()? keys[0]: std::string("");
+        std::string value;
+        CommandArgs cmd_args;
+        cmd_args.add_arg("XREAD");
+        cmd_args.add_arg("COUNT");
+        cmd_args.add_arg(count);
+        if (block_milliseconds >= 0) // timeout is negative
+        {
+            cmd_args.add_arg("BLOCK");
+            cmd_args.add_arg(block_milliseconds);
+        }
+        cmd_args.add_arg("STREAMS");
+        cmd_args.add_args(keys);
+        cmd_args.add_args(ids);
+        cmd_args.final();
+
+        const RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
+        get_values(redis_reply.get(), values);
+    }
+}
+
+void CRedisClient::xread(
+        const std::vector<std::string>& keys, const std::vector<std::string>& ids,
+        int64_t count,
+        StreamTopicsValues* values, Node* which, int num_retries) throw (CRedisException)
+{
+    const int64_t block_milliseconds = -1; // -1 means, no BLOCK argument given
+    xread(keys, ids, count, block_milliseconds, values, which, num_retries);
+}
+
+void CRedisClient::xread(
+        const std::vector<std::string>& keys, const std::vector<std::string>& ids,
+        StreamTopicsValues* values, Node* which, int num_retries) throw (CRedisException)
+{
+    const int64_t count = 0;
+    const int64_t block_milliseconds = -1; // -1 means, no BLOCK argument given
+    xread(keys, ids, count, block_milliseconds, values, which, num_retries);
+}
+
 // Time complexity: O(1) for all the subcommands, with the exception of the
 // DESTROY subcommand which takes an additional O(M) time in order to delete
 // the M entries inside the consumer group pending entries list (PEL).
 //
 // XGROUP CREATE key(topic) groupname id-or-$
-void CRedisClient::xgroup_create(const std::string& key, const std::string& groupname, const std::string& id, Node* which, int num_retries) throw (CRedisException)
+void CRedisClient::xgroup_create(
+        const std::string& key, const std::string& groupname, const std::string& id,
+        Node* which, int num_retries) throw (CRedisException)
 {
     // xgroup CREATE key groupname id-or-$
     CommandArgs cmd_args;
@@ -3054,10 +3127,11 @@ void CRedisClient::xgroup_delconsumer(const std::string& key, const std::string&
 // XREADGROUP blocks, XADD will pay the O(N) time in order to serve the N
 // clients blocked on the stream getting new data.
 //
-// XREADGROUP GROUP group consumer [COUNT count] [BLOCK milliseconds] STREAMS key [key ...] ID [ID ...]
+// XREADGROUP GROUP group consumer [COUNT count] [BLOCK milliseconds] [NOACK] STREAMS key [key ...] [BLOCK milliseconds] [NOACK] STREAMS key [key ...]
 void CRedisClient::xreadgroup(
         const std::string& groupname, const std::string& consumername,
-        const std::vector<std::string>& keys, const std::vector<std::string>& ids, int count,
+        const std::vector<std::string>& keys, const std::vector<std::string>& ids,
+        int64_t count, int64_t block_milliseconds, bool noack,
         StreamTopicsValues* values,
         Node* which, int num_retries) throw (CRedisException)
 {
@@ -3066,7 +3140,7 @@ void CRedisClient::xreadgroup(
         struct ErrorInfo errinfo;
         errinfo.errtype = "ERR";
         errinfo.errcode = ERROR_PARAMETER;
-        errinfo.errmsg = "wrong number of arguments for 'xreadgroup' command";
+        errinfo.errmsg = "wrong number of arguments for 'XREADGROUP' command";
         THROW_REDIS_EXCEPTION(errinfo);
     }
     else if (keys.size() != ids.size())
@@ -3096,6 +3170,15 @@ void CRedisClient::xreadgroup(
         cmd_args.add_arg(consumername);
         cmd_args.add_arg("COUNT");
         cmd_args.add_arg(count);
+        if (block_milliseconds >= 0) // timeout is negative
+        {
+            cmd_args.add_arg("BLOCK");
+            cmd_args.add_arg(block_milliseconds);
+        }
+        if (noack)
+        {
+            cmd_args.add_arg("NOACK");
+        }
         cmd_args.add_arg("STREAMS");
         cmd_args.add_args(keys);
         cmd_args.add_args(ids);
@@ -3105,6 +3188,29 @@ void CRedisClient::xreadgroup(
         const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
         get_values(redis_reply.get(), values);
     }
+}
+
+void CRedisClient::xreadgroup(
+        const std::string& groupname, const std::string& consumername,
+        const std::vector<std::string>& keys, const std::vector<std::string>& ids,
+        int64_t count, bool noack,
+        StreamTopicsValues* values,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    const int64_t block_milliseconds = -1; // -1 means, no BLOCK argument given
+    xreadgroup(groupname, consumername, keys, ids, count, block_milliseconds, noack, values, which, num_retries);
+}
+
+void CRedisClient::xreadgroup(
+        const std::string& groupname, const std::string& consumername,
+        const std::vector<std::string>& keys, const std::vector<std::string>& ids,
+        bool noack,
+        StreamTopicsValues* values,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    const int64_t count = 0;
+    const int64_t block_milliseconds = -1; // -1 means, no BLOCK argument given
+    xreadgroup(groupname, consumername, keys, ids, count, block_milliseconds, noack, values, which, num_retries);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3181,7 +3287,9 @@ CRedisClient::redis_command(
             redis_reply = (redisReply*)redisCommandArgv(
                     redis_node->get_redis_context(),
                     command_args.get_argc(), command_args.get_argv(), command_args.get_argvlen());
-            //debug_redis_reply(command_args.get_command(), redis_reply.get());
+#if R3C_TEST // for test
+            debug_redis_reply(command_args.get_command(), redis_reply.get());
+#endif // R3C_TEST==1
             if (!redis_reply)
                 errcode = handle_redis_command_error(redis_node, command_args, &errinfo);
             else
