@@ -781,11 +781,6 @@ public: // STREAM (key like kafka's topic), available since 5.0.0.
     std::string xadd(const std::string& key, const std::string& id, const std::vector<FVPair>& values, int64_t maxlen, char c, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
     std::string xadd(const std::string& key, const std::string& id, const std::vector<FVPair>& values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
-    // xread is a read command, can be called on slaves, xreadgroup is not
-    void xread(const std::vector<std::string>& keys, const std::vector<std::string>& ids, int64_t count, int64_t block_milliseconds, std::vector<Stream>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    void xread(const std::vector<std::string>& keys, const std::vector<std::string>& ids, int64_t count, std::vector<Stream>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    void xread(const std::vector<std::string>& keys, const std::vector<std::string>& ids, std::vector<Stream>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-
     // Create a new consumer group associated with a stream.
     // There are no hard limits to the number of consumer groups you can associate to a given stream.
     void xgroup_create(const std::string& key, const std::string& groupname, const std::string& id=std::string("$"), Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
@@ -793,10 +788,27 @@ public: // STREAM (key like kafka's topic), available since 5.0.0.
     void xgroup_setid(const std::string& key, const std::string& id=std::string("$"), Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
     void xgroup_delconsumer(const std::string& key, const std::string& groupname, const std::string& consumername, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
+    // Reads more than one keys
+    // xread is a read command, can be called on slaves, xreadgroup is not
+    void xread(const std::vector<std::string>& keys, const std::vector<std::string>& ids, int64_t count, int64_t block_milliseconds, std::vector<Stream>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xread(const std::vector<std::string>& keys, const std::vector<std::string>& ids, int64_t count, std::vector<Stream>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xread(const std::vector<std::string>& keys, const std::vector<std::string>& ids, std::vector<Stream>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+
+    // Only read one key
+    void xread(const std::string& key, const std::vector<std::string>& ids, int64_t count, int64_t block_milliseconds, std::vector<StreamEntry>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    // Use '>' as id
+    void xread(const std::string& key, int64_t count, int64_t block_milliseconds, std::vector<StreamEntry>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+
+    // Reads more than one keys
     // xreadgroup is not read command
     void xreadgroup(const std::string& groupname, const std::string& consumername, const std::vector<std::string>& keys, const std::vector<std::string>& ids, int64_t count, int64_t block_milliseconds, bool noack, std::vector<Stream>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
     void xreadgroup(const std::string& groupname, const std::string& consumername, const std::vector<std::string>& keys, const std::vector<std::string>& ids, int64_t count, bool noack, std::vector<Stream>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
     void xreadgroup(const std::string& groupname, const std::string& consumername, const std::vector<std::string>& keys, const std::vector<std::string>& ids, bool noack, std::vector<Stream>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+
+    // Only read one key
+    void xreadgroup(const std::string& groupname, const std::string& consumername, const std::string& key, const std::vector<std::string>& ids, int64_t count, int64_t block_milliseconds, bool noack, std::vector<StreamEntry>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    // Use '>' as id
+    void xreadgroup(const std::string& groupname, const std::string& consumername, const std::string& key, int64_t count, int64_t block_milliseconds, bool noack, std::vector<StreamEntry>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
     // Removes the specified entries from a stream, and returns the number of
     // entries deleted, that may be different from the number of IDs passed to the
@@ -841,6 +853,7 @@ private:
     // HR_RETRY_UNCOND 需要无条件重试
     // HR_RECONN_COND 有条件重连接并重试
     // HR_RECONN_UNCOND 无条件重连接并重试
+    // HR_REDIRECT 服务端返回ASK需要重定向
     enum HandleResult { HR_SUCCESS, HR_ERROR, HR_RETRY_COND, HR_RETRY_UNCOND, HR_RECONN_COND, HR_RECONN_UNCOND, HR_REDIRECT };
 
     // Handle the redis command error

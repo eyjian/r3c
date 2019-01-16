@@ -3004,77 +3004,6 @@ std::string CRedisClient::xadd(
     return value;
 }
 
-// XREAD [COUNT count] [BLOCK milliseconds] STREAMS key [key ...] ID [ID ...]
-void CRedisClient::xread(
-        const std::vector<std::string>& keys, const std::vector<std::string>& ids,
-        int64_t count, int64_t block_milliseconds,
-        std::vector<Stream>* values, Node* which, int num_retries) throw (CRedisException)
-{
-    if (keys.empty())
-    {
-        struct ErrorInfo errinfo;
-        errinfo.errtype = "ERR";
-        errinfo.errcode = ERROR_PARAMETER;
-        errinfo.errmsg = "wrong number of arguments for 'xread' command";
-        THROW_REDIS_EXCEPTION(errinfo);
-    }
-    else if (keys.size() != ids.size())
-    {
-        struct ErrorInfo errinfo;
-        errinfo.errtype = "ERR";
-        errinfo.errcode = ERROR_PARAMETER;
-        errinfo.errmsg = "unbalanced XREAD list of streams: for each stream key an ID or '$' must be specified";
-        THROW_REDIS_EXCEPTION(errinfo);
-    }
-    else if (cluster_mode() && keys_crossslots(keys))
-    {
-        struct ErrorInfo errinfo;
-        errinfo.errtype = "CROSSSLOT";
-        errinfo.errcode = ERROR_PARAMETER;
-        errinfo.errmsg = "keys in request don't hash to the same slot";
-        THROW_REDIS_EXCEPTION(errinfo);
-    }
-    else
-    {
-        const std::string key = cluster_mode()? keys[0]: std::string("");
-        std::string value;
-        CommandArgs cmd_args;
-        cmd_args.add_arg("XREAD");
-        cmd_args.add_arg("COUNT");
-        cmd_args.add_arg(count);
-        if (block_milliseconds >= 0) // timeout is negative
-        {
-            cmd_args.add_arg("BLOCK");
-            cmd_args.add_arg(block_milliseconds);
-        }
-        cmd_args.add_arg("STREAMS");
-        cmd_args.add_args(keys);
-        cmd_args.add_args(ids);
-        cmd_args.final();
-
-        const RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
-        get_values(redis_reply.get(), values);
-    }
-}
-
-void CRedisClient::xread(
-        const std::vector<std::string>& keys, const std::vector<std::string>& ids,
-        int64_t count,
-        std::vector<Stream>* values, Node* which, int num_retries) throw (CRedisException)
-{
-    const int64_t block_milliseconds = -1; // -1 means, no BLOCK argument given
-    xread(keys, ids, count, block_milliseconds, values, which, num_retries);
-}
-
-void CRedisClient::xread(
-        const std::vector<std::string>& keys, const std::vector<std::string>& ids,
-        std::vector<Stream>* values, Node* which, int num_retries) throw (CRedisException)
-{
-    const int64_t count = 0;
-    const int64_t block_milliseconds = -1; // -1 means, no BLOCK argument given
-    xread(keys, ids, count, block_milliseconds, values, which, num_retries);
-}
-
 // Time complexity: O(1) for all the subcommands, with the exception of the
 // DESTROY subcommand which takes an additional O(M) time in order to delete
 // the M entries inside the consumer group pending entries list (PEL).
@@ -3149,6 +3078,8 @@ void CRedisClient::xgroup_delconsumer(const std::string& key, const std::string&
     (void)redis_command(false, num_retries, key, cmd_args, which);
 }
 
+// Reads more than one keys
+//
 // Available since 5.0.0.
 // Time complexity: For each stream mentioned: O(M) with M being the number
 // of elements returned. If M is constant (e.g. always asking for the first 10
@@ -3219,6 +3150,7 @@ void CRedisClient::xreadgroup(
     }
 }
 
+// Reads more than one keys
 void CRedisClient::xreadgroup(
         const std::string& groupname, const std::string& consumername,
         const std::vector<std::string>& keys, const std::vector<std::string>& ids,
@@ -3230,6 +3162,7 @@ void CRedisClient::xreadgroup(
     xreadgroup(groupname, consumername, keys, ids, count, block_milliseconds, noack, values, which, num_retries);
 }
 
+// Reads more than one keys
 void CRedisClient::xreadgroup(
         const std::string& groupname, const std::string& consumername,
         const std::vector<std::string>& keys, const std::vector<std::string>& ids,
@@ -3240,6 +3173,152 @@ void CRedisClient::xreadgroup(
     const int64_t count = 0;
     const int64_t block_milliseconds = -1; // -1 means, no BLOCK argument given
     xreadgroup(groupname, consumername, keys, ids, count, block_milliseconds, noack, values, which, num_retries);
+}
+
+// Only read one key
+void CRedisClient::xreadgroup(
+        const std::string& groupname, const std::string& consumername,
+        const std::string& key, const std::vector<std::string>& ids,
+        int64_t count, int64_t block_milliseconds,
+        bool noack,
+        std::vector<StreamEntry>* values,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    std::vector<Stream> streams;
+    std::vector<std::string> keys(1);
+
+    keys[0] = key;
+    xreadgroup(groupname, consumername, keys, ids, count, block_milliseconds, noack, &streams, which, num_retries);
+    if (!streams.empty())
+        values->swap(streams[0].entries);
+}
+
+// Only read one key
+void CRedisClient::xreadgroup(
+        const std::string& groupname, const std::string& consumername,
+        const std::string& key,
+        int64_t count, int64_t block_milliseconds,
+        bool noack,
+        std::vector<StreamEntry>* values,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    std::vector<Stream> streams;
+    std::vector<std::string> keys(1);
+    std::vector<std::string> ids(1);
+
+    keys[0] = key;
+    ids[0] = ">";
+    xreadgroup(groupname, consumername, keys, ids, count, block_milliseconds, noack, &streams, which, num_retries);
+    if (!streams.empty())
+        values->swap(streams[0].entries);
+}
+
+// Reads more than one keys
+// XREAD [COUNT count] [BLOCK milliseconds] STREAMS key [key ...] ID [ID ...]
+void CRedisClient::xread(
+        const std::vector<std::string>& keys, const std::vector<std::string>& ids,
+        int64_t count, int64_t block_milliseconds,
+        std::vector<Stream>* values, Node* which, int num_retries) throw (CRedisException)
+{
+    if (keys.empty())
+    {
+        struct ErrorInfo errinfo;
+        errinfo.errtype = "ERR";
+        errinfo.errcode = ERROR_PARAMETER;
+        errinfo.errmsg = "wrong number of arguments for 'xread' command";
+        THROW_REDIS_EXCEPTION(errinfo);
+    }
+    else if (keys.size() != ids.size())
+    {
+        struct ErrorInfo errinfo;
+        errinfo.errtype = "ERR";
+        errinfo.errcode = ERROR_PARAMETER;
+        errinfo.errmsg = "unbalanced XREAD list of streams: for each stream key an ID or '$' must be specified";
+        THROW_REDIS_EXCEPTION(errinfo);
+    }
+    else if (cluster_mode() && keys_crossslots(keys))
+    {
+        struct ErrorInfo errinfo;
+        errinfo.errtype = "CROSSSLOT";
+        errinfo.errcode = ERROR_PARAMETER;
+        errinfo.errmsg = "keys in request don't hash to the same slot";
+        THROW_REDIS_EXCEPTION(errinfo);
+    }
+    else
+    {
+        const std::string key = cluster_mode()? keys[0]: std::string("");
+        std::string value;
+        CommandArgs cmd_args;
+        cmd_args.add_arg("XREAD");
+        cmd_args.add_arg("COUNT");
+        cmd_args.add_arg(count);
+        if (block_milliseconds >= 0) // timeout is negative
+        {
+            cmd_args.add_arg("BLOCK");
+            cmd_args.add_arg(block_milliseconds);
+        }
+        cmd_args.add_arg("STREAMS");
+        cmd_args.add_args(keys);
+        cmd_args.add_args(ids);
+        cmd_args.final();
+
+        const RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
+        get_values(redis_reply.get(), values);
+    }
+}
+
+// Reads more than one keys
+void CRedisClient::xread(
+        const std::vector<std::string>& keys, const std::vector<std::string>& ids,
+        int64_t count,
+        std::vector<Stream>* values, Node* which, int num_retries) throw (CRedisException)
+{
+    const int64_t block_milliseconds = -1; // -1 means, no BLOCK argument given
+    xread(keys, ids, count, block_milliseconds, values, which, num_retries);
+}
+
+// Reads more than one keys
+void CRedisClient::xread(
+        const std::vector<std::string>& keys, const std::vector<std::string>& ids,
+        std::vector<Stream>* values, Node* which, int num_retries) throw (CRedisException)
+{
+    const int64_t count = 0;
+    const int64_t block_milliseconds = -1; // -1 means, no BLOCK argument given
+    xread(keys, ids, count, block_milliseconds, values, which, num_retries);
+}
+
+// Only read one key
+void CRedisClient::xread(
+        const std::string& key, const std::vector<std::string>& ids,
+        int64_t count, int64_t block_milliseconds,
+        std::vector<StreamEntry>* values,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    std::vector<Stream> streams;
+    std::vector<std::string> keys(1);
+
+    keys[0] = key;
+    xread(keys, ids, count, block_milliseconds, &streams, which, num_retries);
+    if (!streams.empty())
+        values->swap(streams[0].entries);
+}
+
+// Only read one key
+void CRedisClient::xread(
+        const std::string& key,
+        int64_t count, int64_t block_milliseconds,
+        std::vector<StreamEntry>* values,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    std::vector<Stream> streams;
+    std::vector<std::string> keys(1);
+    std::vector<std::string> ids(1);
+
+    keys[0] = key;
+    ids[0] = ">";
+    xread(keys, ids, count, block_milliseconds, &streams, which, num_retries);
+    if (!streams.empty())
+        values->swap(streams[0].entries);
 }
 
 // XDEL <key> [<ID1> <ID2> ... <IDN>]
@@ -3306,7 +3385,7 @@ int64_t CRedisClient::xlen(const std::string& key, Node* which, int num_retries)
     cmd_args.final();
 
     // Integer reply: the number of entries of the stream at key.
-    const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
     if (REDIS_REPLY_INTEGER == redis_reply->type)
         return static_cast<int>(redis_reply->integer);
     return 0;
@@ -3331,7 +3410,7 @@ void CRedisClient::xrange(
     }
     cmd_args.final();
 
-    const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
     get_values(redis_reply.get(), values);
 }
 
@@ -3364,7 +3443,7 @@ void CRedisClient::xrevrange(
     }
     cmd_args.final();
 
-    const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
     get_values(redis_reply.get(), values);
 }
 
