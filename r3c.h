@@ -783,7 +783,9 @@ public: // STREAM (key like kafka's topic), available since 5.0.0.
 
     // Create a new consumer group associated with a stream.
     // There are no hard limits to the number of consumer groups you can associate to a given stream.
-    void xgroup_create(const std::string& key, const std::string& groupname, const std::string& id=std::string("$"), Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    //
+    // '$' the ID of the last item in the stream
+    void xgroup_create(const std::string& key, const std::string& groupname, const std::string& id=std::string("$"), bool mkstream=false, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
     void xgroup_destroy(const std::string& key, const std::string& groupname, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
     void xgroup_setid(const std::string& key, const std::string& id=std::string("$"), Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
     void xgroup_delconsumer(const std::string& key, const std::string& groupname, const std::string& consumername, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);

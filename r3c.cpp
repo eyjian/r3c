@@ -3011,6 +3011,7 @@ std::string CRedisClient::xadd(
 // XGROUP CREATE key(topic) groupname id-or-$
 void CRedisClient::xgroup_create(
         const std::string& key, const std::string& groupname, const std::string& id,
+        bool mkstream,
         Node* which, int num_retries) throw (CRedisException)
 {
     // xgroup CREATE key groupname id-or-$
@@ -3020,6 +3021,8 @@ void CRedisClient::xgroup_create(
     cmd_args.add_arg(key);
     cmd_args.add_arg(groupname);
     cmd_args.add_arg(id);
+    if (mkstream)
+        cmd_args.add_arg("MKSTREAM");
     cmd_args.final();
 
     // If the specified consumer group already exists, the command returns a -BUSYGROUP error.
@@ -3027,6 +3030,10 @@ void CRedisClient::xgroup_create(
     // There are no hard limits to the number of consumer groups you can associate to a given stream.
     //
     // Consumers in a consumer group are auto-created every time a new consumer name is mentioned by some command.
+    //
+    // 如果key不存在，则会报如下错误：
+    // The XGROUP subcommand requires the key to exist.
+    // Note that for CREATE you may want to use the MKSTREAM option to create an empty stream automatically.
     (void)redis_command(false, num_retries, key, cmd_args, which);
 }
 

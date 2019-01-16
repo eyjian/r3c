@@ -123,6 +123,17 @@ static void testcase1(r3c::CRedisClient& redis)
 
     keys[0] = "k000";
 
+    // XGROUP CREATE
+    try
+    {
+        redis.xgroup_create(keys[0], group, "$", true);
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        if (!r3c::is_busygroup_error(ex.errtype()))
+            throw;
+    }
+
     // XADD
     fvpairs[0].field = "field00";
     fvpairs[0].value = "value00";
@@ -131,17 +142,6 @@ static void testcase1(r3c::CRedisClient& redis)
     fvpairs[2].field = "field02";
     fvpairs[2].value = "value02";
     redis.xadd(keys[0], "*", fvpairs);
-
-    // XGROUP CREATE
-    try
-    {
-        redis.xgroup_create(keys[0], group, "$");
-    }
-    catch (r3c::CRedisException& ex)
-    {
-        if (!r3c::is_busygroup_error(ex.errtype()))
-            throw;
-    }
 
     // XREADGROUP
     std::vector<r3c::StreamEntry> values;
