@@ -215,6 +215,16 @@ void CommandArgs::add_args(const std::map<std::string, int64_t>& map, bool rever
     }
 }
 
+void CommandArgs::add_args(const std::vector<FVPair>& fvpairs)
+{
+    for (std::vector<FVPair>::size_type i=0; i<fvpairs.size(); ++i)
+    {
+        const FVPair& fvpair = fvpairs[i];
+        add_arg(fvpair.field);
+        add_arg(fvpair.value);
+    }
+}
+
 void CommandArgs::final()
 {
     _argc = static_cast<int>(_args.size());
@@ -2952,7 +2962,7 @@ int CRedisClient::xack(
 // XADD key [MAXLEN [~|=] <count>] <ID or *> [field value] [field value] ...
 std::string CRedisClient::xadd(
         const std::string& key, const std::string& id,
-        const std::vector<std::pair<std::string, std::string> >& values,
+        const std::vector<FVPair>& values,
         int64_t maxlen, char c,
         Node* which, int num_retries) throw (CRedisException)
 {
@@ -2976,7 +2986,7 @@ std::string CRedisClient::xadd(
 
 std::string CRedisClient::xadd(
         const std::string& key, const std::string& id,
-        const std::vector<std::pair<std::string, std::string> >& values,
+        const std::vector<FVPair>& values,
         Node* which, int num_retries) throw (CRedisException)
 {
     std::string value;
@@ -2998,7 +3008,7 @@ std::string CRedisClient::xadd(
 void CRedisClient::xread(
         const std::vector<std::string>& keys, const std::vector<std::string>& ids,
         int64_t count, int64_t block_milliseconds,
-        StreamTopicsValues* values, Node* which, int num_retries) throw (CRedisException)
+        std::vector<Stream>* values, Node* which, int num_retries) throw (CRedisException)
 {
     if (keys.empty())
     {
@@ -3050,7 +3060,7 @@ void CRedisClient::xread(
 void CRedisClient::xread(
         const std::vector<std::string>& keys, const std::vector<std::string>& ids,
         int64_t count,
-        StreamTopicsValues* values, Node* which, int num_retries) throw (CRedisException)
+        std::vector<Stream>* values, Node* which, int num_retries) throw (CRedisException)
 {
     const int64_t block_milliseconds = -1; // -1 means, no BLOCK argument given
     xread(keys, ids, count, block_milliseconds, values, which, num_retries);
@@ -3058,7 +3068,7 @@ void CRedisClient::xread(
 
 void CRedisClient::xread(
         const std::vector<std::string>& keys, const std::vector<std::string>& ids,
-        StreamTopicsValues* values, Node* which, int num_retries) throw (CRedisException)
+        std::vector<Stream>* values, Node* which, int num_retries) throw (CRedisException)
 {
     const int64_t count = 0;
     const int64_t block_milliseconds = -1; // -1 means, no BLOCK argument given
@@ -3151,7 +3161,7 @@ void CRedisClient::xreadgroup(
         const std::string& groupname, const std::string& consumername,
         const std::vector<std::string>& keys, const std::vector<std::string>& ids,
         int64_t count, int64_t block_milliseconds, bool noack,
-        StreamTopicsValues* values,
+        std::vector<Stream>* values,
         Node* which, int num_retries) throw (CRedisException)
 {
     if (keys.empty())
@@ -3213,7 +3223,7 @@ void CRedisClient::xreadgroup(
         const std::string& groupname, const std::string& consumername,
         const std::vector<std::string>& keys, const std::vector<std::string>& ids,
         int64_t count, bool noack,
-        StreamTopicsValues* values,
+        std::vector<Stream>* values,
         Node* which, int num_retries) throw (CRedisException)
 {
     const int64_t block_milliseconds = -1; // -1 means, no BLOCK argument given
@@ -3224,7 +3234,7 @@ void CRedisClient::xreadgroup(
         const std::string& groupname, const std::string& consumername,
         const std::vector<std::string>& keys, const std::vector<std::string>& ids,
         bool noack,
-        StreamTopicsValues* values,
+        std::vector<Stream>* values,
         Node* which, int num_retries) throw (CRedisException)
 {
     const int64_t count = 0;
@@ -3306,7 +3316,7 @@ int64_t CRedisClient::xlen(const std::string& key, Node* which, int num_retries)
 void CRedisClient::xrange(
         const std::string& key,
         const std::string& start, const std::string& end, int64_t count,
-        std::vector<StreamTopicValues>* values,
+        std::vector<StreamEntry>* values,
         Node* which, int num_retries) throw (CRedisException)
 {
     CommandArgs cmd_args;
@@ -3328,7 +3338,7 @@ void CRedisClient::xrange(
 void CRedisClient::xrange(
         const std::string& key,
         const std::string& start, const std::string& end,
-        std::vector<StreamTopicValues>* values,
+        std::vector<StreamEntry>* values,
         Node* which, int num_retries) throw (CRedisException)
 {
     const int64_t count = -1;
@@ -3339,7 +3349,7 @@ void CRedisClient::xrange(
 void CRedisClient::xrevrange(
         const std::string& key,
         const std::string& end, const std::string& start, int64_t count,
-        std::vector<StreamTopicValues>* values,
+        std::vector<StreamEntry>* values,
         Node* which, int num_retries) throw (CRedisException)
 {
     CommandArgs cmd_args;
@@ -3361,7 +3371,7 @@ void CRedisClient::xrevrange(
 void CRedisClient::xrevrange(
         const std::string& key,
         const std::string& end, const std::string& start,
-        std::vector<StreamTopicValues>* values,
+        std::vector<StreamEntry>* values,
         Node* which, int num_retries) throw (CRedisException)
 {
     const int64_t count = -1;
@@ -4634,10 +4644,9 @@ int CRedisClient::get_values(const redisReply* redis_reply, std::vector<int64_t>
 //           [4:3]REPLY_STRING: value11
 //           [4:4]REPLY_STRING: field12
 //           [4:5]REPLY_STRING: value12
-int CRedisClient::get_values(const redisReply* redis_reply, StreamTopicsValues* values)
+int CRedisClient::get_values(const redisReply* redis_reply, std::vector<Stream>* values)
 {
-    const redisReply* topics_redis_reply = redis_reply;
-    R3C_ASSERT(REDIS_REPLY_ARRAY == topics_redis_reply->type);
+    R3C_ASSERT(REDIS_REPLY_NIL==redis_reply->type || REDIS_REPLY_ARRAY==redis_reply->type);
 
     if (NULL == values)
     {
@@ -4647,42 +4656,45 @@ int CRedisClient::get_values(const redisReply* redis_reply, StreamTopicsValues* 
     {
         return 0;
     }
-
-    const size_t num_topics = topics_redis_reply->elements;
-    StreamTopicsValues& topics_values_ref = *values;
-    topics_values_ref.resize(num_topics);
-    for (size_t i=0; i<num_topics; ++i) // Traversing all topics
+    else
     {
-        const redisReply* topic_redis_reply = topics_redis_reply->element[i]; // Topic
-        const redisReply* topicname_redis_reply = topic_redis_reply->element[0];
-        const redisReply* ids_redis_reply = topic_redis_reply->element[1];
-        const size_t num_ids = ids_redis_reply->elements;
-        StreamTopic2Values& topic2values = topics_values_ref[i];
+        const size_t num_keys = redis_reply->elements;
+        std::vector<Stream>& streams = *values;
 
-        topic2values.topic.assign(topicname_redis_reply->str, topicname_redis_reply->len); // Topic
-        topic2values.topic_values.resize(num_ids);
-        for (size_t j=0; j<num_ids; ++j) // Traversing all IDs
+        streams.resize(num_keys);
+        for (size_t i=0; i<num_keys; ++i) // Traversing all keys
         {
-            const redisReply* id_redis_reply = ids_redis_reply->element[j]; // ID
-            const redisReply* idname_redis_reply = id_redis_reply->element[0];
-            const redisReply* values_redis_reply = id_redis_reply->element[1];
-            StreamTopicValues& topic_values = topic2values.topic_values[j];
+            const redisReply* key_redis_reply = redis_reply->element[i];
+            const redisReply* keyname_redis_reply = key_redis_reply->element[0];
+            const redisReply* entries_redis_reply = key_redis_reply->element[1];
+            const size_t num_entries = entries_redis_reply->elements;
+            Stream& stream = streams[i];
 
-            topic_values.id.assign(idname_redis_reply->str, idname_redis_reply->len);
-            topic_values.id_values.resize(values_redis_reply->elements/2);
-            for (size_t k=0,h=0; k<values_redis_reply->elements; k+=2,++h) // Traversing all values
+            stream.key.assign(keyname_redis_reply->str, keyname_redis_reply->len);
+            stream.entries.resize(num_entries);
+            for (size_t j=0; j<num_entries; ++j) // Traversing all entries
             {
-                const redisReply* field_redis_reply = values_redis_reply->element[k]; // Field
-                const redisReply* value_redis_reply = values_redis_reply->element[k+1]; // Value
-                StreamIDValue& id_value = topic_values.id_values[h];
+                const redisReply* entry_redis_reply = entries_redis_reply->element[j]; // ID
+                const redisReply* id_redis_reply = entry_redis_reply->element[0];
+                const redisReply* fvpairs_redis_reply = entry_redis_reply->element[1];
+                StreamEntry& entry = stream.entries[j];
 
-                id_value.field.assign(field_redis_reply->str, field_redis_reply->len);
-                id_value.value.assign(value_redis_reply->str, value_redis_reply->len);
+                entry.id.assign(id_redis_reply->str, id_redis_reply->len);
+                entry.fvpairs.resize(fvpairs_redis_reply->elements/2);
+                for (size_t k=0,h=0; k<fvpairs_redis_reply->elements; k+=2,++h) // Traversing all field-value pairs
+                {
+                    const redisReply* field_redis_reply = fvpairs_redis_reply->element[k]; // Field
+                    const redisReply* value_redis_reply = fvpairs_redis_reply->element[k+1]; // Value
+                    FVPair& fvpair = entry.fvpairs[h];
+
+                    fvpair.field.assign(field_redis_reply->str, field_redis_reply->len);
+                    fvpair.value.assign(value_redis_reply->str, value_redis_reply->len);
+                }
             }
         }
-    }
 
-    return static_cast<int>(num_topics);
+        return static_cast<int>(num_keys);
+    }
 }
 
 // [0]XRANGE
@@ -4704,10 +4716,9 @@ int CRedisClient::get_values(const redisReply* redis_reply, StreamTopicsValues* 
 //       [2:3]REPLY_STRING: value11
 //       [2:4]REPLY_STRING: field12
 //       [2:5]REPLY_STRING: value12
-int CRedisClient::get_values(const redisReply* redis_reply, std::vector<StreamTopicValues>* values)
+int CRedisClient::get_values(const redisReply* redis_reply, std::vector<StreamEntry>* values)
 {
-    const redisReply* topics_redis_reply = redis_reply;
-    R3C_ASSERT(REDIS_REPLY_ARRAY == topics_redis_reply->type);
+    R3C_ASSERT(REDIS_REPLY_NIL==redis_reply->type || REDIS_REPLY_ARRAY==redis_reply->type);
 
     if (NULL == values)
     {
@@ -4717,30 +4728,33 @@ int CRedisClient::get_values(const redisReply* redis_reply, std::vector<StreamTo
     {
         return 0;
     }
-
-    const size_t num_ids = topics_redis_reply->elements;
-    std::vector<StreamTopicValues>& values_ref = *values;
-    values_ref.resize(num_ids);
-    for (size_t j=0; j<num_ids; ++j) // Traversing all IDs
+    else
     {
-        const redisReply* idname_redis_reply = topics_redis_reply->element[j]->element[0];
-        const redisReply* values_redis_reply = topics_redis_reply->element[j]->element[1];
-        StreamTopicValues& topic_values = values_ref[j];
+        const size_t num_entries = redis_reply->elements;
+        std::vector<StreamEntry>& values_ref = *values;
 
-        topic_values.id.assign(idname_redis_reply->str, idname_redis_reply->len);
-        topic_values.id_values.resize(values_redis_reply->elements/2);
-        for (size_t k=0,h=0; k<values_redis_reply->elements; k+=2,++h) // Traversing all values
+        values_ref.resize(num_entries);
+        for (size_t j=0; j<num_entries; ++j) // Traversing all IDs
         {
-            const redisReply* field_redis_reply = values_redis_reply->element[k]; // Field
-            const redisReply* value_redis_reply = values_redis_reply->element[k+1]; // Value
-            StreamIDValue& id_value = topic_values.id_values[h];
+            const redisReply* idname_redis_reply = redis_reply->element[j]->element[0];
+            const redisReply* values_redis_reply = redis_reply->element[j]->element[1];
+            StreamEntry& entry = values_ref[j];
 
-            id_value.field.assign(field_redis_reply->str, field_redis_reply->len);
-            id_value.value.assign(value_redis_reply->str, value_redis_reply->len);
+            entry.id.assign(idname_redis_reply->str, idname_redis_reply->len);
+            entry.fvpairs.resize(values_redis_reply->elements/2);
+            for (size_t k=0,h=0; k<values_redis_reply->elements; k+=2,++h) // Traversing all values
+            {
+                const redisReply* field_redis_reply = values_redis_reply->element[k]; // Field
+                const redisReply* value_redis_reply = values_redis_reply->element[k+1]; // Value
+                FVPair& fvpair = entry.fvpairs[h];
+
+                fvpair.field.assign(field_redis_reply->str, field_redis_reply->len);
+                fvpair.value.assign(value_redis_reply->str, value_redis_reply->len);
+            }
         }
-    }
 
-    return static_cast<int>(num_ids);
+        return static_cast<int>(num_entries);
+    }
 }
 
 } // namespace r3c {

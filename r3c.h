@@ -142,6 +142,7 @@ extern bool is_crossslot_error(const std::string& errtype);
 //     stg_redis_client = NULL;
 // }
 
+struct FVPair;
 struct SlotInfo;
 class CRedisNode;
 class CRedisMasterNode;
@@ -163,6 +164,7 @@ public:
     void add_args(const std::vector<std::pair<std::string, std::string> >& values);
     void add_args(const std::map<std::string, std::string>& map);
     void add_args(const std::map<std::string, int64_t>& map, bool reverse);
+    void add_args(const std::vector<FVPair>& fvpairs);
     void final();
     int get_argc() const;
     const char** get_argv() const;
@@ -225,32 +227,29 @@ private:
     std::string _key;
 };
 
-// The value of stream ID
-struct StreamIDValue
+// FVPair: field-value pair
+struct FVPair
 {
     std::string field;
     std::string value;
 };
 
-// The value of a stream topic (Topic is the key of stream)
-struct StreamTopicValues
+// Entry uniquely identified by a id
+struct StreamEntry
 {
     std::string id;
-    std::vector<StreamIDValue> id_values;
+    std::vector<FVPair> fvpairs; // field-value pairs
 };
 
-// The map of a topic to it's values
-struct StreamTopic2Values
+// Stream uniquely identified by a key
+struct Stream
 {
-    std::string topic;
-    std::vector<StreamTopicValues> topic_values;
+    std::string key;
+    std::vector<StreamEntry> entries;
 };
 
-// The values of a stream topics
-typedef std::vector<StreamTopic2Values> StreamTopicsValues;
-
-extern std::ostream& operator <<(std::ostream& os, const StreamTopicsValues& values);
-extern std::ostream& operator <<(std::ostream& os, const std::vector<StreamTopicValues>& values);
+extern std::ostream& operator <<(std::ostream& os, const std::vector<Stream>& streams);
+extern std::ostream& operator <<(std::ostream& os, const std::vector<StreamEntry>& entries);
 
 // NOTICE:
 // 1) ALL keys and values can be binary except EVAL commands.
@@ -779,13 +778,13 @@ public: // STREAM (key like kafka's topic), available since 5.0.0.
     // returns the same ID specified by the user during insertion.
     //
     // c '~' or '='
-    std::string xadd(const std::string& key, const std::string& id, const std::vector<std::pair<std::string, std::string> >& values, int64_t maxlen, char c, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    std::string xadd(const std::string& key, const std::string& id, const std::vector<std::pair<std::string, std::string> >& values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    std::string xadd(const std::string& key, const std::string& id, const std::vector<FVPair>& values, int64_t maxlen, char c, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    std::string xadd(const std::string& key, const std::string& id, const std::vector<FVPair>& values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
     // xread is a read command, can be called on slaves, xreadgroup is not
-    void xread(const std::vector<std::string>& keys, const std::vector<std::string>& ids, int64_t count, int64_t block_milliseconds, StreamTopicsValues* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    void xread(const std::vector<std::string>& keys, const std::vector<std::string>& ids, int64_t count, StreamTopicsValues* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    void xread(const std::vector<std::string>& keys, const std::vector<std::string>& ids, StreamTopicsValues* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xread(const std::vector<std::string>& keys, const std::vector<std::string>& ids, int64_t count, int64_t block_milliseconds, std::vector<Stream>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xread(const std::vector<std::string>& keys, const std::vector<std::string>& ids, int64_t count, std::vector<Stream>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xread(const std::vector<std::string>& keys, const std::vector<std::string>& ids, std::vector<Stream>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
     // Create a new consumer group associated with a stream.
     // There are no hard limits to the number of consumer groups you can associate to a given stream.
@@ -795,9 +794,9 @@ public: // STREAM (key like kafka's topic), available since 5.0.0.
     void xgroup_delconsumer(const std::string& key, const std::string& groupname, const std::string& consumername, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
     // xreadgroup is not read command
-    void xreadgroup(const std::string& groupname, const std::string& consumername, const std::vector<std::string>& keys, const std::vector<std::string>& ids, int64_t count, int64_t block_milliseconds, bool noack, StreamTopicsValues* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    void xreadgroup(const std::string& groupname, const std::string& consumername, const std::vector<std::string>& keys, const std::vector<std::string>& ids, int64_t count, bool noack, StreamTopicsValues* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    void xreadgroup(const std::string& groupname, const std::string& consumername, const std::vector<std::string>& keys, const std::vector<std::string>& ids, bool noack, StreamTopicsValues* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xreadgroup(const std::string& groupname, const std::string& consumername, const std::vector<std::string>& keys, const std::vector<std::string>& ids, int64_t count, int64_t block_milliseconds, bool noack, std::vector<Stream>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xreadgroup(const std::string& groupname, const std::string& consumername, const std::vector<std::string>& keys, const std::vector<std::string>& ids, int64_t count, bool noack, std::vector<Stream>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xreadgroup(const std::string& groupname, const std::string& consumername, const std::vector<std::string>& keys, const std::vector<std::string>& ids, bool noack, std::vector<Stream>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
     // Removes the specified entries from a stream, and returns the number of
     // entries deleted, that may be different from the number of IDs passed to the
@@ -817,10 +816,10 @@ public: // STREAM (key like kafka's topic), available since 5.0.0.
     // Returns the stream entries matching a given range of IDs
     // start The '-' special ID mean respectively the minimum ID possible inside a stream
     // end The '+' special ID mean respectively the maximum ID possible inside a stream
-    void xrange(const std::string& key, const std::string& start, const std::string& end, int64_t count, std::vector<StreamTopicValues>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    void xrange(const std::string& key, const std::string& start, const std::string& end, std::vector<StreamTopicValues>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    void xrevrange(const std::string& key, const std::string& end, const std::string& start, int64_t count, std::vector<StreamTopicValues>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    void xrevrange(const std::string& key, const std::string& end, const std::string& start, std::vector<StreamTopicValues>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xrange(const std::string& key, const std::string& start, const std::string& end, int64_t count, std::vector<StreamEntry>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xrange(const std::string& key, const std::string& start, const std::string& end, std::vector<StreamEntry>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xrevrange(const std::string& key, const std::string& end, const std::string& start, int64_t count, std::vector<StreamEntry>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xrevrange(const std::string& key, const std::string& end, const std::string& start, std::vector<StreamEntry>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
 public:
     // Standlone: key should be empty
@@ -905,10 +904,10 @@ public:
     int get_values(const redisReply* redis_reply, std::vector<int64_t>* values);
 
     // Called by: xreadgroup
-    int get_values(const redisReply* redis_reply, StreamTopicsValues* values);
+    int get_values(const redisReply* redis_reply, std::vector<Stream>* values);
 
     // Called by xrange & xrevrange
-    int get_values(const redisReply* redis_reply, std::vector<StreamTopicValues>* values);
+    int get_values(const redisReply* redis_reply, std::vector<StreamEntry>* values);
 
 public:
     void set_command_monitor(CommandMonitor* command_monitor) { _command_monitor = command_monitor; }

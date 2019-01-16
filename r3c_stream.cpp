@@ -57,35 +57,35 @@ static void testcase0(r3c::CRedisClient& redis)
 {
     const std::string group = "group";
     const std::string consumer = "consumer";
-    std::vector<std::string> topics(2);
+    std::vector<std::string> keys(2);
     std::vector<std::string> ids(2);
-    std::vector<std::pair<std::string, std::string> > values(3);
+    std::vector<r3c::FVPair> fvpairs(3);
     int count = 10;
 
-    topics[0] = "topic0";
-    topics[1] = "topic1";
+    keys[0] = "k0";
+    keys[1] = "k1";
 
     // XADD
-    values[0].first = "field00";
-    values[0].second = "value00";
-    values[1].first = "field01";
-    values[1].second = "value01";
-    values[2].first = "field02";
-    values[2].second = "value02";
-    ids[0] = redis.xadd(topics[0], "*", values);
+    fvpairs[0].field = "field00";
+    fvpairs[0].value = "value00";
+    fvpairs[1].field = "field01";
+    fvpairs[1].value = "value01";
+    fvpairs[2].field = "field02";
+    fvpairs[2].value = "value02";
+    ids[0] = redis.xadd(keys[0], "*", fvpairs);
 
-    values[0].first = "field10";
-    values[0].second = "value10";
-    values[1].first = "field11";
-    values[1].second = "value11";
-    values[2].first = "field12";
-    values[2].second = "value12";
-    ids[1] = redis.xadd(topics[1], "*", values);
+    fvpairs[0].field = "field10";
+    fvpairs[0].value = "value10";
+    fvpairs[1].field = "field11";
+    fvpairs[1].value = "value11";
+    fvpairs[2].field = "field12";
+    fvpairs[2].value = "value12";
+    ids[1] = redis.xadd(keys[1], "*", fvpairs);
 
     // XGROUP CREATE
     try
     {
-        redis.xgroup_create(topics[0], group, "$");
+        redis.xgroup_create(keys[0], group, "$");
     }
     catch (r3c::CRedisException& ex)
     {
@@ -94,7 +94,7 @@ static void testcase0(r3c::CRedisClient& redis)
     }
     try
     {
-        redis.xgroup_create(topics[1], group, "$");
+        redis.xgroup_create(keys[1], group, "$");
     }
     catch (r3c::CRedisException& ex)
     {
@@ -105,78 +105,78 @@ static void testcase0(r3c::CRedisClient& redis)
     // XREADGROUP
     ids[0] = ">";
     ids[1] = ">";
-    r3c::StreamTopicsValues stream_values;
-    redis.xreadgroup(group, consumer, topics, ids, count, &stream_values);
-    std::cout << stream_values << std::endl;
+    std::vector<r3c::Stream> values;
+    redis.xreadgroup(group, consumer, keys, ids, count, &values);
+    std::cout << values << std::endl;
 }
 
 // test xread
 static void testcase1(r3c::CRedisClient& redis)
 {
-    std::vector<std::string> topics(2);
+    std::vector<std::string> keys(2);
     std::vector<std::string> ids(2);
-    std::vector<std::pair<std::string, std::string> > values(3);
+    std::vector<r3c::FVPair> fvpairs(3);
     int count = 10;
 
-    topics[0] = "topic2";
-    topics[1] = "topic3";
+    keys[0] = "k2";
+    keys[1] = "k3";
 
     // XADD
-    values[0].first = "field00";
-    values[0].second = "value00";
-    values[1].first = "field01";
-    values[1].second = "value01";
-    values[2].first = "field02";
-    values[2].second = "value02";
-    ids[0] = redis.xadd(topics[0], "*", values);
+    fvpairs[0].field = "field00";
+    fvpairs[0].value = "value00";
+    fvpairs[1].field = "field01";
+    fvpairs[1].value = "value01";
+    fvpairs[2].field = "field02";
+    fvpairs[2].value = "value02";
+    ids[0] = redis.xadd(keys[0], "*", fvpairs);
 
-    values[0].first = "field10";
-    values[0].second = "value10";
-    values[1].first = "field11";
-    values[1].second = "value11";
-    values[2].first = "field12";
-    values[2].second = "value12";
-    ids[1] = redis.xadd(topics[1], "*", values);
+    fvpairs[0].field = "field10";
+    fvpairs[0].value = "value10";
+    fvpairs[1].field = "field11";
+    fvpairs[1].value = "value11";
+    fvpairs[2].field = "field12";
+    fvpairs[2].value = "value12";
+    ids[1] = redis.xadd(keys[1], "*", fvpairs);
 
     // XREAD
     ids[0] = "0-0";
     ids[1] = "0-0";
-    r3c::StreamTopicsValues stream_values;
-    redis.xread(topics, ids, count, &stream_values);
-    std::cout << stream_values << std::endl;
+    std::vector<r3c::Stream> values;
+    redis.xread(keys, ids, count, &values);
+    std::cout << values << std::endl;
 }
 
 // test xrange
 static void testcase2(r3c::CRedisClient& redis)
 {
-    std::string topic = "topic4";
+    std::string topic = "k4";
     std::string start, end;
-    std::vector<std::pair<std::string, std::string> > values(3);
+    std::vector<r3c::FVPair> fvpairs(3);
     std::vector<std::string> ids(2);
-    std::vector<r3c::StreamTopicValues> topic_values;
+    std::vector<r3c::StreamEntry> values;
 
     // XADD
-    values[0].first = "field00";
-    values[0].second = "value00";
-    values[1].first = "field01";
-    values[1].second = "value01";
-    values[2].first = "field02";
-    values[2].second = "value02";
-    redis.xadd(topic, "*", values);
+    fvpairs[0].field = "field00";
+    fvpairs[0].value = "value00";
+    fvpairs[1].field = "field01";
+    fvpairs[1].value = "value01";
+    fvpairs[2].field = "field02";
+    fvpairs[2].value = "value02";
+    redis.xadd(topic, "*", fvpairs);
 
     // XADD
-    values[0].first = "field10";
-    values[0].second = "value10";
-    values[1].first = "field11";
-    values[1].second = "value11";
-    values[2].first = "field12";
-    values[2].second = "value12";
-    redis.xadd(topic, "*", values);
+    fvpairs[0].field = "field10";
+    fvpairs[0].value = "value10";
+    fvpairs[1].field = "field11";
+    fvpairs[1].value = "value11";
+    fvpairs[2].field = "field12";
+    fvpairs[2].value = "value12";
+    redis.xadd(topic, "*", fvpairs);
 
     start = "-";
     end = "+";
-    redis.xrange(topic, start, end, &topic_values);
-    std::cout << topic_values << std::endl;
+    redis.xrange(topic, start, end, &values);
+    std::cout << values << std::endl;
 }
 
 void init_testcase(TESTCASE testcase[])

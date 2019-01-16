@@ -74,25 +74,25 @@ std::ostream& operator <<(std::ostream& os, const struct NodeInfo& node_info)
     return os;
 }
 
-std::ostream& operator <<(std::ostream& os, const StreamTopicsValues& values)
+std::ostream& operator <<(std::ostream& os, const std::vector<Stream>& streams)
 {
-    for (StreamTopicsValues::size_type i=0; i<values.size(); ++i)
+    for (std::vector<Stream>::size_type i=0; i<streams.size(); ++i)
     {
-        // topic
-        const StreamTopic2Values& topic2values = values[i];
+        // key
+        const Stream& stream = streams[i];
 
-        os << topic2values.topic << std::endl;
-        for (std::vector<StreamTopicValues>::size_type j=0; j<topic2values.topic_values.size(); ++j)
+        os << stream.key << std::endl;
+        for (std::vector<StreamEntry>::size_type j=0; j<stream.entries.size(); ++j)
         {
-            // id
-            const StreamTopicValues& topic_values = topic2values.topic_values[j];
-            os << "\t" << topic_values.id << std::endl;
+            // entry
+            const StreamEntry& entry = stream.entries[j];
+            os << "\t" << entry.id << std::endl;
 
-            for (std::vector<StreamIDValue>::size_type k=0; k<topic_values.id_values.size(); ++k)
+            for (std::vector<FVPair>::size_type k=0; k<entry.fvpairs.size(); ++k)
             {
-                // value
-                const StreamIDValue& id_value = topic_values.id_values[k];
-                os << "\t\t" << id_value.field << " => " << id_value.value << std::endl;
+                // field-value pair
+                const FVPair& fvpair = entry.fvpairs[k];
+                os << "\t\t" << fvpair.field << " => " << fvpair.value << std::endl;
             }
         }
     }
@@ -100,18 +100,18 @@ std::ostream& operator <<(std::ostream& os, const StreamTopicsValues& values)
     return os;
 }
 
-std::ostream& operator <<(std::ostream& os, const std::vector<r3c::StreamTopicValues>& values)
+std::ostream& operator <<(std::ostream& os, const std::vector<r3c::StreamEntry>& entries)
 {
-    for (std::vector<r3c::StreamTopicValues>::size_type j=0; j<values.size(); ++j)
+    for (std::vector<r3c::StreamEntry>::size_type j=0; j<entries.size(); ++j)
     {
-        const r3c::StreamTopicValues& topic_values = values[j];
-        os << topic_values.id << std::endl;
+        const r3c::StreamEntry& entry = entries[j];
+        os << entry.id << std::endl;
 
-        for (std::vector<StreamIDValue>::size_type k=0; k<topic_values.id_values.size(); ++k)
+        for (std::vector<FVPair>::size_type k=0; k<entry.fvpairs.size(); ++k)
         {
-            // value
-            const StreamIDValue& id_value = topic_values.id_values[k];
-            os << "\t\t" << id_value.field << " => " << id_value.value << std::endl;
+            // field-value pair
+            const FVPair& fvpair = entry.fvpairs[k];
+            os << "\t\t" << fvpair.field << " => " << fvpair.value << std::endl;
         }
     }
 
