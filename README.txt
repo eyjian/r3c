@@ -1,7 +1,9 @@
 Redis Cluster C++ Client, based on hiredis, support password and standalone, it's easy to make and use, not depends on C++11 or later.
 r3c::CRedisClient is not thread safe, you can use __thread to create a object of r3c::CRedisClient for every thread.
 
-r3c基于redis官方的c库hiredis实现，全称是redis cluster C++ client，支持redis cluster，支持密码访问。非线程安全，GCC环境可以使用__thread为每个线程创建一个r3c::CRedisClient实例。支持多种策略的从读，支持Redis-5.0新增的Stream操作。不支持异步，但可结合协程实现异步访问，可参照示例r3c_and_coroutine.cpp。
+r3c基于redis官方的c库hiredis实现，全称是redis cluster C++ client，支持redis cluster，支持密码访问。
+非线程安全，GCC环境可以使用__thread为每个线程创建一个r3c::CRedisClient实例。
+支持多种策略的从读，支持Redis-5.0新增的Stream操作。不支持异步，但可结合协程实现异步访问，可参照示例r3c_and_coroutine.cpp。
 
 编译链接r3c时，默认认为hiredis的安装目录为/usr/local/hiredis，
 但可以在执行make时指定hiredis安装目录，如假设hiredis安装目录为/tmp/hiredis：make HIREDIS=/tmp/hiredis，
