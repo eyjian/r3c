@@ -192,27 +192,31 @@ void debug_redis_reply(const char* command, const redisReply* redis_reply, int d
         {
             const int depth_ = depth + 1;
 
+            if (0==depth && command!=NULL)
+            {
+                fprintf(stderr, "%s[%d]REPLY_ARRAY\n", spaces.c_str(), depth);
+            }
             for (size_t i=0; i<redis_reply->elements; ++i)
             {
                 const struct redisReply* child_redis_reply = redis_reply->element[i];
 
                 if (REDIS_REPLY_ARRAY == child_redis_reply->type)
                 {
-                    fprintf(stderr, "%s[%d:%zu]\033[1;33mREPLY_ARRAY\033[m(%zu)\n", spaces.c_str(), depth, i, child_redis_reply->elements);
+                    fprintf(stderr, "%s%s[%d:%zu]\033[1;33mREPLY_ARRAY\033[m(%zu)\n", spaces.c_str(), spaces.c_str(), depth, i, child_redis_reply->elements);
                     debug_redis_reply(NULL, child_redis_reply, depth_, i);
                 }
                 else if (REDIS_REPLY_INTEGER == child_redis_reply->type)
                 {
-                    fprintf(stderr, "%s[%d:%zu]REPLY_INTEGER: %lld\n", spaces.c_str(), depth, i, child_redis_reply->integer);
+                    fprintf(stderr, "%s%s[%d:%zu]REPLY_INTEGER: %lld\n", spaces.c_str(), spaces.c_str(), depth, i, child_redis_reply->integer);
                 }
                 else if (REDIS_REPLY_STRING == child_redis_reply->type ||
                          REDIS_REPLY_STATUS == redis_reply->type)
                 {
-                    fprintf(stderr, "%s[%d:%zu]\033[0;32;32mREPLY_STRING\033[m: %.*s\n", spaces.c_str(), depth, i, child_redis_reply->len, child_redis_reply->str);
+                    fprintf(stderr, "%s%s[%d:%zu]\033[0;32;32mREPLY_STRING\033[m: %.*s\n", spaces.c_str(), spaces.c_str(), depth, i, child_redis_reply->len, child_redis_reply->str);
                 }
                 else
                 {
-                    fprintf(stderr, "%s[%d:%zu]REPLY_UNKNOWN: %d\n", spaces.c_str(), depth, i, redis_reply->type);
+                    fprintf(stderr, "%s%s[%d:%zu]REPLY_UNKNOWN: %d\n", spaces.c_str(), spaces.c_str(), depth, i, redis_reply->type);
                 }
             }
         }

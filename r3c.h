@@ -114,6 +114,7 @@ extern bool is_noauth_error(const std::string& errtype);
 extern bool is_noscript_error(const std::string& errtype);
 extern bool is_wrongtype_error(const std::string& errtype);
 extern bool is_busygroup_error(const std::string& errtype);
+extern bool is_nogroup_error(const std::string& errtype);
 extern bool is_crossslot_error(const std::string& errtype);
 
 // NOTICE: not thread safe
@@ -834,6 +835,30 @@ public: // STREAM (key like kafka's topic), available since 5.0.0.
     void xrange(const std::string& key, const std::string& start, const std::string& end, std::vector<StreamEntry>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
     void xrevrange(const std::string& key, const std::string& end, const std::string& start, int64_t count, std::vector<StreamEntry>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
     void xrevrange(const std::string& key, const std::string& end, const std::string& start, std::vector<StreamEntry>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+
+    // Fetching data from a stream via a consumer group,
+    // and not acknowledging such data, has the effect of creating pending entries.
+    void xpending(const std::string& key, const std::string& groupname, const std::string& start, const std::string& end, int64_t count, const std::string& consumer, std::vector<StreamEntry>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+
+    // Gets ownership of one or multiple messages in the Pending Entries List
+    // of a given stream consumer group.
+    void xclaim(
+            const std::string& key, const std::string& groupname, const std::string& consumer,
+            int64_t minidle, const std::vector<std::string>& ids,
+            int64_t idletime, int64_t unixtime, int64_t retrycount,
+            bool force, bool justid,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xclaim(
+            const std::string& key, const std::string& groupname, const std::string& consumer,
+            int64_t minidle, const std::vector<std::string>& ids,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+
+    // Show consumer groups of group <groupname>.
+    void xinfo_consumers(const std::string& key, const std::string& groupname, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    // Show the stream consumer groups.
+    void xinfo_groups(const std::string& key, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    // Show information about the stream.
+    void xinfo_stream(const std::string& key, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
 public:
     // Standlone: key should be empty

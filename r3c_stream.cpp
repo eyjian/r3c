@@ -188,7 +188,7 @@ static void testcase2(r3c::CRedisClient& redis)
 // test xrange
 static void testcase3(r3c::CRedisClient& redis)
 {
-    std::string topic = "k4";
+    std::string key = "k4";
     std::string start, end;
     std::vector<r3c::FVPair> fvpairs(3);
     std::vector<std::string> ids(2);
@@ -201,7 +201,7 @@ static void testcase3(r3c::CRedisClient& redis)
     fvpairs[1].value = "value01";
     fvpairs[2].field = "field02";
     fvpairs[2].value = "value02";
-    redis.xadd(topic, "*", fvpairs);
+    redis.xadd(key, "*", fvpairs);
 
     // XADD
     fvpairs[0].field = "field10";
@@ -210,12 +210,96 @@ static void testcase3(r3c::CRedisClient& redis)
     fvpairs[1].value = "value11";
     fvpairs[2].field = "field12";
     fvpairs[2].value = "value12";
-    redis.xadd(topic, "*", fvpairs);
+    redis.xadd(key, "*", fvpairs);
 
     start = "-";
     end = "+";
-    redis.xrange(topic, start, end, &values);
+    redis.xrange(key, start, end, &values);
     std::cout << values << std::endl;
+}
+
+// test xpending
+static void testcase4(r3c::CRedisClient& redis)
+{
+    std::string key = "k500";
+    std::string group = "group500";
+    std::string start, end;
+    std::string consumer = "consumer500";
+    std::vector<r3c::FVPair> fvpairs(3);
+    std::vector<std::string> ids(2);
+    std::vector<r3c::StreamEntry> values;
+    int count = 10;
+
+    // XGROUP CREATE
+    try
+    {
+        redis.del(key);
+        redis.xgroup_create(key, group, "$", true);
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        if (!r3c::is_busygroup_error(ex.errtype()))
+            throw;
+    }
+
+    // XADD
+    fvpairs[0].field = "field00";
+    fvpairs[0].value = "value00";
+    fvpairs[1].field = "field01";
+    fvpairs[1].value = "value01";
+    fvpairs[2].field = "field02";
+    fvpairs[2].value = "value02";
+    redis.xadd(key, "*", fvpairs);
+
+    // XADD
+    fvpairs[0].field = "field10";
+    fvpairs[0].value = "value10";
+    fvpairs[1].field = "field11";
+    fvpairs[1].value = "value11";
+    fvpairs[2].field = "field12";
+    fvpairs[2].value = "value12";
+    redis.xadd(key, "*", fvpairs);
+
+    try
+    {
+        values.clear();
+        redis.xreadgroup(group, consumer, key, count, -1, false, &values);
+
+        start = "-";
+        end = "+";
+        redis.xpending(key, group, start, end, count, consumer, &values);
+        std::cout << "XPENDING:\n" << values << std::endl;
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        if (!r3c::is_nogroup_error(ex.errtype()))
+        {
+            throw;
+        }
+        else
+        {
+            fprintf(stderr, "%s\n", ex.str().c_str());
+
+            // XREADGROUP
+            values.clear();
+            redis.xreadgroup(group, consumer, key, count, -1, true, &values);
+            std::cout << values << std::endl;
+        }
+    }
+}
+
+// test:
+// xinfo_consumers
+// xinfo_groups
+// xinfo_stream
+static void testcase5(r3c::CRedisClient& redis)
+{
+    const std::string key;
+    const std::string groupname;
+
+    redis.xinfo_consumers(key, groupname);
+    redis.xinfo_groups(key);
+    redis.xinfo_stream(key);
 }
 
 void init_testcase(TESTCASE testcase[])
@@ -225,4 +309,6 @@ void init_testcase(TESTCASE testcase[])
     testcase[i++] = testcase1;
     testcase[i++] = testcase2;
     testcase[i++] = testcase3;
+    testcase[i++] = testcase4;
+    testcase[i++] = testcase5;
 }

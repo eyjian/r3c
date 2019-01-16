@@ -652,6 +652,11 @@ bool is_busygroup_error(const std::string& errtype)
     return (errtype.size() == sizeof("BUSYGROUP")-1) && (errtype == "BUSYGROUP");
 }
 
+bool is_nogroup_error(const std::string& errtype)
+{
+    return (errtype.size() == sizeof("NOGROUP")-1) && (errtype == "NOGROUP");
+}
+
 bool is_crossslot_error(const std::string& errtype)
 {
     return (errtype.size() == sizeof("CROSSSLOT")-1) && (errtype == "CROSSSLOT");
@@ -3462,6 +3467,196 @@ void CRedisClient::xrevrange(
 {
     const int64_t count = -1;
     xrevrange(key, start, end, count, values, which, num_retries);
+}
+
+// XPENDING <key> <group> [<start> <stop> <count> [<consumer>]]
+void CRedisClient::xpending(
+        const std::string& key, const std::string& groupname,
+        const std::string& start, const std::string& end,
+        int64_t count, const std::string& consumer,
+        std::vector<StreamEntry>* values,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XPENDING");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(groupname);
+    if (!start.empty())
+        cmd_args.add_arg(start);
+    if (!end.empty())
+        cmd_args.add_arg(end);
+    if (count >= 0)
+        cmd_args.add_arg(count);
+    if (!consumer.empty())
+        cmd_args.add_arg(consumer);
+    cmd_args.final();
+
+    // The command returns data in different format depending on the way it is called,
+    // as previously explained in this page. However the reply is always an array of items.
+    const RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
+    get_values(redis_reply.get(), values);
+}
+
+// Gets ownership of one or multiple messages in the Pending Entries List
+// of a given stream consumer group.
+//
+// If the message ID (among the specified ones) exists, and its idle
+// time greater or equal to <min-idle-time>, then the message new owner
+// becomes the specified <consumer>. If the minimum idle time specified
+// is zero, messages are claimed regardless of their idle time.
+//
+// All the messages that cannot be found inside the pending entries list
+// are ignored, but in case the FORCE option is used. In that case we
+// create the NACK (representing a not yet acknowledged message) entry in
+// the consumer group PEL.
+//
+// This command creates the consumer as side effect if it does not yet
+// exists. Moreover the command reset the idle time of the message to 0,
+// even if by using the IDLE or TIME options, the user can control the
+// new idle time.
+//
+// IDLE(IDLE和TIME为二选一关系):
+// Set the idle time (last time it was delivered) of the message.
+// If IDLE is not specified, an IDLE of 0 is assumed, that is,
+// the time count is reset because the message has now a new
+// owner trying to process it.
+//
+// TIME(IDLE和TIME为二选一关系):
+// This is the same as IDLE but instead of a relative amount of
+// milliseconds, it sets the idle time to a specific unix time
+// (in milliseconds). This is useful in order to rewrite the AOF
+// file generating XCLAIM commands.
+//
+// RETRYCOUNT:
+// Set the retry counter to the specified value. This counter is
+// incremented every time a message is delivered again. Normally
+// XCLAIM does not alter this counter, which is just served to clients
+// when the XPENDING command is called: this way clients can detect
+// anomalies, like messages that are never processed for some reason
+// after a big number of delivery attempts.
+//
+// FORCE:
+// Creates the pending message entry in the PEL even if certain
+// specified IDs are not already in the PEL assigned to a different
+// client. However the message must be exist in the stream, otherwise
+// the IDs of non existing messages are ignored.
+//
+// JUSTID:
+// Return just an array of IDs of messages successfully claimed,
+// without returning the actual message.
+//
+// LASTID:
+// Update the consumer group last ID with the specified ID if the
+// current last ID is smaller than the provided one.
+// This is used for replication / AOF, so that when we read from a
+// consumer group, the XCLAIM that gets propagated to give ownership
+// to the consumer, is also used in order to update the group current
+// ID.
+//
+// XCLAIM <key> <group> <consumer> <min-idle-time> <ID-1> <ID-2>
+//        [IDLE <milliseconds>] [TIME <mstime>] [RETRYCOUNT <count>] [FORCE] [JUSTID]
+void CRedisClient::xclaim(
+        const std::string& key, const std::string& groupname, const std::string& consumer,
+        int64_t minidle, const std::vector<std::string>& ids,
+        int64_t idletime, int64_t unixtime, int64_t retrycount,
+        bool force, bool justid,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XCLAIM");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(groupname);
+    cmd_args.add_arg(consumer);
+    if (minidle >= 0)
+    {
+        cmd_args.add_arg(minidle);
+    }
+    if (!ids.empty())
+    {
+        cmd_args.add_args(ids);
+    }
+    if (idletime >= 0)
+    {
+        cmd_args.add_arg("IDLE");
+        cmd_args.add_arg(idletime);
+    }
+    if (unixtime >= 0)
+    {
+        cmd_args.add_arg("TIME");
+        cmd_args.add_arg(unixtime);
+    }
+    if (retrycount >= 0)
+    {
+        cmd_args.add_arg(retrycount);
+    }
+    if (force)
+    {
+        cmd_args.add_arg("FORCE");
+    }
+    if (justid)
+    {
+        cmd_args.add_arg("JUSTID");
+    }
+    cmd_args.final();
+
+    // Returns all the messages successfully claimed, in the same format as XRANGE.
+    // However if the JUSTID option was specified,
+    // only the message IDs are reported, without including the actual message.
+    const RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
+}
+
+void CRedisClient::xclaim(
+        const std::string& key, const std::string& groupname, const std::string& consumer,
+        int64_t minidle, const std::vector<std::string>& ids,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    const int64_t idletime = -1;
+    const int64_t unixtime = -1;
+    const int64_t retrycount = -1;
+    bool force = false;
+    bool justid = false;
+
+    xclaim(key, groupname, consumer, minidle, ids, idletime, unixtime, retrycount, force, justid, which, num_retries);
+}
+
+// Show consumer groups of group <groupname>.
+// XINFO CONSUMERS <key> <group>
+void CRedisClient::xinfo_consumers(const std::string& key, const std::string& groupname, Node* which, int num_retries) throw (CRedisException)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XINFO");
+    cmd_args.add_arg("CONSUMERS");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(groupname);
+    cmd_args.final();
+
+    const RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
+}
+
+// Show the stream consumer groups.
+// XINFO GROUPS <key>
+void CRedisClient::xinfo_groups(const std::string& key, Node* which, int num_retries) throw (CRedisException)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XINFO");
+    cmd_args.add_arg("GROUPS");
+    cmd_args.add_arg(key);
+    cmd_args.final();
+
+    const RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
+}
+
+// Show information about the stream.
+// XINFO STREAM <key>
+void CRedisClient::xinfo_stream(const std::string& key, Node* which, int num_retries) throw (CRedisException)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XINFO");
+    cmd_args.add_arg("STREAM");
+    cmd_args.add_arg(key);
+    cmd_args.final();
+
+    const RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
