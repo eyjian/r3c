@@ -1,4 +1,5 @@
 // Writed by yijian (eyjian@qq.com)
+// For test stream
 #include "r3c.h"
 #include "utils.h"
 #include <iostream>
