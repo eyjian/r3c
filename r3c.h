@@ -252,6 +252,29 @@ struct Stream
 extern std::ostream& operator <<(std::ostream& os, const std::vector<Stream>& streams);
 extern std::ostream& operator <<(std::ostream& os, const std::vector<StreamEntry>& entries);
 
+struct ConsumerPending
+{
+    std::string name; // consumer name
+    int count; // the number of pending messages consumer has
+};
+
+struct GroupPending
+{
+    int count; // the total number of pending messages for this consumer group
+    std::string start; // the smallest ID among the pending messages
+    std::string end; // the greatest ID among the pending messages
+    std::vector<struct ConsumerPending> consumers; // All consumers in the group with at least one pending message
+};
+
+// detailed information for a message in the pending entries list
+struct DetailedPending
+{
+    std::string id; // The ID of the message
+    std::string consumer; // The name of the consumer that fetched the message and has still to acknowledge it. We call it the current owner of the message..
+    int64_t elapsed; // The number of milliseconds that elapsed since the last time this message was delivered to this consumer.
+    int64_t delivered; // The number of times this message was delivered
+};
+
 // NOTICE:
 // 1) ALL keys and values can be binary except EVAL commands.
 class CRedisClient
@@ -527,13 +550,21 @@ public: // HASH
     // including enough command calls for the cursor to return back to 0. N is the number of elements inside the collection..
     //
     // Returns an updated cursor that the user needs to use as the cursor argument in the next call.
-    int64_t hscan(const std::string& key, int64_t cursor, std::map<std::string, std::string>* map, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    int64_t hscan(const std::string& key, int64_t cursor, int count, std::map<std::string, std::string>* map, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    int64_t hscan(const std::string& key, int64_t cursor, const std::string& pattern, std::map<std::string, std::string>* map, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int64_t hscan(const std::string& key, int64_t cursor,
+            std::map<std::string, std::string>* map,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int64_t hscan(const std::string& key, int64_t cursor, int count,
+            std::map<std::string, std::string>* map,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int64_t hscan(const std::string& key, int64_t cursor, const std::string& pattern,
+            std::map<std::string, std::string>* map,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
     // If pattern is empty, then not using MATCH,
     // If count is 0, then not using COUNT
-    int64_t hscan(const std::string& key, int64_t cursor, const std::string& pattern, int count, std::map<std::string, std::string>* map, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int64_t hscan(const std::string& key, int64_t cursor, const std::string& pattern, int count,
+            std::map<std::string, std::string>* map,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
 public: // LIST
     // Get the length of a list
@@ -633,14 +664,24 @@ public: // SET
     // including enough command calls for the cursor to return back to 0. N is the number of elements inside the collection..
     //
     // Returns an updated cursor that the user needs to use as the cursor argument in the next call.
-    int64_t sscan(const std::string& key, int64_t cursor, std::vector<std::string>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    int64_t sscan(const std::string& key, int64_t cursor, int count, std::vector<std::string>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    int64_t sscan(const std::string& key, int64_t cursor, const std::string& pattern, std::vector<std::string>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int64_t sscan(const std::string& key, int64_t cursor,
+            std::vector<std::string>* values,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int64_t sscan(const std::string& key, int64_t cursor, int count,
+            std::vector<std::string>* values,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int64_t sscan(const std::string& key, int64_t cursor, const std::string& pattern,
+            std::vector<std::string>* values,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
     // If pattern is empty, then not using MATCH,
     // If count is 0, then not using COUNT
-    int64_t sscan(const std::string& key, int64_t cursor, const std::string& pattern, int count, std::vector<std::string>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    int64_t sscan(const std::string& key, int64_t cursor, const std::string& pattern, int count, std::set<std::string>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int64_t sscan(const std::string& key, int64_t cursor, const std::string& pattern, int count,
+            std::vector<std::string>* values,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int64_t sscan(const std::string& key, int64_t cursor, const std::string& pattern, int count,
+            std::set<std::string>* values,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
 public: // ZSET
     // Removes the specified members from the sorted set stored at key. Non existing members are ignored.
@@ -720,12 +761,21 @@ public: // ZSET
     // If M is constant (e.g. always asking for the first 10 elements with LIMIT), you can consider it O(log(N)).
     //
     // Return the number of elements with a score between max and min (including elements with score equal to max or min).
-    int zrevrangebyscore(const std::string& key, int64_t max, int64_t min, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int zrevrangebyscore(const std::string& key,
+            int64_t max, int64_t min, bool withscores,
+            std::vector<std::pair<std::string, int64_t> >* vec,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
     // Return a range of members in a sorted set by score with scores ordered from low to high.
-    int zrangebyscore(const std::string& key, int64_t min, int64_t max, int64_t offset, int64_t count, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int zrangebyscore(const std::string& key,
+            int64_t min, int64_t max, int64_t offset, int64_t count, bool withscores,
+            std::vector<std::pair<std::string, int64_t> >* vec,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
     // Return a range of members in a sorted set by score with scores ordered from high to low.
-    int zrevrangebyscore(const std::string& key, int64_t max, int64_t min, int64_t offset, int64_t count, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int zrevrangebyscore(const std::string& key,
+            int64_t max, int64_t min, int64_t offset, int64_t count, bool withscores,
+            std::vector<std::pair<std::string, int64_t> >* vec,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
     // Removes all elements in the sorted set stored at key with rank between start and stop.
     // Both start and stop are 0 -based indexes with 0 being the element with the lowest score.
@@ -760,13 +810,21 @@ public: // ZSET
     // including enough command calls for the cursor to return back to 0. N is the number of elements inside the collection..
     //
     // Returns an updated cursor that the user needs to use as the cursor argument in the next call.
-    int64_t zscan(const std::string& key, int64_t cursor, std::vector<std::pair<std::string, int64_t> >* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    int64_t zscan(const std::string& key, int64_t cursor, int count, std::vector<std::pair<std::string, int64_t> >* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    int64_t zscan(const std::string& key, int64_t cursor, const std::string& pattern, std::vector<std::pair<std::string, int64_t> >* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int64_t zscan(const std::string& key, int64_t cursor,
+            std::vector<std::pair<std::string, int64_t> >* values,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int64_t zscan(const std::string& key, int64_t cursor, int count,
+            std::vector<std::pair<std::string, int64_t> >* values,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int64_t zscan(const std::string& key, int64_t cursor, const std::string& pattern,
+            std::vector<std::pair<std::string, int64_t> >* values,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
     // If pattern is empty, then not using MATCH,
     // If count is 0, then not using COUNT
-    int64_t zscan(const std::string& key, int64_t cursor, const std::string& pattern, int count, std::vector<std::pair<std::string, int64_t> >* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int64_t zscan(const std::string& key, int64_t cursor, const std::string& pattern, int count,
+            std::vector<std::pair<std::string, int64_t> >* values,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
 public: // STREAM (key like kafka's topic), available since 5.0.0.
     // Removes one or multiple messages from the pending entries list (PEL) of a stream consumer group.
@@ -779,39 +837,74 @@ public: // STREAM (key like kafka's topic), available since 5.0.0.
     // returns the same ID specified by the user during insertion.
     //
     // c '~' or '='
-    std::string xadd(const std::string& key, const std::string& id, const std::vector<FVPair>& values, int64_t maxlen, char c, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    std::string xadd(const std::string& key, const std::string& id, const std::vector<FVPair>& values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    std::string xadd(const std::string& key, const std::string& id,
+            const std::vector<FVPair>& values, int64_t maxlen, char c,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    std::string xadd(const std::string& key, const std::string& id,
+            const std::vector<FVPair>& values,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
     // Create a new consumer group associated with a stream.
     // There are no hard limits to the number of consumer groups you can associate to a given stream.
     //
     // '$' the ID of the last item in the stream
-    void xgroup_create(const std::string& key, const std::string& groupname, const std::string& id=std::string("$"), bool mkstream=false, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    void xgroup_destroy(const std::string& key, const std::string& groupname, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    void xgroup_setid(const std::string& key, const std::string& id=std::string("$"), Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    void xgroup_delconsumer(const std::string& key, const std::string& groupname, const std::string& consumername, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xgroup_create(const std::string& key, const std::string& groupname,
+            const std::string& id=std::string("$"), bool mkstream=false,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xgroup_destroy(const std::string& key, const std::string& groupname,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xgroup_setid(const std::string& key,
+            const std::string& id=std::string("$"),
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xgroup_delconsumer(const std::string& key, const std::string& groupname, const std::string& consumername,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
     // Reads more than one keys
     // xread is a read command, can be called on slaves, xreadgroup is not
-    void xread(const std::vector<std::string>& keys, const std::vector<std::string>& ids, int64_t count, int64_t block_milliseconds, std::vector<Stream>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    void xread(const std::vector<std::string>& keys, const std::vector<std::string>& ids, int64_t count, std::vector<Stream>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    void xread(const std::vector<std::string>& keys, const std::vector<std::string>& ids, std::vector<Stream>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xread(const std::vector<std::string>& keys, const std::vector<std::string>& ids,
+            int64_t count, int64_t block_milliseconds, std::vector<Stream>* values,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xread(const std::vector<std::string>& keys, const std::vector<std::string>& ids,
+            int64_t count, std::vector<Stream>* values,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xread(const std::vector<std::string>& keys, const std::vector<std::string>& ids,
+            std::vector<Stream>* values,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
     // Only read one key
-    void xread(const std::string& key, const std::vector<std::string>& ids, int64_t count, int64_t block_milliseconds, std::vector<StreamEntry>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xread(const std::string& key, const std::vector<std::string>& ids,
+            int64_t count, int64_t block_milliseconds, std::vector<StreamEntry>* values,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
     // Use '>' as id
-    void xread(const std::string& key, int64_t count, int64_t block_milliseconds, std::vector<StreamEntry>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xread(const std::string& key,
+            int64_t count, int64_t block_milliseconds, std::vector<StreamEntry>* values,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
     // Reads more than one keys
     // xreadgroup is not read command
-    void xreadgroup(const std::string& groupname, const std::string& consumername, const std::vector<std::string>& keys, const std::vector<std::string>& ids, int64_t count, int64_t block_milliseconds, bool noack, std::vector<Stream>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    void xreadgroup(const std::string& groupname, const std::string& consumername, const std::vector<std::string>& keys, const std::vector<std::string>& ids, int64_t count, bool noack, std::vector<Stream>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    void xreadgroup(const std::string& groupname, const std::string& consumername, const std::vector<std::string>& keys, const std::vector<std::string>& ids, bool noack, std::vector<Stream>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xreadgroup(const std::string& groupname, const std::string& consumername,
+            const std::vector<std::string>& keys, const std::vector<std::string>& ids,
+            int64_t count, int64_t block_milliseconds, bool noack, std::vector<Stream>* values,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xreadgroup(const std::string& groupname,
+            const std::string& consumername, const std::vector<std::string>& keys,
+            const std::vector<std::string>& ids, int64_t count, bool noack, std::vector<Stream>* values,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xreadgroup(const std::string& groupname, const std::string& consumername,
+            const std::vector<std::string>& keys, const std::vector<std::string>& ids,
+            bool noack, std::vector<Stream>* values,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
     // Only read one key
-    void xreadgroup(const std::string& groupname, const std::string& consumername, const std::string& key, const std::vector<std::string>& ids, int64_t count, int64_t block_milliseconds, bool noack, std::vector<StreamEntry>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xreadgroup(const std::string& groupname, const std::string& consumername,
+            const std::string& key, const std::vector<std::string>& ids,
+            int64_t count, int64_t block_milliseconds, bool noack, std::vector<StreamEntry>* values,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
     // Use '>' as id
-    void xreadgroup(const std::string& groupname, const std::string& consumername, const std::string& key, int64_t count, int64_t block_milliseconds, bool noack, std::vector<StreamEntry>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xreadgroup(const std::string& groupname, const std::string& consumername,
+            const std::string& key, int64_t count, int64_t block_milliseconds,
+            bool noack, std::vector<StreamEntry>* values,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
     // Removes the specified entries from a stream, and returns the number of
     // entries deleted, that may be different from the number of IDs passed to the
@@ -831,14 +924,37 @@ public: // STREAM (key like kafka's topic), available since 5.0.0.
     // Returns the stream entries matching a given range of IDs
     // start The '-' special ID mean respectively the minimum ID possible inside a stream
     // end The '+' special ID mean respectively the maximum ID possible inside a stream
-    void xrange(const std::string& key, const std::string& start, const std::string& end, int64_t count, std::vector<StreamEntry>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xrange(const std::string& key,
+            const std::string& start, const std::string& end, int64_t count, std::vector<StreamEntry>* values,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
     void xrange(const std::string& key, const std::string& start, const std::string& end, std::vector<StreamEntry>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    void xrevrange(const std::string& key, const std::string& end, const std::string& start, int64_t count, std::vector<StreamEntry>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    void xrevrange(const std::string& key, const std::string& end, const std::string& start, std::vector<StreamEntry>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xrevrange(const std::string& key,
+            const std::string& end, const std::string& start, int64_t count, std::vector<StreamEntry>* values,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xrevrange(const std::string& key,
+            const std::string& end, const std::string& start, std::vector<StreamEntry>* values,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
     // Fetching data from a stream via a consumer group,
     // and not acknowledging such data, has the effect of creating pending entries.
-    void xpending(const std::string& key, const std::string& groupname, const std::string& start, const std::string& end, int64_t count, const std::string& consumer, std::vector<StreamEntry>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    //
+    // Returns the number of pending messages
+    int xpending(const std::string& key, const std::string& groupname,
+            const std::string& start, const std::string& end, int count, const std::string& consumer,
+            std::vector<struct DetailedPending>* pendings,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int xpending(const std::string& key, const std::string& groupname,
+            const std::string& start, const std::string& end, int count,
+            std::vector<struct DetailedPending>* pendings,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+
+    // start the smallest ID among the pending messages
+    // end the greatest ID among the pending messages
+    // count the total number of pending messages for this consumer group
+    // consumers the list of consumers in the consumer group with at least one pending message
+    //
+    // Returns the total number of pending messages for this consumer group
+    int xpending(const std::string& key, const std::string& groupname, struct GroupPending* groups, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
     // Gets ownership of one or multiple messages in the Pending Entries List
     // of a given stream consumer group.
@@ -863,7 +979,10 @@ public: // STREAM (key like kafka's topic), available since 5.0.0.
 public:
     // Standlone: key should be empty
     // Cluse mode: key used to locate node
-    const RedisReplyHelper redis_command(bool readonly, int num_retries, const std::string& key, const CommandArgs& command_args, Node* which);
+    const RedisReplyHelper redis_command(
+            bool readonly, int num_retries,
+            const std::string& key, const CommandArgs& command_args,
+            Node* which);
 
 private:
     // 有些错误可安全无条件地重试，有些则需调用者决定是否重试，
@@ -948,6 +1067,13 @@ public:
 
     // Called by xrange & xrevrange
     int get_values(const redisReply* redis_reply, std::vector<StreamEntry>* values);
+
+    // Called by xpending
+    int get_values(const redisReply* redis_reply, std::vector<struct DetailedPending>* pendings);
+
+    // Called by xpending
+    // Returns the total number of pending messages for this consumer group
+    int get_values(const redisReply* redis_reply, struct GroupPending* groups);
 
 public:
     void set_command_monitor(CommandMonitor* command_monitor) { _command_monitor = command_monitor; }
@@ -1037,6 +1163,11 @@ extern std::string int2string(int16_t n);
 extern std::string int2string(uint64_t n);
 extern std::string int2string(uint32_t n);
 extern std::string int2string(uint16_t n);
+
+// Convert a string into a int64_t. Returns true if the string could be parsed into a
+// (non-overflowing) int64_t, false otherwise. The value will be set to the parsed value when appropriate.
+extern bool string2int(const char* s, size_t len, int64_t* val, int64_t errval=-1);
+extern bool string2int(const char* s, size_t len, int32_t* val, int32_t errval=-1);
 
 } // namespace r3c {
 #endif // REDIS_CLUSTER_CLIENT_H

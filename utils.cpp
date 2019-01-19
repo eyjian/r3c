@@ -194,7 +194,7 @@ void debug_redis_reply(const char* command, const redisReply* redis_reply, int d
 
             if (0==depth && command!=NULL)
             {
-                fprintf(stderr, "%s[%d]REPLY_ARRAY\n", spaces.c_str(), depth);
+                fprintf(stderr, "%s[%d]REPLY_ARRAY(%zu)\n", spaces.c_str(), depth, redis_reply->elements);
             }
             for (size_t i=0; i<redis_reply->elements; ++i)
             {
@@ -231,7 +231,7 @@ void debug_redis_reply(const char* command, const redisReply* redis_reply, int d
     }
 }
 
-/* Copy from crc16.c
+/* Copied from redis source code (crc16.c)
  *
  * CRC16 implementation according to CCITT standards.
  *
@@ -283,7 +283,7 @@ static const uint16_t crc16tab[256]= {
     0x6e17,0x7e36,0x4e55,0x5e74,0x2e93,0x3eb2,0x0ed1,0x1ef0
 };
 
-/* Copy from crc16.c
+/* Copied from redis source code (crc16.c)
  */
 uint16_t crc16(const char *buf, int len) {
     int counter;
@@ -293,7 +293,7 @@ uint16_t crc16(const char *buf, int len) {
     return crc;
 }
 
-/* Copy from crc64.c
+/* Copied from redis source code (crc64.c)
  */
 static const uint64_t crc64_tab[256] = {
     UINT64_C(0x0000000000000000), UINT64_C(0x7ad870c830358979),
@@ -426,6 +426,8 @@ static const uint64_t crc64_tab[256] = {
     UINT64_C(0x536fa08fdfd90e51), UINT64_C(0x29b7d047efec8728),
 };
 
+/* Copied from redis source code (crc64.c)
+ */
 uint64_t crc64(uint64_t crc, const unsigned char *s, uint64_t l) {
     uint64_t j;
 
@@ -436,7 +438,7 @@ uint64_t crc64(uint64_t crc, const unsigned char *s, uint64_t l) {
     return crc;
 }
 
-/* Copy from cluster.c
+/* Copied from redis source code (cluster.c)
  *
  * We have 16384 hash slots. The hash slot of a given key is obtained
  * as the least significant 14 bits of the crc16 of the key.
@@ -724,11 +726,11 @@ bool parse_moved_string(const std::string& moved_string, std::pair<std::string, 
     return false;
 }
 
-/* Copy from util.c
+/* Copied from redis source code (util.c)
  *
  * Return the number of digits of 'v' when converted to string in radix 10.
  * See ll2string() for more information. */
-uint32_t digits10(uint64_t v) {
+static uint32_t digits10(uint64_t v) {
     if (v < 10) return 1;
     if (v < 100) return 2;
     if (v < 1000) return 3;
@@ -748,7 +750,7 @@ uint32_t digits10(uint64_t v) {
     return 12 + digits10(v / UINT64_C(1000000000000));
 }
 
-/* Copy from util.c
+/* Copied from redis source code (util.c)
  *
  * Convert a long long into a string. Returns the number of
  * characters needed to represent the number.
@@ -761,7 +763,7 @@ uint32_t digits10(uint64_t v) {
  *
  * Modified in order to handle signed integers since the original code was
  * designed for unsigned integers. */
-int ll2string(char *dst, size_t dstlen, long long svalue) {
+static int ll2string(char *dst, size_t dstlen, long long svalue) {
     static const char digits[201] =
         "0001020304050607080910111213141516171819"
         "2021222324252627282930313233343536373839"
@@ -815,7 +817,7 @@ int ll2string(char *dst, size_t dstlen, long long svalue) {
     return length;
 }
 
-/* Copy from util.c
+/* Copied from redis source code (util.c)
  *
  * Convert a string into a long long. Returns 1 if the string could be parsed
  * into a (non-overflowing) long long, 0 otherwise. The value will be set to
@@ -829,7 +831,7 @@ int ll2string(char *dst, size_t dstlen, long long svalue) {
  * Because of its strictness, it is safe to use this function to check if
  * you can convert a string into a long long, and obtain back the string
  * from the number without any loss in the string representation. */
-int string2ll(const char *s, size_t slen, long long *value) {
+static int string2ll(const char *s, size_t slen, long long *value) {
     const char *p = s;
     size_t plen = 0;
     int negative = 0;
@@ -927,6 +929,38 @@ std::string int2string(uint32_t n)
 std::string int2string(uint16_t n)
 {
     return int2string(static_cast<uint64_t>(n));
+}
+
+bool string2int(const char* s, size_t len, int64_t* val, int64_t errval)
+{
+    long long llval = 0;
+    if (1 == string2ll(s, len, &llval))
+    {
+        *val = static_cast<int64_t>(llval);
+        return true;
+    }
+    else
+    {
+        *val = errval;
+        return false;
+    }
+}
+
+bool string2int(const char* s, size_t len, int32_t* val, int32_t errval)
+{
+    const int64_t errval64 = errval;
+    int64_t val64 = 0;
+
+    if (string2int(s, len, &val64, errval64))
+    {
+        *val = static_cast<int32_t>(val64);
+        return true;
+    }
+    else
+    {
+        *val = errval;
+        return false;
+    }
 }
 
 uint64_t get_random_number(uint64_t base)

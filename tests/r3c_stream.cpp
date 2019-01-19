@@ -222,70 +222,46 @@ static void testcase3(r3c::CRedisClient& redis)
 // test xpending
 static void testcase4(r3c::CRedisClient& redis)
 {
-    std::string key = "k500";
-    std::string group = "group500";
-    std::string start, end;
-    std::string consumer = "consumer500";
-    std::vector<r3c::FVPair> fvpairs(3);
-    std::vector<std::string> ids(2);
-    std::vector<r3c::StreamEntry> values;
-    int count = 10;
+    std::string key = "k1";
+    std::string group = "g1";
+    struct r3c::GroupPending groups;
 
-    // XGROUP CREATE
-    try
+    // Group
+    redis.xpending(key, group, &groups);
+}
+
+static void testcase5(r3c::CRedisClient& redis)
+{
+    std::string key = "k1";
+    std::string group = "g1";
+    struct r3c::GroupPending groups;
+
+    // Group
+    redis.xpending(key, group, &groups);
+    fprintf(stdout, "COUNT:%d\n", groups.count);
+    fprintf(stdout, "stratid: %s\n", groups.start.c_str());
+    fprintf(stdout, "endid: %s\n", groups.end.c_str());
+    for (std::vector<struct ConsumerPending>::size_type i=0; i<groups.consumers.size(); ++i)
     {
-        redis.del(key);
-        redis.xgroup_create(key, group, "$", true);
+        fprintf(stdout, "[CONSUMER%zu] %s: %d\n", i, groups.consumers[i].name.c_str(), groups.consumers[i].count);
     }
-    catch (r3c::CRedisException& ex)
+
+    // Consumer
+    if (!groups.consumers.empty())
     {
-        if (!r3c::is_busygroup_error(ex.errtype()))
-            throw;
-    }
+        std::vector<struct r3c::DetailedPending> pendings;
+        const int n = redis.xpending(key, group, groups.start, groups.end, groups.count, groups.consumers[0].name, &pendings);
 
-    // XADD
-    fvpairs[0].field = "field00";
-    fvpairs[0].value = "value00";
-    fvpairs[1].field = "field01";
-    fvpairs[1].value = "value01";
-    fvpairs[2].field = "field02";
-    fvpairs[2].value = "value02";
-    redis.xadd(key, "*", fvpairs);
-
-    // XADD
-    fvpairs[0].field = "field10";
-    fvpairs[0].value = "value10";
-    fvpairs[1].field = "field11";
-    fvpairs[1].value = "value11";
-    fvpairs[2].field = "field12";
-    fvpairs[2].value = "value12";
-    redis.xadd(key, "*", fvpairs);
-
-    try
-    {
-        values.clear();
-        redis.xreadgroup(group, consumer, key, count, -1, false, &values);
-
-        start = "-";
-        end = "+";
-        redis.xpending(key, group, start, end, count, consumer, &values);
-        std::cout << "XPENDING:\n" << values << std::endl;
-    }
-    catch (r3c::CRedisException& ex)
-    {
-        if (!r3c::is_nogroup_error(ex.errtype()))
+        fprintf(stdout, "\n");
+        for (int i=0; i<n; ++i)
         {
-            throw;
+            const struct r3c::DetailedPending& pending = pendings[i];
+            fprintf(stdout, "ID: %s\n", pending.id.c_str());
+            fprintf(stdout, "Consumer: %s\n", pending.consumer.c_str());
+            fprintf(stdout, "Elapsed: %" PRId64" ms\n", pending.elapsed);
+            fprintf(stdout, "Delivered: %" PRId64"\n", pending.delivered);
         }
-        else
-        {
-            fprintf(stderr, "%s\n", ex.str().c_str());
-
-            // XREADGROUP
-            values.clear();
-            redis.xreadgroup(group, consumer, key, count, -1, true, &values);
-            std::cout << values << std::endl;
-        }
+        fprintf(stdout, "\n");
     }
 }
 
@@ -293,7 +269,7 @@ static void testcase4(r3c::CRedisClient& redis)
 // xinfo_consumers
 // xinfo_groups
 // xinfo_stream
-static void testcase5(r3c::CRedisClient& redis)
+static void testcase6(r3c::CRedisClient& redis)
 {
     const std::string key;
     const std::string groupname;
@@ -312,4 +288,5 @@ void init_testcase(TESTCASE testcase[])
     testcase[i++] = testcase3;
     testcase[i++] = testcase4;
     testcase[i++] = testcase5;
+    testcase[i++] = testcase6;
 }
