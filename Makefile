@@ -25,14 +25,12 @@ INSTALL_INCLUDE_PATH= $(PREFIX)/$(INCLUDE_PATH)
 INSTALL_LIBRARY_PATH= $(PREFIX)/$(LIBRARY_PATH)
 INSTALL?=cp -a
 
-#GCC_VERSION=$(shell gcc --version|awk -F[\ .]+ '/GCC/{printf("%s%s\n",$$3,$$4);}')
 CPLUSPLUSONEONE=$(shell gcc --version|awk -F[\ .]+ '/GCC/{if($$3>=4&&$$4>=7) printf("-std=c++11");}')
-
 #OPTIMIZATION?=-O2
 DEBUG?=-g -ggdb $(CPLUSPLUSONEONE) -DSLEEP_USE_POLL # -DR3C_TEST
 WARNINGS=-Wall -W -Wwrite-strings -Wno-missing-field-initializers
-REAL_CPPFLAGS=$(CPPFLAGS) $(ARCH) -I. -I$(HIREDIS)/include -DSLEEP_USE_POLL=1 -D__STDC_FORMAT_MACROS=1 -D__STDC_CONSTANT_MACROS -fstrict-aliasing -fPIC  -pthread $(DEBUG) $(OPTIMIZATION) $(WARNINGS)
-REAL_LDFLAGS=$(LDFLAGS) $(ARCH) -fPIC -pthread $(HIREDIS)/lib/libhiredis.a
+REAL_CPPFLAGS=$(CPPFLAGS) -I. -I$(HIREDIS)/include -DSLEEP_USE_POLL=1 -D__STDC_FORMAT_MACROS=1 -D__STDC_CONSTANT_MACROS -fstrict-aliasing -fPIC  -pthread $(DEBUG) $(OPTIMIZATION) $(WARNINGS)
+REAL_LDFLAGS=$(LDFLAGS) -fPIC -pthread $(HIREDIS)/lib/libhiredis.a
 
 CXX:=$(shell sh -c 'type $(CXX) >/dev/null 2>/dev/null && echo $(CXX) || echo g++')
 STLIBSUFFIX=a
@@ -40,6 +38,7 @@ STLIBNAME=$(LIBNAME).$(STLIBSUFFIX)
 STLIB_MAKE_CMD=ar rcs
 
 all: $(STLIBNAME) $(CMD) $(TEST) $(STRESS) $(ROBUST) $(STREAM) $(EXTENSION)
+.PHONY: all
 
 # Deps (use make dep to generate this)
 sha1.o: sha1.cpp
@@ -94,16 +93,20 @@ $(EXTENSION): tests/redis_command_extension.o $(STLIBNAME)
 
 clean:
 	rm -f $(STLIBNAME) $(CMD) $(TEST) $(STRESS) $(ROBUST) $(STREAM) $(EXTENSION) *.o core core.* tests/*.o tests/core tests/core.*
+.PHONY: clean
 
 install:
-	mkdir -p $(INSTALL_BIN)
-	mkdir -p $(INSTALL_INCLUDE_PATH) $(INSTALL_LIBRARY_PATH)
+	@mkdir -p $(INSTALL_BIN)
+	@mkdir -p $(INSTALL_INCLUDE_PATH) $(INSTALL_LIBRARY_PATH)
 	$(INSTALL) r3c.h $(INSTALL_INCLUDE_PATH)
 	$(INSTALL) $(STLIBNAME) $(INSTALL_LIBRARY_PATH)
 	$(INSTALL) $(CMD) $(INSTALL_BIN)
+.PHONY: install
 
 dep:
 	$(CXX) -MM *.cpp
+.PHONY: dep
 
-test: all
-	tests/r3c_test $(REDIS_CLUSTER_NODES)
+test: $(TEST)
+	$(TEST) $(REDIS_CLUSTER_NODES)
+.PHONY: test
