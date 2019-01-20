@@ -209,61 +209,10 @@ void f3(r3c::CRedisClient& redis)
     }
 }
 
-void f4(r3c::CRedisClient& redis)
-{
-#if __cplusplus >= 201103L
-    const int num_threads = get_nprocs();
-    std::vector<std::thread> threads;
-
-    for (int i=0; i<num_threads; ++i)
-    {
-        threads.push_back(
-                std::thread([&]()
-                {
-                    const std::string redis_nodes_str = redis.get_raw_nodes_string();
-                    const int num_keys = 2019;
-                    r3c::CRedisClient th_redis(redis_nodes_str);
-
-                    // Write
-                    for (int j=0; j<2019; ++j)
-                    {
-                        for (int k=0; k<num_keys; ++k)
-                        {
-                            const std::string key = r3c::format_string("%d", k);
-                            th_redis.incrby(key, 1, 3600);
-                            //if (0 == k%100)
-                            //    r3c::millisleep(1);
-                        }
-                    }
-
-                    // Read
-                    for (int j=0; j<2019; ++j)
-                    {
-                        for (int k=0; k<num_keys; ++k)
-                        {
-                            const std::string key = r3c::format_string("%d", k);
-                            std::string val;
-                            r3c::Node node;
-                            if (!th_redis.get(key, &val, &node) || val!="2019")
-                                fprintf(stderr, "Oops(2019): [%s] %s => %s\n",
-                                        r3c::node2string(node).c_str(), key.c_str(), val.c_str());
-                        }
-                    }
-                }
-        ));
-    }
-    for (int i=0; i<num_threads; ++i)
-    {
-        threads[i].join();
-    }
-#endif // __cplusplus >= 201103L
-}
-
 void fill_f(F f[])
 {
     f[0] = f0;
     f[1] = f1;
     f[2] = f2;
     f[3] = f3;
-    f[4] = f4;
 }
