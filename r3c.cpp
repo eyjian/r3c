@@ -18,7 +18,7 @@ int NUM_RETRIES = 15; // The default number of retries is 15 (CLUSTERDOWN cost m
 int CONNECT_TIMEOUT_MILLISECONDS = 2000; // Connection timeout in milliseconds
 int READWRITE_TIMEOUT_MILLISECONDS = 2000; // Receive and send timeout in milliseconds
 
-#if 0 // for test
+#if R3C_TEST // for test
     static LOG_WRITE g_error_log = r3c_log_write;
     static LOG_WRITE g_info_log = r3c_log_write;
     static LOG_WRITE g_debug_log = r3c_log_write;
@@ -26,7 +26,7 @@ int READWRITE_TIMEOUT_MILLISECONDS = 2000; // Receive and send timeout in millis
     static LOG_WRITE g_error_log = null_log_write;
     static LOG_WRITE g_info_log = null_log_write;
     static LOG_WRITE g_debug_log = null_log_write;
-#endif
+#endif // R3C_TEST
 
 void set_error_log_write(LOG_WRITE info_log)
 {
@@ -178,6 +178,17 @@ void CommandArgs::add_args(const std::vector<std::string>& args)
     }
 }
 
+void CommandArgs::add_args(const std::vector<std::pair<std::string, std::string> >& values)
+{
+    for (std::vector<std::string>::size_type i=0; i<values.size(); ++i)
+    {
+        const std::string& field = values[i].first;
+        const std::string& value = values[i].second;
+        add_arg(field);
+        add_arg(value);
+    }
+}
+
 void CommandArgs::add_args(const std::map<std::string, std::string>& map)
 {
     for (std::map<std::string, std::string>::const_iterator iter=map.begin(); iter!=map.end(); ++iter)
@@ -201,6 +212,16 @@ void CommandArgs::add_args(const std::map<std::string, int64_t>& map, bool rever
             add_arg(iter->second);
             add_arg(iter->first);
         }
+    }
+}
+
+void CommandArgs::add_args(const std::vector<FVPair>& fvpairs)
+{
+    for (std::vector<FVPair>::size_type i=0; i<fvpairs.size(); ++i)
+    {
+        const FVPair& fvpair = fvpairs[i];
+        add_arg(fvpair.field);
+        add_arg(fvpair.value);
     }
 }
 
@@ -624,6 +645,21 @@ bool is_noscript_error(const std::string& errtype)
 bool is_wrongtype_error(const std::string& errtype)
 {
     return (errtype.size() == sizeof("WRONGTYPE")-1) && (errtype == "WRONGTYPE");
+}
+
+bool is_busygroup_error(const std::string& errtype)
+{
+    return (errtype.size() == sizeof("BUSYGROUP")-1) && (errtype == "BUSYGROUP");
+}
+
+bool is_nogroup_error(const std::string& errtype)
+{
+    return (errtype.size() == sizeof("NOGROUP")-1) && (errtype == "NOGROUP");
+}
+
+bool is_crossslot_error(const std::string& errtype)
+{
+    return (errtype.size() == sizeof("CROSSSLOT")-1) && (errtype == "CROSSSLOT");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2893,10 +2929,887 @@ int64_t CRedisClient::zscan(
     return 0;
 }
 
+//
+// STREAM
+//
+
+// 从待处理条目列表（PEL）中移除待处理条目（ids），
+// 因为一旦消息被成功处理，消费者组就不再需要跟踪它并记住消息的当前所有者
+// Time complexity: O(1) for each message ID processed.
+// XACK key group ID [ID ...]
+int CRedisClient::xack(
+        const std::string& key, const std::string& groupname,
+        const std::vector<std::string>& ids,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    std::string value;
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XACK");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(groupname);
+    cmd_args.add_args(ids);
+
+    const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+    if (REDIS_REPLY_INTEGER == redis_reply->type)
+        return static_cast<int>(redis_reply->integer);
+    return 0;
+}
+
+int CRedisClient::xack(
+        const std::string& key, const std::string& groupname,
+        const std::string& id,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    std::vector<std::string> ids(1);
+    ids[0] = id;
+    return xack(key, groupname, ids, which, num_retries);
+}
+
+// Time complexity: O(1)
+// XADD key [MAXLEN [~|=] <count>] <ID or *> [field value] [field value] ...
+std::string CRedisClient::xadd(
+        const std::string& key, const std::string& id,
+        const std::vector<FVPair>& values,
+        int64_t maxlen, char c,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    std::string value;
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XADD");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg("MAXLEN");
+    cmd_args.add_arg(c);
+    cmd_args.add_arg(maxlen);
+    cmd_args.add_arg(id);
+    cmd_args.add_args(values);
+    cmd_args.final();
+
+    // The command returns the number of messages successfully acknowledged.
+    const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+    //if (REDIS_REPLY_STRING == redis_reply->type)
+    (void)get_value(redis_reply.get(), &value);
+    return value;
+}
+
+std::string CRedisClient::xadd(
+        const std::string& key, const std::string& id,
+        const std::vector<FVPair>& values,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    std::string value;
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XADD");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(id);
+    cmd_args.add_args(values);
+    cmd_args.final();
+
+    // The command returns the number of messages successfully acknowledged.
+    const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+    //if (REDIS_REPLY_STRING == redis_reply->type)
+    (void)get_value(redis_reply.get(), &value);
+    return value;
+}
+
+// Time complexity: O(1) for all the subcommands, with the exception of the
+// DESTROY subcommand which takes an additional O(M) time in order to delete
+// the M entries inside the consumer group pending entries list (PEL).
+//
+// XGROUP CREATE key(topic) groupname id-or-$
+void CRedisClient::xgroup_create(
+        const std::string& key, const std::string& groupname, const std::string& id,
+        bool mkstream,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    // xgroup CREATE key groupname id-or-$
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XGROUP");
+    cmd_args.add_arg("CREATE");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(groupname);
+    cmd_args.add_arg(id);
+    if (mkstream)
+        cmd_args.add_arg("MKSTREAM");
+    cmd_args.final();
+
+    // If the specified consumer group already exists, the command returns a -BUSYGROUP error.
+    // Otherwise the operation is performed and OK is returned.
+    // There are no hard limits to the number of consumer groups you can associate to a given stream.
+    //
+    // Consumers in a consumer group are auto-created every time a new consumer name is mentioned by some command.
+    //
+    // 如果key不存在，则会报如下错误：
+    // The XGROUP subcommand requires the key to exist.
+    // Note that for CREATE you may want to use the MKSTREAM option to create an empty stream automatically.
+    (void)redis_command(false, num_retries, key, cmd_args, which);
+}
+
+// To just remove a given consumer from a consumer group.
+// Consumers in a consumer group are auto-created every time a new consumer name is mentioned by some command.
+//
+// XGROUP DESTROY key groupname
+void CRedisClient::xgroup_destroy(const std::string& key, const std::string& groupname, Node* which, int num_retries) throw (CRedisException)
+{
+    // xgroup DESTROY key groupname
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XGROUP");
+    cmd_args.add_arg("DESTROY");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(groupname);
+    cmd_args.final();
+
+    // The consumer group will be destroyed even if there are active consumers
+    // and pending messages, so make sure to call this command only when really needed.
+    (void)redis_command(false, num_retries, key, cmd_args, which);
+}
+
+// XGROUP SETID key groupname id-or-$
+void CRedisClient::xgroup_setid(const std::string& key, const std::string& id, Node* which, int num_retries) throw (CRedisException)
+{
+    // xgroup SETID key id-or-$
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XGROUP");
+    cmd_args.add_arg("SETID");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(id);
+    cmd_args.final();
+
+    (void)redis_command(false, num_retries, key, cmd_args, which);
+}
+
+// XGROUP DELCONSUMER key groupname consumername
+void CRedisClient::xgroup_delconsumer(const std::string& key, const std::string& groupname, const std::string& consumername, Node* which, int num_retries) throw (CRedisException)
+{
+    // xgroup DELCONSUMER key groupname consumername
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XGROUP");
+    cmd_args.add_arg("DELCONSUMER");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(groupname);
+    cmd_args.add_arg(consumername);
+    cmd_args.final();
+
+    (void)redis_command(false, num_retries, key, cmd_args, which);
+}
+
+// XREADGROUP命令是XREAD命令的特殊版本，支持消费者组
+// 当使用XREADGROUP读取时，服务器将会记住某个给定的消息已经传递：
+// 消息会被存储在消费者组内的待处理条目列表（PEL）中，即已送达但尚未确认的消息ID列表。
+// 客户端必须使用XACK确认消息处理，以便从待处理条目列表中删除待处理条目，
+// 还可以使用XPENDING命令检查待处理条目列表。
+//
+// 特殊ID“>”，意味着消费者希望只接收从未发送给任何其他消费者的消息，即只读取新的消息
+//
+// Reads more than one keys
+//
+// Available since 5.0.0.
+// Time complexity: For each stream mentioned: O(M) with M being the number
+// of elements returned. If M is constant (e.g. always asking for the first 10
+// elements with COUNT), you can consider it O(1). On the other side when
+// XREADGROUP blocks, XADD will pay the O(N) time in order to serve the N
+// clients blocked on the stream getting new data.
+//
+// XREADGROUP GROUP group consumer [COUNT count] [BLOCK milliseconds] [NOACK] STREAMS key [key ...] ID [ID ...]
+void CRedisClient::xreadgroup(
+        const std::string& groupname, const std::string& consumername,
+        const std::vector<std::string>& keys, const std::vector<std::string>& ids,
+        int64_t count, int64_t block_milliseconds, bool noack,
+        std::vector<Stream>* values,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    if (keys.empty())
+    {
+        struct ErrorInfo errinfo;
+        errinfo.errtype = "ERR";
+        errinfo.errcode = ERROR_PARAMETER;
+        errinfo.raw_errmsg = "wrong number of arguments for 'xreadgroup' command";
+        errinfo.errmsg = format_string("[R3C_XPENDING][%s:%d] %s", __FILE__, __LINE__, errinfo.raw_errmsg.c_str());
+        THROW_REDIS_EXCEPTION(errinfo);
+    }
+    else if (keys.size() != ids.size())
+    {
+        struct ErrorInfo errinfo;
+        errinfo.errtype = "ERR";
+        errinfo.errcode = ERROR_PARAMETER;
+        errinfo.raw_errmsg = "unbalanced XREADGROUP list of streams: for each stream key an ID or '$' must be specified";
+        errinfo.errmsg = format_string("[R3C_XPENDING][%s:%d] %s", __FILE__, __LINE__, errinfo.raw_errmsg.c_str());
+        THROW_REDIS_EXCEPTION(errinfo);
+    }
+    else if (cluster_mode() && keys_crossslots(keys))
+    {
+        struct ErrorInfo errinfo;
+        errinfo.errtype = "CROSSSLOT";
+        errinfo.errcode = ERROR_PARAMETER;
+        errinfo.raw_errmsg = "keys in request don't hash to the same slot";
+        errinfo.errmsg = format_string("[R3C_XPENDING][%s:%d] %s", __FILE__, __LINE__, errinfo.raw_errmsg.c_str());
+        THROW_REDIS_EXCEPTION(errinfo);
+    }
+    else
+    {
+        const std::string key = cluster_mode()? keys[0]: std::string("");
+        std::string value;
+        CommandArgs cmd_args;
+        cmd_args.add_arg("XREADGROUP");
+        cmd_args.add_arg("GROUP");
+        cmd_args.add_arg(groupname);
+        cmd_args.add_arg(consumername);
+        cmd_args.add_arg("COUNT");
+        cmd_args.add_arg(count);
+        if (block_milliseconds >= 0) // timeout is negative
+        {
+            cmd_args.add_arg("BLOCK");
+            cmd_args.add_arg(block_milliseconds);
+        }
+        if (noack)
+        {
+            cmd_args.add_arg("NOACK");
+        }
+        cmd_args.add_arg("STREAMS");
+        cmd_args.add_args(keys);
+        cmd_args.add_args(ids);
+        cmd_args.final();
+
+        // REDIS_REPLY_ARRAY
+        const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+        get_values(redis_reply.get(), values);
+    }
+}
+
+// Reads more than one keys
+void CRedisClient::xreadgroup(
+        const std::string& groupname, const std::string& consumername,
+        const std::vector<std::string>& keys, const std::vector<std::string>& ids,
+        int64_t count, bool noack,
+        std::vector<Stream>* values,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    const int64_t block_milliseconds = -1; // -1 means, no BLOCK argument given
+    xreadgroup(groupname, consumername, keys, ids, count, block_milliseconds, noack, values, which, num_retries);
+}
+
+// Reads more than one keys
+void CRedisClient::xreadgroup(
+        const std::string& groupname, const std::string& consumername,
+        const std::vector<std::string>& keys, const std::vector<std::string>& ids,
+        bool noack,
+        std::vector<Stream>* values,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    const int64_t count = 0;
+    const int64_t block_milliseconds = -1; // -1 means, no BLOCK argument given
+    xreadgroup(groupname, consumername, keys, ids, count, block_milliseconds, noack, values, which, num_retries);
+}
+
+// Only read one key
+void CRedisClient::xreadgroup(
+        const std::string& groupname, const std::string& consumername,
+        const std::string& key, const std::vector<std::string>& ids,
+        int64_t count, int64_t block_milliseconds,
+        bool noack,
+        std::vector<StreamEntry>* values,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    std::vector<Stream> streams;
+    std::vector<std::string> keys(1);
+
+    keys[0] = key;
+    xreadgroup(groupname, consumername, keys, ids, count, block_milliseconds, noack, &streams, which, num_retries);
+    if (!streams.empty())
+        values->swap(streams[0].entries);
+}
+
+// Only read one key
+void CRedisClient::xreadgroup(
+        const std::string& groupname, const std::string& consumername,
+        const std::string& key,
+        int64_t count, int64_t block_milliseconds,
+        bool noack,
+        std::vector<StreamEntry>* values,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    std::vector<Stream> streams;
+    std::vector<std::string> keys(1);
+    std::vector<std::string> ids(1);
+
+    keys[0] = key;
+    ids[0] = ">";
+    xreadgroup(groupname, consumername, keys, ids, count, block_milliseconds, noack, &streams, which, num_retries);
+    if (!streams.empty())
+        values->swap(streams[0].entries);
+}
+
+// Reads more than one keys
+// XREAD [COUNT count] [BLOCK milliseconds] STREAMS key [key ...] ID [ID ...]
+void CRedisClient::xread(
+        const std::vector<std::string>& keys, const std::vector<std::string>& ids,
+        int64_t count, int64_t block_milliseconds,
+        std::vector<Stream>* values, Node* which, int num_retries) throw (CRedisException)
+{
+    if (keys.empty())
+    {
+        struct ErrorInfo errinfo;
+        errinfo.errtype = "ERR";
+        errinfo.errcode = ERROR_PARAMETER;
+        errinfo.raw_errmsg = "wrong number of arguments for 'xread' command";
+        errinfo.errmsg = format_string("[R3C_XPENDING][%s:%d] %s", __FILE__, __LINE__, errinfo.raw_errmsg.c_str());
+        THROW_REDIS_EXCEPTION(errinfo);
+    }
+    else if (keys.size() != ids.size())
+    {
+        struct ErrorInfo errinfo;
+        errinfo.errtype = "ERR";
+        errinfo.errcode = ERROR_PARAMETER;
+        errinfo.raw_errmsg = "unbalanced XREAD list of streams: for each stream key an ID or '$' must be specified";
+        errinfo.errmsg = format_string("[R3C_XPENDING][%s:%d] %s", __FILE__, __LINE__, errinfo.raw_errmsg.c_str());
+        THROW_REDIS_EXCEPTION(errinfo);
+    }
+    else if (cluster_mode() && keys_crossslots(keys))
+    {
+        struct ErrorInfo errinfo;
+        errinfo.errtype = "CROSSSLOT";
+        errinfo.errcode = ERROR_PARAMETER;
+        errinfo.raw_errmsg = "keys in request don't hash to the same slot";
+        errinfo.errmsg = format_string("[R3C_XPENDING][%s:%d] %s", __FILE__, __LINE__, errinfo.raw_errmsg.c_str());
+        THROW_REDIS_EXCEPTION(errinfo);
+    }
+    else
+    {
+        const std::string key = cluster_mode()? keys[0]: std::string("");
+        std::string value;
+        CommandArgs cmd_args;
+        cmd_args.add_arg("XREAD");
+        cmd_args.add_arg("COUNT");
+        cmd_args.add_arg(count);
+        if (block_milliseconds >= 0) // timeout is negative
+        {
+            cmd_args.add_arg("BLOCK");
+            cmd_args.add_arg(block_milliseconds);
+        }
+        cmd_args.add_arg("STREAMS");
+        cmd_args.add_args(keys);
+        cmd_args.add_args(ids);
+        cmd_args.final();
+
+        const RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
+        get_values(redis_reply.get(), values);
+    }
+}
+
+// Reads more than one keys
+void CRedisClient::xread(
+        const std::vector<std::string>& keys, const std::vector<std::string>& ids,
+        int64_t count,
+        std::vector<Stream>* values, Node* which, int num_retries) throw (CRedisException)
+{
+    const int64_t block_milliseconds = -1; // -1 means, no BLOCK argument given
+    xread(keys, ids, count, block_milliseconds, values, which, num_retries);
+}
+
+// Reads more than one keys
+void CRedisClient::xread(
+        const std::vector<std::string>& keys, const std::vector<std::string>& ids,
+        std::vector<Stream>* values, Node* which, int num_retries) throw (CRedisException)
+{
+    const int64_t count = 0;
+    const int64_t block_milliseconds = -1; // -1 means, no BLOCK argument given
+    xread(keys, ids, count, block_milliseconds, values, which, num_retries);
+}
+
+// Only read one key
+void CRedisClient::xread(
+        const std::string& key, const std::vector<std::string>& ids,
+        int64_t count, int64_t block_milliseconds,
+        std::vector<StreamEntry>* values,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    std::vector<Stream> streams;
+    std::vector<std::string> keys(1);
+
+    keys[0] = key;
+    xread(keys, ids, count, block_milliseconds, &streams, which, num_retries);
+    if (!streams.empty())
+        values->swap(streams[0].entries);
+}
+
+// Only read one key
+void CRedisClient::xread(
+        const std::string& key,
+        int64_t count, int64_t block_milliseconds,
+        std::vector<StreamEntry>* values,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    std::vector<Stream> streams;
+    std::vector<std::string> keys(1);
+    std::vector<std::string> ids(1);
+
+    keys[0] = key;
+    ids[0] = ">";
+    xread(keys, ids, count, block_milliseconds, &streams, which, num_retries);
+    if (!streams.empty())
+        values->swap(streams[0].entries);
+}
+
+// XDEL <key> [<ID1> <ID2> ... <IDN>]
+int CRedisClient::xdel(const std::string& key, const std::vector<std::string>& ids, Node* which, int num_retries) throw (CRedisException)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XDEL");
+    cmd_args.add_arg(key);
+    cmd_args.add_args(ids);
+    cmd_args.final();
+
+    // Integer reply: the number of entries actually deleted.
+    const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+    if (REDIS_REPLY_INTEGER == redis_reply->type)
+        return static_cast<int>(redis_reply->integer);
+    return 0;
+}
+
+int CRedisClient::xdel(const std::string& key, const std::string& id, Node* which, int num_retries) throw (CRedisException)
+{
+    std::vector<std::string> ids(1);
+    ids[0] = id;
+    return xdel(key, ids, which, num_retries);
+}
+
+// XTRIM key MAXLEN [~] count
+int64_t CRedisClient::xtrim(const std::string& key, int64_t maxlen, char c, Node* which, int num_retries) throw (CRedisException)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XTRIM");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg("MAXLEN");
+    cmd_args.add_arg(c);
+    cmd_args.add_arg(maxlen);
+    cmd_args.final();
+
+    const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+    if (REDIS_REPLY_INTEGER == redis_reply->type)
+        return static_cast<int>(redis_reply->integer);
+    return 0;
+}
+
+int64_t CRedisClient::xtrim(const std::string& key, int64_t maxlen, Node* which, int num_retries) throw (CRedisException)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XTRIM");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg("MAXLEN");
+    cmd_args.add_arg(maxlen);
+    cmd_args.final();
+
+    const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+    if (REDIS_REPLY_INTEGER == redis_reply->type)
+        return static_cast<int>(redis_reply->integer);
+    return 0;
+}
+
+// XLEN key
+int64_t CRedisClient::xlen(const std::string& key, Node* which, int num_retries) throw (CRedisException)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XLEN");
+    cmd_args.add_arg(key);
+    cmd_args.final();
+
+    // Integer reply: the number of entries of the stream at key.
+    const RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
+    if (REDIS_REPLY_INTEGER == redis_reply->type)
+        return static_cast<int>(redis_reply->integer);
+    return 0;
+}
+
+// XRANGE key start end [COUNT count]
+void CRedisClient::xrange(
+        const std::string& key,
+        const std::string& start, const std::string& end, int64_t count,
+        std::vector<StreamEntry>* values,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XRANGE");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(start);
+    cmd_args.add_arg(end);
+    if (count >= 0)
+    {
+        cmd_args.add_arg("COUNT");
+        cmd_args.add_arg(count);
+    }
+    cmd_args.final();
+
+    const RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
+    get_values(redis_reply.get(), values);
+}
+
+void CRedisClient::xrange(
+        const std::string& key,
+        const std::string& start, const std::string& end,
+        std::vector<StreamEntry>* values,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    const int64_t count = -1;
+    xrange(key, start, end, count, values, which, num_retries);
+}
+
+// XREVRANGE key end start [COUNT count]
+void CRedisClient::xrevrange(
+        const std::string& key,
+        const std::string& end, const std::string& start, int64_t count,
+        std::vector<StreamEntry>* values,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XRANGE");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(end);
+    cmd_args.add_arg(start);
+    if (count >= 0)
+    {
+        cmd_args.add_arg("COUNT");
+        cmd_args.add_arg(count);
+    }
+    cmd_args.final();
+
+    const RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
+    get_values(redis_reply.get(), values);
+}
+
+void CRedisClient::xrevrange(
+        const std::string& key,
+        const std::string& end, const std::string& start,
+        std::vector<StreamEntry>* values,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    const int64_t count = -1;
+    xrevrange(key, start, end, count, values, which, num_retries);
+}
+
+// PEL: Pending Entries List (待处理条目列表)
+// XPENDING <key> <group> [<start> <stop> <count> [<consumer>]]
+int CRedisClient::xpending(
+        const std::string& key, const std::string& groupname,
+        const std::string& start, const std::string& end, int count, const std::string& consumer,
+        std::vector<struct DetailedPending>* pendings,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    if (start.empty() || end.empty() || consumer.empty())
+    {
+        struct ErrorInfo errinfo;
+        errinfo.errtype = "ERR";
+        errinfo.raw_errmsg = "wrong number of arguments for 'xpending' command";
+        errinfo.errmsg = format_string("[R3C_XPENDING][%s:%d] %s", __FILE__, __LINE__, errinfo.raw_errmsg.c_str());
+        THROW_REDIS_EXCEPTION(errinfo);
+    }
+    else
+    {
+        CommandArgs cmd_args;
+        cmd_args.add_arg("XPENDING");
+        cmd_args.add_arg(key);
+        cmd_args.add_arg(groupname);
+        // 如果指定了start，则end和count也必须指定，否则会报错“syntax error”
+        cmd_args.add_arg(start); // -
+        cmd_args.add_arg(end); // +
+        cmd_args.add_arg(count);
+        if (!consumer.empty())
+            cmd_args.add_arg(consumer);
+        cmd_args.final();
+
+        // The command returns data in different format depending on the way it is called,
+        // as previously explained in this page. However the reply is always an array of items.
+        const RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
+        return get_values(redis_reply.get(), pendings);
+    }
+}
+
+int CRedisClient::xpending(
+        const std::string& key, const std::string& groupname,
+        const std::string& start, const std::string& end, int count,
+        std::vector<struct DetailedPending>* pendings,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    const std::string consumer;
+    return xpending(key, groupname, start, end, count, consumer, pendings, which, num_retries);
+}
+
+int CRedisClient::xpending(
+        const std::string& key, const std::string& groupname,
+        struct GroupPending* groups,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XPENDING");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(groupname);
+    cmd_args.final();
+
+    const RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
+    return get_values(redis_reply.get(), groups);
+}
+
+// Gets ownership of one or multiple messages in the Pending Entries List
+// of a given stream consumer group.
+//
+// If the message ID (among the specified ones) exists, and its idle
+// time greater or equal to <min-idle-time>, then the message new owner
+// becomes the specified <consumer>. If the minimum idle time specified
+// is zero, messages are claimed regardless of their idle time.
+//
+// All the messages that cannot be found inside the pending entries list
+// are ignored, but in case the FORCE option is used. In that case we
+// create the NACK (representing a not yet acknowledged message) entry in
+// the consumer group PEL.
+//
+// This command creates the consumer as side effect if it does not yet
+// exists. Moreover the command reset the idle time of the message to 0,
+// even if by using the IDLE or TIME options, the user can control the
+// new idle time.
+//
+// IDLE(IDLE和TIME为二选一关系):
+// Set the idle time (last time it was delivered) of the message.
+// If IDLE is not specified, an IDLE of 0 is assumed, that is,
+// the time count is reset because the message has now a new
+// owner trying to process it.
+//
+// TIME(IDLE和TIME为二选一关系):
+// This is the same as IDLE but instead of a relative amount of
+// milliseconds, it sets the idle time to a specific unix time
+// (in milliseconds). This is useful in order to rewrite the AOF
+// file generating XCLAIM commands.
+//
+// RETRYCOUNT:
+// Set the retry counter to the specified value. This counter is
+// incremented every time a message is delivered again. Normally
+// XCLAIM does not alter this counter, which is just served to clients
+// when the XPENDING command is called: this way clients can detect
+// anomalies, like messages that are never processed for some reason
+// after a big number of delivery attempts.
+//
+// FORCE:
+// Creates the pending message entry in the PEL even if certain
+// specified IDs are not already in the PEL assigned to a different
+// client. However the message must be exist in the stream, otherwise
+// the IDs of non existing messages are ignored.
+//
+// JUSTID:
+// Return just an array of IDs of messages successfully claimed,
+// without returning the actual message.
+//
+// LASTID:
+// Update the consumer group last ID with the specified ID if the
+// current last ID is smaller than the provided one.
+// This is used for replication / AOF, so that when we read from a
+// consumer group, the XCLAIM that gets propagated to give ownership
+// to the consumer, is also used in order to update the group current
+// ID.
+//
+// XCLAIM <key> <group> <consumer> <min-idle-time> <ID-1> <ID-2>
+//        [IDLE <milliseconds>] [TIME <mstime>] [RETRYCOUNT <count>] [FORCE] [JUSTID]
+// 改变待处理消息的所有权， 因此新的所有者是在命令参数中指定的消费者
+void CRedisClient::xclaim(
+        const std::string& key, const std::string& groupname, const std::string& consumer,
+        int64_t minidle, const std::vector<std::string>& ids,
+        int64_t idletime, int64_t unixtime, int64_t retrycount, bool force,
+        std::vector<StreamEntry>* values,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    if (ids.empty())
+    {
+        struct ErrorInfo errinfo;
+        errinfo.errtype = "ERR";
+        errinfo.raw_errmsg = "wrong number of arguments for 'xclaim' command";
+        errinfo.errmsg = format_string("[R3C_XPENDING][%s:%d] %s", __FILE__, __LINE__, errinfo.raw_errmsg.c_str());
+        THROW_REDIS_EXCEPTION(errinfo);
+    }
+    else
+    {
+        CommandArgs cmd_args;
+        cmd_args.add_arg("XCLAIM");
+        cmd_args.add_arg(key);
+        cmd_args.add_arg(groupname);
+        cmd_args.add_arg(consumer);
+        if (minidle >= 0)
+        {
+            cmd_args.add_arg(minidle);
+        }
+        if (!ids.empty())
+        {
+            cmd_args.add_args(ids);
+        }
+        if (idletime >= 0)
+        {
+            cmd_args.add_arg("IDLE");
+            cmd_args.add_arg(idletime);
+        }
+        if (unixtime >= 0)
+        {
+            cmd_args.add_arg("TIME");
+            cmd_args.add_arg(unixtime);
+        }
+        if (retrycount >= 0)
+        {
+            cmd_args.add_arg(retrycount);
+        }
+        if (force)
+        {
+            cmd_args.add_arg("FORCE");
+        }
+        //cmd_args.add_arg("JUSTID");
+        cmd_args.final();
+
+        // Returns all the messages successfully claimed, in the same format as XRANGE.
+        // However if the JUSTID option was specified,
+        // only the message IDs are reported, without including the actual message.
+        const RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
+        get_values(redis_reply.get(), values);
+    }
+}
+
+void CRedisClient::xclaim(
+        const std::string& key, const std::string& groupname, const std::string& consumer,
+        int64_t minidle, const std::vector<std::string>& ids,
+        std::vector<StreamEntry>* values,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    const int64_t idletime = -1;
+    const int64_t unixtime = -1;
+    const int64_t retrycount = -1;
+    bool force = false;
+    xclaim(key, groupname, consumer, minidle, ids, idletime, unixtime, retrycount, force, values, which, num_retries);
+}
+
+void CRedisClient::xclaim(
+        const std::string& key, const std::string& groupname, const std::string& consumer,
+        int64_t minidle, const std::vector<std::string>& ids,
+        int64_t idletime, int64_t unixtime, int64_t retrycount,
+        bool force,
+        std::vector<std::string>* values,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    if (ids.empty())
+    {
+        struct ErrorInfo errinfo;
+        errinfo.errtype = "ERR";
+        errinfo.raw_errmsg = "wrong number of arguments for 'xclaim' command";
+        errinfo.errmsg = format_string("[R3C_XPENDING][%s:%d] %s", __FILE__, __LINE__, errinfo.raw_errmsg.c_str());
+        THROW_REDIS_EXCEPTION(errinfo);
+    }
+    else
+    {
+        CommandArgs cmd_args;
+        cmd_args.add_arg("XCLAIM");
+        cmd_args.add_arg(key);
+        cmd_args.add_arg(groupname);
+        cmd_args.add_arg(consumer);
+        if (minidle >= 0)
+        {
+            cmd_args.add_arg(minidle);
+        }
+        if (!ids.empty())
+        {
+            cmd_args.add_args(ids);
+        }
+        if (idletime >= 0)
+        {
+            cmd_args.add_arg("IDLE");
+            cmd_args.add_arg(idletime);
+        }
+        if (unixtime >= 0)
+        {
+            cmd_args.add_arg("TIME");
+            cmd_args.add_arg(unixtime);
+        }
+        if (retrycount >= 0)
+        {
+            cmd_args.add_arg(retrycount);
+        }
+        if (force)
+        {
+            cmd_args.add_arg("FORCE");
+        }
+        cmd_args.add_arg("JUSTID");
+        cmd_args.final();
+
+        // Returns all the messages successfully claimed, in the same format as XRANGE.
+        // However if the JUSTID option was specified,
+        // only the message IDs are reported, without including the actual message.
+        const RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
+        get_values(redis_reply.get(), values);
+    }
+}
+
+void CRedisClient::xclaim(
+        const std::string& key, const std::string& groupname, const std::string& consumer,
+        int64_t minidle, const std::vector<std::string>& ids,
+        std::vector<std::string>* values,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    const int64_t idletime = -1;
+    const int64_t unixtime = -1;
+    const int64_t retrycount = -1;
+    bool force = false;
+    xclaim(key, groupname, consumer, minidle, ids, idletime, unixtime, retrycount, force, values, which, num_retries);
+}
+
+// Show consumer groups of group <groupname>.
+// XINFO CONSUMERS <key> <group>
+int CRedisClient::xinfo_consumers(
+        const std::string& key, const std::string& groupname,
+        std::vector<struct ConsumerInfo>* infos,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XINFO");
+    cmd_args.add_arg("CONSUMERS");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(groupname);
+    cmd_args.final();
+
+    const RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
+    return get_values(redis_reply.get(), infos);
+}
+
+// Show the stream consumer groups.
+// XINFO GROUPS <key>
+int CRedisClient::xinfo_groups(
+        const std::string& key,
+        std::vector<struct GroupInfo>* infos,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XINFO");
+    cmd_args.add_arg("GROUPS");
+    cmd_args.add_arg(key);
+    cmd_args.final();
+
+    const RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
+    return get_values(redis_reply.get(), infos);
+}
+
+// Show information about the stream.
+// XINFO STREAM <key>
+void CRedisClient::xinfo_stream(
+        const std::string& key,
+        struct StreamInfo* info,
+        Node* which, int num_retries) throw (CRedisException)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("XINFO");
+    cmd_args.add_arg("STREAM");
+    cmd_args.add_arg(key);
+    cmd_args.final();
+
+    const RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
+    get_value(redis_reply.get(), info);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 const RedisReplyHelper
 CRedisClient::redis_command(
         bool readonly, int num_retries,
-        const std::string& key, const CommandArgs& command_args,
+        const std::string& key,
+        const CommandArgs& command_args,
         Node* which)
 {
     Node node;
@@ -2965,6 +3878,9 @@ CRedisClient::redis_command(
             redis_reply = (redisReply*)redisCommandArgv(
                     redis_node->get_redis_context(),
                     command_args.get_argc(), command_args.get_argv(), command_args.get_argvlen());
+#if R3C_TEST // for test
+            debug_redis_reply(command_args.get_command(), redis_reply.get());
+#endif // R3C_TEST==1
             if (!redis_reply)
                 errcode = handle_redis_command_error(redis_node, command_args, &errinfo);
             else
@@ -4107,6 +5023,407 @@ int CRedisClient::get_values(const redisReply* redis_reply, std::vector<int64_t>
     }
 
     return static_cast<int>(redis_reply->elements);
+}
+
+// Example:
+//
+// [0]XREADGROUP
+//   [0:0]REPLY_ARRAY(2)
+//     [1:0]REPLY_STRING: topic0
+//     [1:1]REPLY_ARRAY(2)
+//       [2:0]REPLY_ARRAY(2)
+//         [3:0]REPLY_STRING: 1547510218547-0
+//         [3:1]REPLY_ARRAY(6)
+//           [4:0]REPLY_STRING: field00
+//           [4:1]REPLY_STRING: value00
+//           [4:2]REPLY_STRING: field01
+//           [4:3]REPLY_STRING: value01
+//           [4:4]REPLY_STRING: field02
+//           [4:5]REPLY_STRING: value02
+//       [2:1]REPLY_ARRAY(2)
+//         [3:0]REPLY_STRING: 1547510237790-0
+//         [3:1]REPLY_ARRAY(6)
+//           [4:0]REPLY_STRING: field00
+//           [4:1]REPLY_STRING: value00
+//           [4:2]REPLY_STRING: field01
+//           [4:3]REPLY_STRING: value01
+//           [4:4]REPLY_STRING: field02
+//           [4:5]REPLY_STRING: value02
+//   [0:1]REPLY_ARRAY(2)
+//     [1:0]REPLY_STRING: topic1
+//     [1:1]REPLY_ARRAY(2)
+//       [2:0]REPLY_ARRAY(2)
+//         [3:0]REPLY_STRING: 1547510218547-0
+//         [3:1]REPLY_ARRAY(6)
+//           [4:0]REPLY_STRING: field10
+//           [4:1]REPLY_STRING: value10
+//           [4:2]REPLY_STRING: field11
+//           [4:3]REPLY_STRING: value11
+//           [4:4]REPLY_STRING: field12
+//           [4:5]REPLY_STRING: value12
+//       [2:1]REPLY_ARRAY(2)
+//         [3:0]REPLY_STRING: 1547510237790-0
+//         [3:1]REPLY_ARRAY(6)
+//           [4:0]REPLY_STRING: field10
+//           [4:1]REPLY_STRING: value10
+//           [4:2]REPLY_STRING: field11
+//           [4:3]REPLY_STRING: value11
+//           [4:4]REPLY_STRING: field12
+//           [4:5]REPLY_STRING: value12
+int CRedisClient::get_values(const redisReply* redis_reply, std::vector<Stream>* values)
+{
+    R3C_ASSERT(REDIS_REPLY_NIL==redis_reply->type || REDIS_REPLY_ARRAY==redis_reply->type);
+
+    if (NULL == values)
+    {
+        return -1;
+    }
+    if (REDIS_REPLY_NIL == redis_reply->type)
+    {
+        return 0;
+    }
+    else
+    {
+        const size_t num_keys = redis_reply->elements;
+        std::vector<Stream>& streams = *values;
+
+        streams.resize(num_keys);
+        for (size_t i=0; i<num_keys; ++i) // Traversing all keys
+        {
+            const redisReply* key_redis_reply = redis_reply->element[i];
+            const redisReply* keyname_redis_reply = key_redis_reply->element[0];
+            const redisReply* entries_redis_reply = key_redis_reply->element[1];
+            const size_t num_entries = entries_redis_reply->elements;
+            Stream& stream = streams[i];
+
+            stream.key.assign(keyname_redis_reply->str, keyname_redis_reply->len);
+            stream.entries.resize(num_entries);
+            for (size_t j=0; j<num_entries; ++j) // Traversing all entries
+            {
+                const redisReply* entry_redis_reply = entries_redis_reply->element[j]; // ID
+                const redisReply* id_redis_reply = entry_redis_reply->element[0];
+                const redisReply* fvpairs_redis_reply = entry_redis_reply->element[1];
+                StreamEntry& entry = stream.entries[j];
+
+                entry.id.assign(id_redis_reply->str, id_redis_reply->len);
+                entry.fvpairs.resize(fvpairs_redis_reply->elements/2);
+                for (size_t k=0,h=0; k<fvpairs_redis_reply->elements; k+=2,++h) // Traversing all field-value pairs
+                {
+                    const redisReply* field_redis_reply = fvpairs_redis_reply->element[k]; // Field
+                    const redisReply* value_redis_reply = fvpairs_redis_reply->element[k+1]; // Value
+                    FVPair& fvpair = entry.fvpairs[h];
+
+                    fvpair.field.assign(field_redis_reply->str, field_redis_reply->len);
+                    fvpair.value.assign(value_redis_reply->str, value_redis_reply->len);
+                }
+            }
+        }
+
+        return static_cast<int>(num_keys);
+    }
+}
+
+// [0]XRANGE
+//   [0:0]REPLY_ARRAY(2)
+//     [1:0]REPLY_STRING: 1547557754696-0
+//     [1:1]REPLY_ARRAY(6)
+//       [2:0]REPLY_STRING: field00
+//       [2:1]REPLY_STRING: value00
+//       [2:2]REPLY_STRING: field01
+//       [2:3]REPLY_STRING: value01
+//       [2:4]REPLY_STRING: field02
+//       [2:5]REPLY_STRING: value02
+//   [0:1]REPLY_ARRAY(2)
+//     [1:0]REPLY_STRING: 1547557754697-0
+//     [1:1]REPLY_ARRAY(6)
+//       [2:0]REPLY_STRING: field10
+//       [2:1]REPLY_STRING: value10
+//       [2:2]REPLY_STRING: field11
+//       [2:3]REPLY_STRING: value11
+//       [2:4]REPLY_STRING: field12
+//       [2:5]REPLY_STRING: value12
+int CRedisClient::get_values(const redisReply* redis_reply, std::vector<StreamEntry>* values)
+{
+    R3C_ASSERT(REDIS_REPLY_NIL==redis_reply->type || REDIS_REPLY_ARRAY==redis_reply->type);
+
+    if (NULL == values)
+    {
+        return -1;
+    }
+    if (REDIS_REPLY_NIL == redis_reply->type)
+    {
+        return 0;
+    }
+    else
+    {
+        const size_t num_entries = redis_reply->elements;
+        std::vector<StreamEntry>& values_ref = *values;
+
+        values_ref.resize(num_entries);
+        for (size_t j=0; j<num_entries; ++j) // Traversing all IDs
+        {
+            const redisReply* idname_redis_reply = redis_reply->element[j]->element[0];
+            const redisReply* values_redis_reply = redis_reply->element[j]->element[1];
+            StreamEntry& entry = values_ref[j];
+
+            entry.id.assign(idname_redis_reply->str, idname_redis_reply->len);
+            entry.fvpairs.resize(values_redis_reply->elements/2);
+            for (size_t k=0,h=0; k<values_redis_reply->elements; k+=2,++h) // Traversing all values
+            {
+                const redisReply* field_redis_reply = values_redis_reply->element[k]; // Field
+                const redisReply* value_redis_reply = values_redis_reply->element[k+1]; // Value
+                FVPair& fvpair = entry.fvpairs[h];
+
+                fvpair.field.assign(field_redis_reply->str, field_redis_reply->len);
+                fvpair.value.assign(value_redis_reply->str, value_redis_reply->len);
+            }
+        }
+
+        return static_cast<int>(num_entries);
+    }
+}
+
+// [0]XPENDING
+//   [0]REPLY_ARRAY(3)
+//     [0:0]REPLY_ARRAY(4)
+//         [1:0]REPLY_STRING: 1547876607592-0 // The ID of the message
+//         [1:1]REPLY_STRING: c4 // The name of the consumer that fetched the message and has still to acknowledge it. We call it the current owner of the message..
+//         [1:2]REPLY_INTEGER: 16473367 // The number of milliseconds that elapsed since the last time this message was delivered to this consumer.
+//         [1:3]REPLY_INTEGER: 1 // The number of times this message was delivered
+//     [0:1]REPLY_ARRAY(4)
+//         [1:0]REPLY_STRING: 1547882190860-0
+//         [1:1]REPLY_STRING: c4
+//         [1:2]REPLY_INTEGER: 10891814
+//         [1:3]REPLY_INTEGER: 1
+//     [0:2]REPLY_ARRAY(4)
+//         [1:0]REPLY_STRING: 1547882232235-0
+//         [1:1]REPLY_STRING: c4
+//         [1:2]REPLY_INTEGER: 10852378
+//         [1:3]REPLY_INTEGER: 1
+int CRedisClient::get_values(const redisReply* redis_reply, std::vector<struct DetailedPending>* pendings)
+{
+    const int num_pendings = static_cast<int>(redis_reply->elements);
+
+    pendings->resize(num_pendings);
+    for (int i=0; i<num_pendings; ++i)
+    {
+        const redisReply* entry_redis_reply = redis_reply->element[i];
+        const redisReply* redis_reply0 = entry_redis_reply->element[0]; // The ID of the message
+        const redisReply* redis_reply1 = entry_redis_reply->element[1]; // The name of the consumer
+        const redisReply* redis_reply2 = entry_redis_reply->element[2]; // The number of milliseconds that elapsed since the last time this message was delivered to this consumer.
+        const redisReply* redis_reply3 = entry_redis_reply->element[3]; // The number of times this message was delivered
+        struct DetailedPending& pending = (*pendings)[i];
+
+        pending.id.assign(redis_reply0->str, redis_reply0->len);
+        pending.consumer.assign(redis_reply1->str, redis_reply1->len);
+        pending.elapsed = static_cast<int64_t>(redis_reply2->integer);
+        pending.delivered = static_cast<int64_t>(redis_reply3->integer);
+    }
+
+    return num_pendings;
+}
+
+// [0]XPENDING
+//   [0]REPLY_ARRAY(4)
+//     [0:0]REPLY_INTEGER: 4
+//     [0:1]REPLY_STRING: 1547875178362-0
+//     [0:2]REPLY_STRING: 1547876607592-0
+//     [0:3]REPLY_ARRAY(4)
+//         [1:0]REPLY_ARRAY(2)
+//             [2:0]REPLY_STRING: c1
+//             [2:1]REPLY_STRING: 1
+//         [1:1]REPLY_ARRAY(2)
+//             [2:0]REPLY_STRING: c2
+//             [2:1]REPLY_STRING: 1
+//         [1:2]REPLY_ARRAY(2)
+//             [2:0]REPLY_STRING: c3
+//             [2:1]REPLY_STRING: 1
+//         [1:3]REPLY_ARRAY(2)
+//             [2:0]REPLY_STRING: c4
+//             [2:1]REPLY_STRING: 1
+int CRedisClient::get_values(
+        const redisReply* redis_reply,
+        struct GroupPending* groups)
+{
+    const int num_consumers = static_cast<int>(redis_reply->elements);
+
+    const redisReply* redis_reply0 = redis_reply->element[0]; // [0:0]REPLY_INTEGER: 4
+    const redisReply* redis_reply1 = redis_reply->element[1]; // start
+    const redisReply* redis_reply2 = redis_reply->element[2]; // end
+    const redisReply* redis_reply3 = redis_reply->element[3];
+
+    groups->start.assign(redis_reply1->str, redis_reply1->len);
+    groups->end.assign(redis_reply2->str, redis_reply2->len);
+    groups->consumers.resize(num_consumers);
+    for (int i=0; i<num_consumers; ++i)
+    {
+        const redisReply* consumer_redis_reply = redis_reply3->element[i];
+        const redisReply* consumer_name_redis_reply = consumer_redis_reply->element[0]; // consumer name
+        const redisReply* consumer_number_redis_reply = consumer_redis_reply->element[1]; // number
+        const std::string num_str(consumer_number_redis_reply->str, consumer_number_redis_reply->len);
+
+        ConsumerPending& consumer = groups->consumers[i];
+        consumer.name.assign(consumer_name_redis_reply->str, consumer_name_redis_reply->len);
+        string2int(consumer_number_redis_reply->str, consumer_number_redis_reply->len, &consumer.count);
+    }
+
+    groups->count = static_cast<int>(redis_reply0->integer);
+    return groups->count;
+}
+
+// Called by xinfo_consumers
+int CRedisClient::get_values(const redisReply* redis_reply, std::vector<struct ConsumerInfo>* infos)
+{
+    const int num_consumers = static_cast<int>(redis_reply->elements);
+
+    if (num_consumers > 0)
+    {
+        infos->resize(num_consumers);
+        for (int i=0; i<num_consumers; ++i)
+        {
+            const redisReply* redis_reply0 = redis_reply->element[0];
+            const redisReply* redis_reply1 = redis_reply->element[1];
+            const redisReply* redis_reply2 = redis_reply->element[2];
+            struct ConsumerInfo& info = (*infos)[i];
+            info.name.assign(redis_reply0->str, redis_reply0->len);
+            info.pendings = static_cast<int>(redis_reply1->integer);
+            info.idletime = static_cast<int64_t>(redis_reply2->integer);
+        }
+    }
+    return num_consumers;
+}
+
+// [0]XINFO
+//   [0]REPLY_ARRAY(1)
+//     [0:0]REPLY_ARRAY(8)
+//         [1:0]REPLY_STRING: name
+//         [1:1]REPLY_STRING: g1
+//         [1:2]REPLY_STRING: consumers
+//         [1:3]REPLY_INTEGER: 0
+//         [1:4]REPLY_STRING: pending
+//         [1:5]REPLY_INTEGER: 0
+//         [1:6]REPLY_STRING: last-delivered-id
+//         [1:7]REPLY_STRING: 1547905982459-0
+//
+// Called by xinfo_groups
+int CRedisClient::get_values(const redisReply* redis_reply, std::vector<struct GroupInfo>* infos)
+{
+    const int num_groups = static_cast<int>(redis_reply->elements);
+
+    if (num_groups > 0)
+    {
+        infos->resize(num_groups);
+        for (int i=0; i<num_groups; ++i)
+        {
+            const redisReply* info_redis_reply = redis_reply->element[i];
+
+            if (8 == info_redis_reply->elements)
+            {
+                (*infos)[i].name.assign(info_redis_reply->element[1]->str, info_redis_reply->element[1]->len); // group name
+                (*infos)[i].consumers = static_cast<int>(info_redis_reply->element[3]->integer); // number of consumers
+                (*infos)[i].consumers = static_cast<int>(info_redis_reply->element[5]->integer); // number of pendings
+                (*infos)[i].name.assign(info_redis_reply->element[7]->str, info_redis_reply->element[7]->len); // last-delivered-id
+            }
+        }
+    }
+    return num_groups;
+}
+
+// [0]XINFO
+//   [0]REPLY_ARRAY(14)
+//     [0:0]REPLY_STRING: length
+//     [0:1]REPLY_INTEGER: 1
+//     [0:2]REPLY_STRING: radix-tree-keys
+//     [0:3]REPLY_INTEGER: 1
+//     [0:4]REPLY_STRING: radix-tree-nodes
+//     [0:5]REPLY_INTEGER: 2
+//     [0:6]REPLY_STRING: groups
+//     [0:7]REPLY_INTEGER: 1
+//     [0:8]REPLY_STRING: last-generated-id
+//     [0:9]REPLY_STRING: 1547905982459-0
+//     [0:10]REPLY_STRING: first-entry
+//     [0:11]REPLY_ARRAY(2)
+//         [1:0]REPLY_STRING: 1547905982459-0
+//         [1:1]REPLY_ARRAY(10)
+//             [2:0]REPLY_STRING: f0
+//             [2:1]REPLY_STRING: v0
+//             [2:2]REPLY_STRING: f1
+//             [2:3]REPLY_STRING: v1
+//             [2:4]REPLY_STRING: f2
+//             [2:5]REPLY_STRING: v2
+//             [2:6]REPLY_STRING: f3
+//             [2:7]REPLY_STRING: v3
+//             [2:8]REPLY_STRING: f4
+//             [2:9]REPLY_STRING: v4
+//     [0:12]REPLY_STRING: last-entry
+//     [0:13]REPLY_ARRAY(2)
+//         [1:0]REPLY_STRING: 1547905982459-0
+//         [1:1]REPLY_ARRAY(10)
+//             [2:0]REPLY_STRING: f0
+//             [2:1]REPLY_STRING: v0
+//             [2:2]REPLY_STRING: f1
+//             [2:3]REPLY_STRING: v1
+//             [2:4]REPLY_STRING: f2
+//             [2:5]REPLY_STRING: v2
+//             [2:6]REPLY_STRING: f3
+//             [2:7]REPLY_STRING: v3
+//             [2:8]REPLY_STRING: f4
+//             [2:9]REPLY_STRING: v4
+//
+// Called by xinfo_stream
+void CRedisClient::get_value(const redisReply* redis_reply, struct StreamInfo* info)
+{
+    //redis_reply->element[0]; // "length"
+    info->entries = static_cast<int>(redis_reply->element[1]->integer); // value of length
+    //redis_reply->element[2]; // "radix-tree-keys"
+    info->radix_tree_keys = static_cast<int>(redis_reply->element[3]->integer); // value of "radix-tree-keys"
+    //redis_reply->element[4]; // "radix-tree-nodes"
+    info->radix_tree_nodes = static_cast<int>(redis_reply->element[5]->integer); // value of "radix-tree-nodes"
+    //redis_reply->element[6]; // "groups"
+    info->groups = static_cast<int>(redis_reply->element[7]->integer); // value of "groups"
+    //redis_reply->element[8]; // "last-generated-id"
+    info->last_generated_id.assign(redis_reply->element[9]->str, redis_reply->element[9]->len); // value of "last-generated-id"
+
+    if (redis_reply->elements >= 14)
+    {
+        const redisReply* first_entry_redis_reply = redis_reply->element[11];
+        const redisReply* last_entry_redis_reply = redis_reply->element[13];
+        get_entry(first_entry_redis_reply, &info->first_entry);
+        get_entry(last_entry_redis_reply, &info->last_entry);
+    }
+}
+
+// [0:11]REPLY_ARRAY(2)
+//     [1:0]REPLY_STRING: 1547905982459-0 // element[0]
+//     [1:1]REPLY_ARRAY(10)               // element[1]
+//         [2:0]REPLY_STRING: f0
+//         [2:1]REPLY_STRING: v0
+//         [2:2]REPLY_STRING: f1
+//         [2:3]REPLY_STRING: v1
+//         [2:4]REPLY_STRING: f2
+//         [2:5]REPLY_STRING: v2
+//         [2:6]REPLY_STRING: f3
+//         [2:7]REPLY_STRING: v3
+//         [2:8]REPLY_STRING: f4
+//         [2:9]REPLY_STRING: v4
+void CRedisClient::get_entry(const redisReply* entry_redis_reply, struct StreamEntry* entry)
+{
+    const redisReply* id_redis_reply = entry_redis_reply->element[0];
+    const redisReply* fvpairs_redis_reply = entry_redis_reply->element[1];
+    const int num_fvpairs = static_cast<int>(fvpairs_redis_reply->elements) / 2;
+
+    entry->id.assign(id_redis_reply->str, id_redis_reply->len);
+    entry->fvpairs.resize(num_fvpairs);
+    for (size_t i=0; i<fvpairs_redis_reply->elements; i+=2)
+    {
+        const redisReply* field_redis_reply = fvpairs_redis_reply->element[i];
+        const redisReply* value_redis_reply = fvpairs_redis_reply->element[i+1];
+        const size_t j = i / 2;
+        struct FVPair& fvpair = entry->fvpairs[j];
+
+        fvpair.field.assign(field_redis_reply->str, field_redis_reply->len);
+        fvpair.value.assign(value_redis_reply->str, value_redis_reply->len);
+    }
 }
 
 } // namespace r3c {

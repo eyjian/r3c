@@ -74,6 +74,94 @@ std::ostream& operator <<(std::ostream& os, const struct NodeInfo& node_info)
     return os;
 }
 
+std::ostream& operator <<(std::ostream& os, const std::vector<Stream>& streams)
+{
+    for (std::vector<Stream>::size_type i=0; i<streams.size(); ++i)
+    {
+        // key
+        const Stream& stream = streams[i];
+
+        os << stream.key << std::endl;
+        for (std::vector<StreamEntry>::size_type j=0; j<stream.entries.size(); ++j)
+        {
+            // entry
+            const StreamEntry& entry = stream.entries[j];
+            os << "\t" << entry.id << std::endl;
+
+            for (std::vector<FVPair>::size_type k=0; k<entry.fvpairs.size(); ++k)
+            {
+                // field-value pair
+                const FVPair& fvpair = entry.fvpairs[k];
+                os << "\t\t" << fvpair.field << " => " << fvpair.value << std::endl;
+            }
+        }
+    }
+
+    return os;
+}
+
+std::ostream& operator <<(std::ostream& os, const std::vector<r3c::StreamEntry>& entries)
+{
+    for (std::vector<r3c::StreamEntry>::size_type j=0; j<entries.size(); ++j)
+    {
+        const r3c::StreamEntry& entry = entries[j];
+        os << entry.id << std::endl;
+
+        for (std::vector<FVPair>::size_type k=0; k<entry.fvpairs.size(); ++k)
+        {
+            // field-value pair
+            const FVPair& fvpair = entry.fvpairs[k];
+            os << "\t\t" << fvpair.field << ": " << fvpair.value << std::endl;
+        }
+    }
+
+    return os;
+}
+
+std::ostream& operator <<(std::ostream& os, const struct StreamInfo& streaminfo)
+{
+    os << "Number of entries: " << streaminfo.entries << std::endl;
+    os << "Number of radix tree keys: " << streaminfo.radix_tree_keys << std::endl;
+    os << "Number of radix tree nodes: " << streaminfo.radix_tree_nodes << std::endl;
+    os << "Number of groups: " << streaminfo.groups << std::endl;
+    os << "Last generated id: " << streaminfo.last_generated_id << std::endl;
+
+    // first_entry
+    os << "First entry: " << streaminfo.first_entry.id << std::endl;
+    for (std::vector<struct FVPair>::size_type i=0; i<streaminfo.first_entry.fvpairs.size(); ++i)
+    {
+        const struct FVPair& fvpair = streaminfo.first_entry.fvpairs[i];
+        os << "\t" << fvpair.field << ": " << fvpair.value<< std::endl;
+    }
+
+    // last_entry
+    os << "Last entry: " << streaminfo.last_entry.id << std::endl;
+    for (std::vector<struct FVPair>::size_type i=0; i<streaminfo.last_entry.fvpairs.size(); ++i)
+    {
+        const struct FVPair& fvpair = streaminfo.last_entry.fvpairs[i];
+        os << "\t" << fvpair.field << ": " << fvpair.value << std::endl;
+    }
+
+    return os;
+}
+
+int extract_ids(const std::vector<StreamEntry>& entries, std::vector<std::string>* ids)
+{
+    const int num_ids = static_cast<int>(entries.size());
+
+    if (num_ids > 0)
+    {
+        ids->resize(num_ids);
+        for (int i=0; i<num_ids; ++i)
+        {
+            const StreamEntry& entry = entries[i];
+            (*ids)[i] = entry.id;
+        }
+    }
+
+    return num_ids;
+}
+
 void null_log_write(const char* UNUSED(format), ...)
 {
 }
@@ -110,7 +198,84 @@ std::string strsha1(const std::string& str)
     return result;
 }
 
-/* Copy from crc16.c
+void debug_redis_reply(const char* command, const redisReply* redis_reply, int depth, int index)
+{
+    if (0==depth && command!=NULL)
+    {
+        fprintf(stderr, "[%d]\033[0;32;31m%s\033[m\n", depth, command);
+    }
+    if (NULL == redis_reply)
+    {
+        fprintf(stderr, "[%d]REPLY_NULL\n", depth);
+    }
+    else
+    {
+        const std::string spaces((depth+1)*2, ' ');
+
+        if (REDIS_REPLY_NIL == redis_reply->type)
+        {
+            fprintf(stderr, "%s[%d]REPLY_NIL\n", spaces.c_str(), depth);
+        }
+        else if (REDIS_REPLY_STATUS == redis_reply->type)
+        {
+            fprintf(stderr, "%s[%d]REPLY_STATUS: %s\n", spaces.c_str(), depth, redis_reply->str);
+        }
+        else if (REDIS_REPLY_ERROR == redis_reply->type)
+        {
+            fprintf(stderr, "%s[%d]REPLY_ERROR: %s\n", spaces.c_str(), depth, redis_reply->str);
+        }
+        else if (REDIS_REPLY_INTEGER == redis_reply->type)
+        {
+            fprintf(stderr, "%s[%d]REPLY_INTEGER: %lld\n", spaces.c_str(), depth, redis_reply->integer);
+        }
+        else if (REDIS_REPLY_STRING == redis_reply->type)
+        {
+            fprintf(stderr, "%s[%d:%d]\033[0;32;32mREPLY_STRING\033[m: %.*s\n", spaces.c_str(), depth, index, redis_reply->len, redis_reply->str);
+        }
+        else if (REDIS_REPLY_ARRAY == redis_reply->type)
+        {
+            const int depth_ = depth + 1;
+
+            if (0==depth && command!=NULL)
+            {
+                fprintf(stderr, "%s[%d]REPLY_ARRAY(%zu)\n", spaces.c_str(), depth, redis_reply->elements);
+            }
+            for (size_t i=0; i<redis_reply->elements; ++i)
+            {
+                const struct redisReply* child_redis_reply = redis_reply->element[i];
+
+                if (REDIS_REPLY_ARRAY == child_redis_reply->type)
+                {
+                    fprintf(stderr, "%s%s[%d:%zu]\033[1;33mREPLY_ARRAY\033[m(%zu)\n", spaces.c_str(), spaces.c_str(), depth, i, child_redis_reply->elements);
+                    debug_redis_reply(NULL, child_redis_reply, depth_, i);
+                }
+                else if (REDIS_REPLY_INTEGER == child_redis_reply->type)
+                {
+                    fprintf(stderr, "%s%s[%d:%zu]REPLY_INTEGER: %lld\n", spaces.c_str(), spaces.c_str(), depth, i, child_redis_reply->integer);
+                }
+                else if (REDIS_REPLY_STRING == child_redis_reply->type ||
+                         REDIS_REPLY_STATUS == redis_reply->type)
+                {
+                    fprintf(stderr, "%s%s[%d:%zu]\033[0;32;32mREPLY_STRING\033[m: %.*s\n", spaces.c_str(), spaces.c_str(), depth, i, child_redis_reply->len, child_redis_reply->str);
+                }
+                else
+                {
+                    fprintf(stderr, "%s%s[%d:%zu]REPLY_UNKNOWN: %d\n", spaces.c_str(), spaces.c_str(), depth, i, redis_reply->type);
+                }
+            }
+        }
+        else
+        {
+            fprintf(stderr, "REPLY_UNKNOWN: %d\n", redis_reply->type);
+        }
+    }
+    if (command != NULL)
+    {
+        fprintf(stderr, "\n");
+    }
+}
+
+/* Copied from redis source code (crc16.c)
  *
  * CRC16 implementation according to CCITT standards.
  *
@@ -162,7 +327,7 @@ static const uint16_t crc16tab[256]= {
     0x6e17,0x7e36,0x4e55,0x5e74,0x2e93,0x3eb2,0x0ed1,0x1ef0
 };
 
-/* Copy from crc16.c
+/* Copied from redis source code (crc16.c)
  */
 uint16_t crc16(const char *buf, int len) {
     int counter;
@@ -172,7 +337,7 @@ uint16_t crc16(const char *buf, int len) {
     return crc;
 }
 
-/* Copy from crc64.c
+/* Copied from redis source code (crc64.c)
  */
 static const uint64_t crc64_tab[256] = {
     UINT64_C(0x0000000000000000), UINT64_C(0x7ad870c830358979),
@@ -305,6 +470,8 @@ static const uint64_t crc64_tab[256] = {
     UINT64_C(0x536fa08fdfd90e51), UINT64_C(0x29b7d047efec8728),
 };
 
+/* Copied from redis source code (crc64.c)
+ */
 uint64_t crc64(uint64_t crc, const unsigned char *s, uint64_t l) {
     uint64_t j;
 
@@ -315,7 +482,7 @@ uint64_t crc64(uint64_t crc, const unsigned char *s, uint64_t l) {
     return crc;
 }
 
-/* Copy from cluster.c
+/* Copied from redis source code (cluster.c)
  *
  * We have 16384 hash slots. The hash slot of a given key is obtained
  * as the least significant 14 bits of the crc16 of the key.
@@ -360,11 +527,29 @@ int get_key_slot(const std::string* key) {
     }
 }
 
+bool keys_crossslots(const std::vector<std::string>& keys)
+{
+    if (!keys.empty())
+    {
+        const int first_key_slot = get_key_slot(&keys[0]);
+        for (std::vector<std::string>::size_type i=1; i<keys.size(); ++i)
+        {
+            const int cur_key_slot = get_key_slot(&keys[i]);
+            if (cur_key_slot != first_key_slot)
+                return true;
+        }
+    }
+
+    return false;
+}
+
 void millisleep(int milliseconds)
 {
-#if SLEEP_USE_POLL==1
-    poll(NULL, 0, milliseconds); // 可能被中断提前结束
+#if SLEEP_USE_POLL
+    // 可配合libco协程库，但可能被中断提前结束而不足milliseconds
+    (void)poll(NULL, 0, milliseconds);
 #else
+    // 无法配合libco协程库
     struct timespec ts = { milliseconds / 1000, (milliseconds % 1000) * 1000000 };
     while ((-1 == nanosleep(&ts, &ts)) && (EINTR == errno));
 #endif
@@ -585,11 +770,11 @@ bool parse_moved_string(const std::string& moved_string, std::pair<std::string, 
     return false;
 }
 
-/* Copy from util.c
+/* Copied from redis source code (util.c)
  *
  * Return the number of digits of 'v' when converted to string in radix 10.
  * See ll2string() for more information. */
-uint32_t digits10(uint64_t v) {
+static uint32_t digits10(uint64_t v) {
     if (v < 10) return 1;
     if (v < 100) return 2;
     if (v < 1000) return 3;
@@ -609,7 +794,7 @@ uint32_t digits10(uint64_t v) {
     return 12 + digits10(v / UINT64_C(1000000000000));
 }
 
-/* Copy from util.c
+/* Copied from redis source code (util.c)
  *
  * Convert a long long into a string. Returns the number of
  * characters needed to represent the number.
@@ -622,7 +807,7 @@ uint32_t digits10(uint64_t v) {
  *
  * Modified in order to handle signed integers since the original code was
  * designed for unsigned integers. */
-int ll2string(char *dst, size_t dstlen, long long svalue) {
+static int ll2string(char *dst, size_t dstlen, long long svalue) {
     static const char digits[201] =
         "0001020304050607080910111213141516171819"
         "2021222324252627282930313233343536373839"
@@ -676,7 +861,7 @@ int ll2string(char *dst, size_t dstlen, long long svalue) {
     return length;
 }
 
-/* Copy from util.c
+/* Copied from redis source code (util.c)
  *
  * Convert a string into a long long. Returns 1 if the string could be parsed
  * into a (non-overflowing) long long, 0 otherwise. The value will be set to
@@ -690,7 +875,7 @@ int ll2string(char *dst, size_t dstlen, long long svalue) {
  * Because of its strictness, it is safe to use this function to check if
  * you can convert a string into a long long, and obtain back the string
  * from the number without any loss in the string representation. */
-int string2ll(const char *s, size_t slen, long long *value) {
+static int string2ll(const char *s, size_t slen, long long *value) {
     const char *p = s;
     size_t plen = 0;
     int negative = 0;
@@ -788,6 +973,38 @@ std::string int2string(uint32_t n)
 std::string int2string(uint16_t n)
 {
     return int2string(static_cast<uint64_t>(n));
+}
+
+bool string2int(const char* s, size_t len, int64_t* val, int64_t errval)
+{
+    long long llval = 0;
+    if (1 == string2ll(s, len, &llval))
+    {
+        *val = static_cast<int64_t>(llval);
+        return true;
+    }
+    else
+    {
+        *val = errval;
+        return false;
+    }
+}
+
+bool string2int(const char* s, size_t len, int32_t* val, int32_t errval)
+{
+    const int64_t errval64 = errval;
+    int64_t val64 = 0;
+
+    if (string2int(s, len, &val64, errval64))
+    {
+        *val = static_cast<int32_t>(val64);
+        return true;
+    }
+    else
+    {
+        *val = errval;
+        return false;
+    }
 }
 
 uint64_t get_random_number(uint64_t base)
