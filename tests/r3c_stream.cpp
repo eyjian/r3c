@@ -242,7 +242,7 @@ static void testcase5(r3c::CRedisClient& redis)
     fprintf(stdout, "COUNT:%d\n", groups.count);
     fprintf(stdout, "stratid: %s\n", groups.start.c_str());
     fprintf(stdout, "endid: %s\n", groups.end.c_str());
-    for (std::vector<struct ConsumerPending>::size_type i=0; i<groups.consumers.size(); ++i)
+    for (std::vector<struct r3c::ConsumerPending>::size_type i=0; i<groups.consumers.size(); ++i)
     {
         fprintf(stdout, "[CONSUMER%zu] %s: %d\n", i, groups.consumers[i].name.c_str(), groups.consumers[i].count);
     }
