@@ -111,11 +111,55 @@ std::ostream& operator <<(std::ostream& os, const std::vector<r3c::StreamEntry>&
         {
             // field-value pair
             const FVPair& fvpair = entry.fvpairs[k];
-            os << "\t\t" << fvpair.field << " => " << fvpair.value << std::endl;
+            os << "\t\t" << fvpair.field << ": " << fvpair.value << std::endl;
         }
     }
 
     return os;
+}
+
+std::ostream& operator <<(std::ostream& os, const struct StreamInfo& streaminfo)
+{
+    os << "Number of entries: " << streaminfo.entries << std::endl;
+    os << "Number of radix tree keys: " << streaminfo.radix_tree_keys << std::endl;
+    os << "Number of radix tree nodes: " << streaminfo.radix_tree_nodes << std::endl;
+    os << "Number of groups: " << streaminfo.groups << std::endl;
+    os << "Last generated id: " << streaminfo.last_generated_id << std::endl;
+
+    // first_entry
+    os << "First entry: " << streaminfo.first_entry.id << std::endl;
+    for (std::vector<struct FVPair>::size_type i=0; i<streaminfo.first_entry.fvpairs.size(); ++i)
+    {
+        const struct FVPair& fvpair = streaminfo.first_entry.fvpairs[i];
+        os << "\t" << fvpair.field << ": " << fvpair.value<< std::endl;
+    }
+
+    // last_entry
+    os << "Last entry: " << streaminfo.last_entry.id << std::endl;
+    for (std::vector<struct FVPair>::size_type i=0; i<streaminfo.last_entry.fvpairs.size(); ++i)
+    {
+        const struct FVPair& fvpair = streaminfo.last_entry.fvpairs[i];
+        os << "\t" << fvpair.field << ": " << fvpair.value << std::endl;
+    }
+
+    return os;
+}
+
+int extract_ids(const std::vector<StreamEntry>& entries, std::vector<std::string>* ids)
+{
+    const int num_ids = static_cast<int>(entries.size());
+
+    if (num_ids > 0)
+    {
+        ids->resize(num_ids);
+        for (int i=0; i<num_ids; ++i)
+        {
+            const StreamEntry& entry = entries[i];
+            (*ids)[i] = entry.id;
+        }
+    }
+
+    return num_ids;
 }
 
 void null_log_write(const char* UNUSED(format), ...)

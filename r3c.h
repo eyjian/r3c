@@ -238,42 +238,71 @@ struct FVPair
 // Entry uniquely identified by a id
 struct StreamEntry
 {
-    std::string id;
-    std::vector<FVPair> fvpairs; // field-value pairs
+    std::string id; // Stream entry ID (milliseconds-sequence)
+    std::vector<struct FVPair> fvpairs; // field-value pairs
 };
 
 // Stream uniquely identified by a key
 struct Stream
 {
     std::string key;
-    std::vector<StreamEntry> entries;
+    std::vector<struct StreamEntry> entries;
 };
 
-extern std::ostream& operator <<(std::ostream& os, const std::vector<Stream>& streams);
-extern std::ostream& operator <<(std::ostream& os, const std::vector<StreamEntry>& entries);
+extern std::ostream& operator <<(std::ostream& os, const std::vector<struct Stream>& streams);
+extern std::ostream& operator <<(std::ostream& os, const std::vector<struct StreamEntry>& entries);
+// Returns the number of IDs
+extern int extract_ids(const std::vector<struct StreamEntry>& entries, std::vector<std::string>* ids);
 
 struct ConsumerPending
 {
-    std::string name; // consumer name
-    int count; // the number of pending messages consumer has
+    std::string name; // Consumer name
+    int count; // Number of pending messages consumer has
 };
 
 struct GroupPending
 {
-    int count; // the total number of pending messages for this consumer group
-    std::string start; // the smallest ID among the pending messages
-    std::string end; // the greatest ID among the pending messages
+    int count; // The total number of pending messages for this consumer group
+    std::string start; // The smallest ID among the pending messages
+    std::string end; // The greatest ID among the pending messages
     std::vector<struct ConsumerPending> consumers; // All consumers in the group with at least one pending message
 };
 
 // detailed information for a message in the pending entries list
 struct DetailedPending
 {
-    std::string id; // The ID of the message
+    std::string id; // The ID of the message (milliseconds-sequence)
     std::string consumer; // The name of the consumer that fetched the message and has still to acknowledge it. We call it the current owner of the message..
-    int64_t elapsed; // The number of milliseconds that elapsed since the last time this message was delivered to this consumer.
-    int64_t delivered; // The number of times this message was delivered
+    int64_t elapsed; // Number of milliseconds that elapsed since the last time this message was delivered to this consumer.
+    int64_t delivered; // Number of times this message was delivered
 };
+
+struct ConsumerInfo
+{
+    std::string name; // Consumer name
+    int pendings; // Number of pending messages for this specific consumer
+    int64_t idletime; // The idle time in milliseconds
+};
+
+struct GroupInfo
+{
+    std::string name; // Group name
+    std::string last_delivered_id;
+    int consumers; // Number of consumers known in that group
+    int pendings; // Number of pending messages (delivered but not yet acknowledged) in that group
+};
+
+struct StreamInfo
+{
+    int entries; // Number of entries inside this stream
+    int radix_tree_keys;
+    int radix_tree_nodes;
+    int groups; // Number of consumer groups associated with the stream
+    std::string last_generated_id; // The last generated ID that may not be the same as the last entry ID in case some entry was deleted
+    struct StreamEntry first_entry;
+    struct StreamEntry last_entry;
+};
+extern std::ostream& operator <<(std::ostream& os, const struct StreamInfo& streaminfo);
 
 // NOTICE:
 // 1) ALL keys and values can be binary except EVAL commands.
@@ -961,20 +990,32 @@ public: // STREAM (key like kafka's topic), available since 5.0.0.
     void xclaim(
             const std::string& key, const std::string& groupname, const std::string& consumer,
             int64_t minidle, const std::vector<std::string>& ids,
-            int64_t idletime, int64_t unixtime, int64_t retrycount,
-            bool force, bool justid,
+            int64_t idletime, int64_t unixtime, int64_t retrycount, bool force,
+            std::vector<StreamEntry>* values,
             Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
     void xclaim(
             const std::string& key, const std::string& groupname, const std::string& consumer,
             int64_t minidle, const std::vector<std::string>& ids,
+            std::vector<StreamEntry>* values,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xclaim(
+            const std::string& key, const std::string& groupname, const std::string& consumer,
+            int64_t minidle, const std::vector<std::string>& ids,
+            int64_t idletime, int64_t unixtime, int64_t retrycount, bool force,
+            std::vector<std::string>* values,
+            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xclaim(
+            const std::string& key, const std::string& groupname, const std::string& consumer,
+            int64_t minidle, const std::vector<std::string>& ids,
+            std::vector<std::string>* values,
             Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
-    // Show consumer groups of group <groupname>.
-    void xinfo_consumers(const std::string& key, const std::string& groupname, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    // Show the stream consumer groups.
-    void xinfo_groups(const std::string& key, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    // Show information about the stream.
-    void xinfo_stream(const std::string& key, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    // Get the list of every consumer in a specific consumer group
+    int xinfo_consumers(const std::string& key, const std::string& groupname, std::vector<struct ConsumerInfo>* infos, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    // Get as output all the consumer groups associated with the stream
+    int xinfo_groups(const std::string& key, std::vector<struct GroupInfo>* infos, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    // Returns general information about the stream stored at the specified key
+    void xinfo_stream(const std::string& key, struct StreamInfo* info, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
 public:
     // Standlone: key should be empty
@@ -1062,6 +1103,7 @@ public:
     // Called by: hmincrby
     int get_values(const redisReply* redis_reply, std::vector<int64_t>* values);
 
+public: // Stream
     // Called by: xreadgroup
     int get_values(const redisReply* redis_reply, std::vector<Stream>* values);
 
@@ -1074,6 +1116,18 @@ public:
     // Called by xpending
     // Returns the total number of pending messages for this consumer group
     int get_values(const redisReply* redis_reply, struct GroupPending* groups);
+
+    // Called by xinfo_consumers
+    int get_values(const redisReply* redis_reply, std::vector<struct ConsumerInfo>* infos);
+
+    // Called by xinfo_groups
+    int get_values(const redisReply* redis_reply, std::vector<struct GroupInfo>* infos);
+
+    // Called by xinfo_stream
+    void get_value(const redisReply* redis_reply, struct StreamInfo* info);
+
+    // Called by xinfo_stream
+    void get_entry(const redisReply* entry_redis_reply, struct StreamEntry* entry);
 
 public:
     void set_command_monitor(CommandMonitor* command_monitor) { _command_monitor = command_monitor; }
