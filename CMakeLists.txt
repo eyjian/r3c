@@ -15,6 +15,7 @@ add_definitions(-D__STDC_CONSTANT_MACROS=1)
 add_definitions(-g -ggdb -fPIC -Wall -W -Wwrite-strings -Wno-missing-field-initializers)
 
 if (HIREDIS_HOME)
+    set(HAVE_HIREDIS 1 CACHE INTERNAL HAVE_HIREDIS)
     include_directories(${HIREDIS_HOME}/include)
     link_directories(${HIREDIS_HOME}/lib)
 else ()
@@ -40,13 +41,21 @@ else ()
         /usr/lib
         NO_DEFAULT_PATH
     )
-    include_directories(${HIREDIS_INCLUDE}/..)
-    link_directories(${HIREDIS_LIB})
-    
+        
     if ("${HIREDIS_INCLUDE}" STREQUAL "HIREDIS_INCLUDE-NOTFOUND" OR "${HIREDIS_LIB}" STREQUAL "HIREDIS_INCLUDE-NOTFOUND")
-        message ("hiredis not found, you can execute cmake by -DHIREDIS_HOME=hiredis-install-directory")
-        return ()
+        set(HAVE_HIREDIS 0 CACHE INTERNAL HAVE_HIREDIS)
+        include_directories(/usr/local/hiredis/include)
+        link_directories(/usr/local/hiredis/lib)
+    else ()
+        set(HAVE_HIREDIS 1 CACHE INTERNAL HAVE_HIREDIS)
+        include_directories(${HIREDIS_INCLUDE}/..)
+        link_directories(${HIREDIS_LIB})
     endif ()
+endif ()
+
+# deps
+if (NOT HAVE_HIREDIS)
+    add_subdirectory(deps)
 endif ()
 
 # libr3c.a

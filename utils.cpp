@@ -230,7 +230,10 @@ void debug_redis_reply(const char* command, const redisReply* redis_reply, int d
         }
         else if (REDIS_REPLY_STRING == redis_reply->type)
         {
-            fprintf(stderr, "%s[%d:%d]\033[0;32;32mREPLY_STRING\033[m: %.*s\n", spaces.c_str(), depth, index, redis_reply->len, redis_reply->str);
+            // len在hiredis-0.14.0类型由之前的int改成了size_t，加强制类型转换以消除如下编译警告：
+            // warning: field precision specifier ‘.*’ expects argument of type ‘int’, but argument 6 has type ‘size_t {aka long unsigned int}’ [-Wformat=]
+            fprintf(stderr, "%s[%d:%d]\033[0;32;32mREPLY_STRING\033[m: %.*s\n",
+                    spaces.c_str(), depth, index, static_cast<int>(redis_reply->len), redis_reply->str);
         }
         else if (REDIS_REPLY_ARRAY == redis_reply->type)
         {
@@ -256,7 +259,8 @@ void debug_redis_reply(const char* command, const redisReply* redis_reply, int d
                 else if (REDIS_REPLY_STRING == child_redis_reply->type ||
                          REDIS_REPLY_STATUS == redis_reply->type)
                 {
-                    fprintf(stderr, "%s%s[%d:%zu]\033[0;32;32mREPLY_STRING\033[m: %.*s\n", spaces.c_str(), spaces.c_str(), depth, i, child_redis_reply->len, child_redis_reply->str);
+                    fprintf(stderr, "%s%s[%d:%zu]\033[0;32;32mREPLY_STRING\033[m: %.*s\n",
+                            spaces.c_str(), spaces.c_str(), depth, i, static_cast<int>(child_redis_reply->len), child_redis_reply->str);
                 }
                 else
                 {
