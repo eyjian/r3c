@@ -1193,7 +1193,7 @@ enum
     ERROR_INVALID_COMMAND = -11,       // Invalid command
     ERROR_ZERO_KEY = -12,              // Key size is zero
     ERROR_REDIS_CONTEXT = -13,         // Can't allocate redis context
-    ERROR_REDIS_AUTH = 14,             // Authorization failed
+    ERROR_REDIS_AUTH = -14,             // Authorization failed
     ERROR_UNEXCEPTED_REPLY_TYPE = -15, // Unexcepted reply type
     ERROR_REPLY_FORMAT = -16,          // Reply format error
     ERROR_REDIS_READONLY = -17
