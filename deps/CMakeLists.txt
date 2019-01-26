@@ -17,17 +17,7 @@ exec_program(
     make
     ${CMAKE_CURRENT_SOURCE_DIR}/${HIREDIS}
     ARGS
-    install PREFIX=/usr/local/${HIREDIS}
-    RETURN_VALUE errcode
-)
-if (errcode)
-    return ()
-endif ()
-
-exec_program(
-    ln
-    ARGS
-    -s /usr/local/${HIREDIS} /usr/local/hiredis
+    install PREFIX=${CMAKE_INSTALL_PREFIX}
     RETURN_VALUE errcode
 )
 if (errcode)

@@ -23,7 +23,7 @@ REDIS_CLUSTER_NODES?=192.168.1.31:6379,192.168.1.31:6380
 INSTALL_BIN=$(PREFIX)/bin
 INSTALL_INCLUDE_PATH= $(PREFIX)/$(INCLUDE_PATH)
 INSTALL_LIBRARY_PATH= $(PREFIX)/$(LIBRARY_PATH)
-INSTALL?=cp -a
+INSTALL?=install
 
 CPLUSPLUSONEONE=$(shell gcc --version|awk -F[\ .]+ '/GCC/{if($$3>=4&&$$4>=7) printf("-std=c++11");}')
 #OPTIMIZATION?=-O2
@@ -37,8 +37,7 @@ STLIBSUFFIX=a
 STLIBNAME=$(LIBNAME).$(STLIBSUFFIX)
 STLIB_MAKE_CMD=ar rcs
 
-all: $(STLIBNAME) $(CMD) $(TEST) $(STRESS) $(ROBUST) $(STREAM) $(EXTENSION)
-.PHONY: all
+all: $(HIREDIS) $(STLIBNAME) $(CMD) $(TEST) $(STRESS) $(ROBUST) $(STREAM) $(EXTENSION)
 
 # Deps (use make dep to generate this)
 sha1.o: sha1.cpp
@@ -70,6 +69,19 @@ tests/r3c_stream.o: tests/r3c_stream.cpp
 tests/redis_command_extension.o: tests/redis_command_extension.cpp
 	$(CXX) -o $@ -c $< $(REAL_CPPFLAGS)
 
+$(HIREDIS):
+	@if test -d "$(HIREDIS)"; then \
+		echo -e "\033[1;33mFound hiredis at $(HIREDIS)"; \
+		true; \
+	else \
+		echo -e "\033[0;32;31mNot found hiredis at $(HIREDIS)\033[m"; \
+		echo -e "\033[1;33mUsage: make HIREDIS=hiredis-install-directory\033[m"; \
+		echo -e "\033[0;36mExample1: make HIREDIS=/usr/local/hiredis\033[m"; \
+		echo -e "\033[0;36mExample2: make install PREFIX=/usr/local/r3c\033[m"; \
+		echo -e "\033[0;36mExample3: make install HIREDIS=/usr/local/hiredis PREFIX=/usr/local/r3c\033[m"; \
+		false; \
+	fi
+
 $(STLIBNAME): sha1.o utils.o r3c.o
 	rm -f $@;$(STLIB_MAKE_CMD) $@ $^
 
@@ -95,13 +107,11 @@ clean:
 	rm -f $(STLIBNAME) $(CMD) $(TEST) $(STRESS) $(ROBUST) $(STREAM) $(EXTENSION) *.o core core.* tests/*.o tests/core tests/core.*
 .PHONY: clean
 
-install:
-	@mkdir -p $(INSTALL_BIN)
-	@mkdir -p $(INSTALL_INCLUDE_PATH) $(INSTALL_LIBRARY_PATH)
-	$(INSTALL) r3c.h $(INSTALL_INCLUDE_PATH)
-	$(INSTALL) $(STLIBNAME) $(INSTALL_LIBRARY_PATH)
-	$(INSTALL) $(CMD) $(INSTALL_BIN)
-.PHONY: install
+install: $(STLIBNAME)
+	$(INSTALL) -d $(INSTALL_INCLUDE_PATH)
+	$(INSTALL) -d $(INSTALL_LIBRARY_PATH)
+	$(INSTALL) -m 664 r3c.h $(INSTALL_INCLUDE_PATH)
+	$(INSTALL) -m 664 $(STLIBNAME) $(INSTALL_LIBRARY_PATH)
 
 dep:
 	$(CXX) -MM *.cpp
