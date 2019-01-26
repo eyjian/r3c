@@ -65,10 +65,10 @@ endif()
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 link_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
-if (HIREDIS_HOME)
+if (HIREDIS)
     set(HAVE_HIREDIS 1 CACHE INTERNAL HAVE_HIREDIS)
-    include_directories(${HIREDIS_HOME}/include)
-    link_directories(${HIREDIS_HOME}/lib)
+    include_directories(${HIREDIS}/include)
+    link_directories(${HIREDIS}/lib)
 else ()
     # hiredis.h
     find_path(
