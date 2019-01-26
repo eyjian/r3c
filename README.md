@@ -20,44 +20,44 @@ r3c_and_coroutine.cpp 在协程中使用r3c示例（异步）
      
 ---
      
-支持两种编译和安装方式(make&cmake)：
-**1) make**
-编译（Compile）：
-make
+支持两种编译和安装方式(make&cmake)：<br>
+**1) make**<br>
+编译：<br>
+make<br>
 
-安装（PREFIX指定安装目录，如果不指定则为/usr/local）：
-make install
-或（or）
-make install PREFIX=/usr/local/r3c
+安装（PREFIX指定安装目录，如果不指定则为/usr/local）：<br>
+make install<br>
+或<br>
+make install PREFIX=/usr/local/r3c<br>
 
-执行单元测试：
-make test
-或（or）
-make test REDIS_CLUSTER_NODES=192.168.1.31:6379,192.168.1.31:6380
+执行单元测试：<br>
+make test<br>
+或<br>
+make test REDIS_CLUSTER_NODES=192.168.1.31:6379,192.168.1.31:6380<br>
 
-**2) cmake**
-生成Makefile文件：
-cmake -DCMAKE_INSTALL_PREFIX=install-directory .
-示例（Example）：
-cmake -DCMAKE_INSTALL_PREFIX=/usr/local/r3c .
+**2) cmake**<br>
+生成Makefile文件：<br>
+cmake -DCMAKE_INSTALL_PREFIX=install-directory .<br>
+示例：<br>
+cmake -DCMAKE_INSTALL_PREFIX=/usr/local/r3c .<br>
 
-编译（Compile）：
-make
+编译：<br>
+make<br>
 
-安装（Install）：
-make install
+安装：<br>
+make install<br>
      
 ---
      
-关于接口：
+关于接口：<br>
 如果传给CRedisClient的nodes参数为单个节点字符串，如192.168.1.31:6379则为单机模式，为多节点字符串时则为Redis Cluster模式。
      
 ---
      
-性能测试工具：
+性能测试工具：<br>
 https://github.com/eyjian/libmooon/blob/master/tools/r3c_stress.cpp
 
-单机性能数据：
+单机性能数据：<br>
 r3c_stress --redis=192.168.0.88:6379 --requests=100000 --threads=20 
 set:
 microseconds=18867143, milliseconds=18867, seconds=18
