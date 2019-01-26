@@ -11,15 +11,19 @@ r3c基于redis官方的c库hiredis实现，全称是redis cluster C++ client，�
 
 编译r3c成功后，将生成libr3c.a静态库，没有共享库被生成。
 也可以直接将r3c.h、r3c.cpp、utils.h、utils.cpp、sha1.h和sha1.cpp几个文件加入到自己项目代码中一起编译，而不独立编译r3c。
-
+     
+---
+     
 r3c_cmd.cpp是r3c的非交互式命令行工具（command line tool），具备redis-cli的一些功能，但用法不尽相同，将逐步将覆盖redis-cli的所有功能。
 r3c_test.cpp是r3c的单元测试程序（unit test），执行make test即可。
 r3c_and_coroutine.cpp 在协程中使用r3c示例（异步）
-
-编译r3c（Compile r3c）：
+     
+---
+     
+支持两种编译和安装方式(make&cmake)：
+**1) make**
+编译（Compile）：
 make
-或（or）
-make HIREDIS=/tmp/hiredis
 
 安装（PREFIX指定安装目录，如果不指定则为/usr/local）：
 make install
@@ -31,12 +35,25 @@ make test
 或（or）
 make test REDIS_CLUSTER_NODES=192.168.1.31:6379,192.168.1.31:6380
 
-生成源代码间的依赖：
-make dep
+**2) cmake**
+生成Makefile文件：
+cmake -DCMAKE_INSTALL_PREFIX=install-directory .
+示例（Example）：
+cmake -DCMAKE_INSTALL_PREFIX=/usr/local/r3c .
 
+编译（Compile）：
+make
+
+安装（Install）：
+make install
+     
+---
+     
 关于接口：
 如果传给CRedisClient的nodes参数为单个节点字符串，如192.168.1.31:6379则为单机模式，为多节点字符串时则为Redis Cluster模式。
-
+     
+---
+     
 性能测试工具：
 https://github.com/eyjian/libmooon/blob/master/tools/r3c_stress.cpp
 
