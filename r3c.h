@@ -648,7 +648,7 @@ public: // LIST
     // Time complexity: O(1)
     //
     // Returns the length of the list after the push operation.
-    int rpushx(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int rpushx(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=0) throw (CRedisException);
 
 public: // SET
     // Returns the number of elements that were added to the set,
