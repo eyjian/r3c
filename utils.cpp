@@ -587,7 +587,12 @@ std::string get_formatted_current_datetime(bool with_milliseconds)
             ,result.tm_year+1900, result.tm_mon+1, result.tm_mday
             ,result.tm_hour, result.tm_min, result.tm_sec);
     }
-    return datetime_buffer;
+
+#if __cplusplus < 201103L
+    return std::string(datetime_buffer);
+#else
+    return std::move(std::string(datetime_buffer));
+#endif // __cplusplus < 201103L
 }
 
 std::string format_string(const char* format, ...)
@@ -959,7 +964,12 @@ std::string int2string(int64_t n)
     char* str_p = const_cast<char*>(str.c_str());
     const int len = ll2string(str_p, str.size(), n);
     str.resize(len);
+
+#if __cplusplus < 201103L
     return str;
+#else
+    return std::move(str);
+#endif // __cplusplus < 201103L
 }
 
 std::string int2string(int32_t n)
