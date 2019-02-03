@@ -394,12 +394,12 @@ public: // KV
     // Set the value of a key, only if the does not exist.
     // Time complexity: O(1)
     // Returns true if the key was set, or false the key was not set.
-    bool setnx(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    bool setnx(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=0) throw (CRedisException);
 
     // Set the value and expiration of a key.
     // Time complexity: O(1)
     void setex(const std::string& key, const std::string& value, uint32_t expired_seconds, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    bool setnxex(const std::string& key, const std::string& value, uint32_t expired_seconds, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    bool setnxex(const std::string& key, const std::string& value, uint32_t expired_seconds, Node* which=NULL, int num_retries=0) throw (CRedisException);
 
     // Get the values of all the given keys.
     //
@@ -523,10 +523,10 @@ public: // HASH
     // Time complexity: O(1)
     // Returns true if field is a new field in the hash and value was set,
     // or field already exists in the hash and no operation was performed.
-    bool hsetnx(const std::string& key, const std::string& field, const std::string& value, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    bool hsetnx(const std::string& key, const std::string& field, const std::string& value, Node* which=NULL, int num_retries=0) throw (CRedisException);
 
     // NOTICE: Not support binary key and binary value.
-    bool hsetnxex(const std::string& key, const std::string& field, const std::string& value, uint32_t expired_seconds, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    bool hsetnxex(const std::string& key, const std::string& field, const std::string& value, uint32_t expired_seconds, Node* which=NULL, int num_retries=0) throw (CRedisException);
 
     // Time complexity: O(1)
     // Returns true if exists, or false when field is not present in the hash or key does not exist.
@@ -648,7 +648,7 @@ public: // LIST
     // Time complexity: O(1)
     //
     // Returns the length of the list after the push operation.
-    int rpushx(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int rpushx(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=0) throw (CRedisException);
 
 public: // SET
     // Returns the number of elements that were added to the set,
