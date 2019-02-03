@@ -1205,6 +1205,11 @@ extern void set_error_log_write(LOG_WRITE error_log);
 extern void set_info_log_write(LOG_WRITE info_log);
 extern void set_debug_log_write(LOG_WRITE debug_log);
 
+extern std::string strsha1(const std::string& str);
+extern void debug_redis_reply(const char* command, const redisReply* redis_reply, int depth=0, int index=0);
+extern uint16_t crc16(const char *buf, int len);
+extern uint64_t crc64(uint64_t crc, const unsigned char *s, uint64_t l);
+
 extern void millisleep(int milliseconds);
 extern std::string get_formatted_current_datetime(bool with_milliseconds=false);
 extern std::string format_string(const char* format, ...) __attribute__((format(printf, 1, 2)));

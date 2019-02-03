@@ -195,7 +195,11 @@ std::string strsha1(const std::string& str)
         result[j+1] = hex_table[hash[i] & 0x0f];
     }
 
+#if __cplusplus < 201103L
     return result;
+#else
+    return std::move(result);
+#endif // __cplusplus < 201103L
 }
 
 void debug_redis_reply(const char* command, const redisReply* redis_reply, int depth, int index)
@@ -632,7 +636,11 @@ std::string format_string(const char* format, ...)
     }
 
     // expected不包含字符串结尾符号，其值等于：strlen(buffer_p)
+#if __cplusplus < 201103L
     return std::string(buffer_p, expected>0?expected:0);
+#else
+    return std::move(std::string(buffer_p, expected>0?expected:0));
+#endif // __cplusplus < 201103L
 }
 
 int parse_nodes(std::vector<std::pair<std::string, uint16_t> >* nodes, const std::string& nodes_string)
