@@ -1346,17 +1346,29 @@ const RedisReplyHelper CRedisClient::eval(
         Node* which,
         int num_retries) throw (CRedisException)
 {
-    const int numkeys = static_cast<int>(keys.size());
-    const std::string key = std::string("");
-    CommandArgs cmd_args;
-    cmd_args.add_arg("EVAL");
-    cmd_args.add_arg(lua_scripts);
-    cmd_args.add_arg(numkeys);
-    cmd_args.add_args(keys);
-    cmd_args.add_args(parameters);
-    cmd_args.final();
+    if (cluster_mode() && keys_crossslots(keys))
+    {
+        struct ErrorInfo errinfo;
+        errinfo.errcode = ERROR_NOT_SUPPORT;
+        errinfo.errmsg = "EVAL not supported in cluster mode";
+        THROW_REDIS_EXCEPTION(errinfo);
+    }
+    else
+    {
+        const int numkeys = static_cast<int>(keys.size());
+        std::string key;
+        if (cluster_mode() && !keys.empty())
+            key = keys[0];
 
-    return redis_command(false, num_retries, key, cmd_args, which);
+        CommandArgs cmd_args;
+        cmd_args.add_arg("EVAL");
+        cmd_args.add_arg(lua_scripts);
+        cmd_args.add_arg(numkeys);
+        cmd_args.add_args(keys);
+        cmd_args.add_args(parameters);
+        cmd_args.final();
+        return redis_command(false, num_retries, key, cmd_args, which);
+    }
 }
 
 const RedisReplyHelper CRedisClient::evalsha(
@@ -1366,17 +1378,29 @@ const RedisReplyHelper CRedisClient::evalsha(
         Node* which,
         int num_retries) throw (CRedisException)
 {
-    const int numkeys = static_cast<int>(keys.size());
-    const std::string key = std::string("");
-    CommandArgs cmd_args;
-    cmd_args.add_arg("EVALSHA");
-    cmd_args.add_arg(sha1);
-    cmd_args.add_arg(numkeys);
-    cmd_args.add_args(keys);
-    cmd_args.add_args(parameters);
-    cmd_args.final();
+    if (cluster_mode() && keys_crossslots(keys))
+    {
+        struct ErrorInfo errinfo;
+        errinfo.errcode = ERROR_NOT_SUPPORT;
+        errinfo.errmsg = "EVAL not supported in cluster mode";
+        THROW_REDIS_EXCEPTION(errinfo);
+    }
+    else
+    {
+        const int numkeys = static_cast<int>(keys.size());
+        std::string key;
+        if (cluster_mode() && !keys.empty())
+            key = keys[0];
 
-    return redis_command(false, num_retries, key, cmd_args, which);
+        CommandArgs cmd_args;
+        cmd_args.add_arg("EVALSHA");
+        cmd_args.add_arg(sha1);
+        cmd_args.add_arg(numkeys);
+        cmd_args.add_args(keys);
+        cmd_args.add_args(parameters);
+        cmd_args.final();
+        return redis_command(false, num_retries, key, cmd_args, which);
+    }
 }
 
 //
@@ -3823,7 +3847,7 @@ CRedisClient::redis_command(
     RedisReplyHelper redis_reply;
     struct ErrorInfo errinfo;
 
-    if (key.empty() && cluster_mode())
+    if (cluster_mode() && key.empty())
     {
         // 集群模式必须指定key
         errinfo.errcode = ERROR_ZERO_KEY;
