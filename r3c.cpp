@@ -1128,7 +1128,9 @@ int64_t CRedisClient::incrby(
         int num_retries) throw (CRedisException)
 {
     // 注意ARGV[2]和n需类型相同才可以比较，所以要么n转成字符串，要么ARGV[2]转成数字
-    const std::string lua_scripts = "local n;n=redis.call('INCRBY',KEYS[1],ARGV[1]);if (n==tonumber(ARGV[2])) then redis.call('EXPIRE',KEYS[1],ARGV[3]) end;return n;";
+    const std::string lua_scripts =
+            "local n;n=redis.call('INCRBY',KEYS[1],ARGV[1]);"
+            "if (n==tonumber(ARGV[2])) then redis.call('EXPIRE',KEYS[1],ARGV[3]) end;return n;";
     std::vector<std::string> parameters(3);
     parameters[0] = int2string(increment);
     parameters[1] = int2string(expired_increment);
@@ -1527,7 +1529,8 @@ bool CRedisClient::hsetex(
         int num_retries) throw (CRedisException)
 {
     const std::string lua_scripts =
-            "local n;n=redis.call('HSET',KEYS[1],ARGV[1],ARGV[2]);if (n>0) then redis.call('EXPIRE',KEYS[1],ARGV[3]) end;return n;";
+            "local n;n=redis.call('HSET',KEYS[1],ARGV[1],ARGV[2]);"
+            "if (n>0) then redis.call('EXPIRE',KEYS[1],ARGV[3]) end;return n;";
     std::vector<std::string> parameters(3);
     parameters[0] = field;
     parameters[1] = value;
@@ -1573,7 +1576,9 @@ bool CRedisClient::hsetnxex(
         int num_retries) throw (CRedisException)
 {
     const std::string lua_scripts =
-            "local n;n=redis.call('HSETNX',KEYS[1],ARGV[1],ARGV[2]);if (n>0) then redis.call('EXPIRE',KEYS[1],ARGV[3]) end;return n;";
+            "local n=redis.call('HLEN',KEYS[1]);"
+            "local m=redis.call('HSETNX',KEYS[1],ARGV[1],ARGV[2]);"
+            "if(n==0) then redis.call('EXPIRE',KEYS[1],ARGV[3]) end;return m;";
     std::vector<std::string> parameters(3);
     parameters[0] = field;
     parameters[1] = value;
@@ -1651,7 +1656,11 @@ void CRedisClient::hmincrby(
         int num_retries) throw (CRedisException)
 {
     const std::string lua_scripts =
-            "local j=1;local results={};for i=1,#ARGV,2 do local f=ARGV[i];local v=ARGV[i+1];results[j]=redis.call('HINCRBY',KEYS[1],f,v);j=j+1; end;return results;";
+            "local j=1;local results={};"
+            "for i=1,#ARGV,2 do local f=ARGV[i];"
+            "local v=ARGV[i+1];"
+            "results[j]=redis.call('HINCRBY',KEYS[1],f,v);j=j+1; end;"
+            "return results;";
     std::vector<std::string> parameters(2*increments.size());
     for (std::vector<std::pair<std::string, int64_t> >::size_type i=0,j=0; i<increments.size(); ++i,j+=2)
     {
