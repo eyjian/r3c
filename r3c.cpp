@@ -4472,6 +4472,7 @@ redisContext* CRedisClient::connect_redis_node(const Node& node, struct ErrorInf
 {
     redisContext* redis_context = NULL;
 
+    errinfo->clear();
     (*g_debug_log)("[R3C_CONN][%s:%d] To connect %s with timeout: %dms\n",
             __FILE__, __LINE__, node2string(node).c_str(), _connect_timeout_milliseconds);
     if (_connect_timeout_milliseconds <= 0)
