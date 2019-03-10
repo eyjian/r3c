@@ -427,7 +427,7 @@ public: // KV
     // Atomically increment and expire a key with given seconds.
     // Expiration is set only if the value returned by incrby is equal to expired_increment.
     //
-    // NOTICE: Not support binary key and binary value.
+    // Based on EVAL, NOT SUPPORT binary key
     //
     // e.g.,
     // incrby(key, 1, 1, 10);
@@ -465,7 +465,7 @@ public: // KV
 
     // Execute a Lua script server side.
     //
-    // NOTICE1: Not support binary key and binary value, because eval is implemented by lua script.
+    // NOTICE1: Based on EVAL, NOT SUPPORT binary key & value
     // NOTICE2: Key can not include newline character ('\n')
     //
     // Time complexity: Depends on the script that is executed.
@@ -525,7 +525,7 @@ public: // HASH
     // or field already exists in the hash and no operation was performed.
     bool hsetnx(const std::string& key, const std::string& field, const std::string& value, Node* which=NULL, int num_retries=0) throw (CRedisException);
 
-    // NOTICE: Not support binary key and binary value.
+    // Based on EVAL, NOT SUPPORT binary key & field & value
     bool hsetnxex(const std::string& key, const std::string& field, const std::string& value, uint32_t expired_seconds, Node* which=NULL, int num_retries=0) throw (CRedisException);
 
     // Time complexity: O(1)
@@ -538,10 +538,10 @@ public: // HASH
     // Returns the value at field after the increment operation.
     int64_t hincrby(const std::string& key, const std::string& field, int64_t increment, Node* which=NULL, int num_retries=0) throw (CRedisException);
 
-    // NOTICE: Not support binary key and binary value.
+    // Based on EVAL, NOT SUPPORT binary key & field
     void hincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values=NULL, Node* which=NULL, int num_retries=0) throw (CRedisException);
 
-    // NOTICE: Not support binary key and binary value.
+    // Based on EVAL, NOT SUPPORT binary key & field
     void hmincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values=NULL, Node* which=NULL, int num_retries=0) throw (CRedisException);
 
     // Set multiple hash fields to multiple values.
