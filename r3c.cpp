@@ -262,7 +262,11 @@ inline const char* CommandArgs::get_command() const
 
 inline const char* CommandArgs::get_key() const
 {
-    return !_key.empty()? _key.c_str(): _argv[1];
+    if (!_key.empty())
+        return _key.c_str();
+    if (_argc > 1)
+        return _argv[1];
+    return "";
 }
 
 inline size_t CommandArgs::get_command_length() const
@@ -1072,6 +1076,13 @@ int CRedisClient::mset(
 {
     int success = 0;
 
+    if (kv_map.empty())
+    {
+        struct ErrorInfo errinfo;
+        errinfo.errcode = ERROR_PARAMETER;
+        errinfo.errmsg = "kv_map is empty";
+        THROW_REDIS_EXCEPTION(errinfo);
+    }
     if (!cluster_mode())
     {
         const std::string key;
