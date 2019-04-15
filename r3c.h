@@ -443,7 +443,9 @@ public: // KV
     // Get the time to live for a key
     //
     // Time complexity: O(1)
-    // Returns the remaining time to live of a key that has a timeout.
+    // Returns the remaining time to live of a key that has a timeout in seconds.
+    // Returns -2 if the key does not exist.
+    // Returns -1 if the key exists but has no associated expire.
     int64_t ttl(const std::string& key, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
     // NOT SUPPORTED CLUSTER
