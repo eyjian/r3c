@@ -4648,7 +4648,7 @@ CRedisNode* CRedisClient::get_redis_node(
         else
         {
             // Cluster（集群redis）
-            R3C_ASSERT(slot>=0 && CLUSTER_SLOTS<=CLUSTER_SLOTS);
+            R3C_ASSERT(slot>=0 && slot<CLUSTER_SLOTS);
 
             // clear_invalid_master_nodes可能将整个_master_nodes清空了，比如当整个集群短暂不可用时
             if (_redis_master_nodes.empty())
