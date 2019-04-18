@@ -344,6 +344,7 @@ public:
     // Returns true if parameter nodes of ctor is composed of two or more nodes,
     // or false when only a node for standlone mode.
     bool cluster_mode() const;
+    const char* get_mode_str() const;
 
 public:
     int list_nodes(std::vector<struct NodeInfo>* nodes_info) throw (CRedisException);
@@ -1198,7 +1199,8 @@ enum
     ERROR_REDIS_AUTH = -14,             // Authorization failed
     ERROR_UNEXCEPTED_REPLY_TYPE = -15, // Unexcepted reply type
     ERROR_REPLY_FORMAT = -16,          // Reply format error
-    ERROR_REDIS_READONLY = -17
+    ERROR_REDIS_READONLY = -17,
+    ERROR_NO_ANY_NODE = -18
 };
 
 // Set NULL to discard log
