@@ -741,12 +741,20 @@ const std::string& CRedisClient::get_nodes_string() const
 
 std::string CRedisClient::str() const
 {
-    return std::string("redis://") + _raw_nodes_string;
+    if (cluster_mode())
+        return std::string("rediscluster://") + _raw_nodes_string;
+    else
+        return std::string("redisstandalone://") + _raw_nodes_string;
 }
 
 bool CRedisClient::cluster_mode() const
 {
     return _nodes.size() > 1;
+}
+
+const char* CRedisClient::get_mode_str() const
+{
+    return cluster_mode()? "CLUSTER": "STANDALONE";
 }
 
 int CRedisClient::list_nodes(std::vector<struct NodeInfo>* nodes_info) throw (CRedisException)
@@ -3900,6 +3908,10 @@ CRedisClient::redis_command(
         }
         if (NULL == redis_node)
         {
+            errinfo.errcode = ERROR_NO_ANY_NODE;
+            errinfo.raw_errmsg = format_string("[%s][%s][%s:%d] no any node", command_args.get_command(), get_mode_str(), node.first.c_str(), node.second);
+            errinfo.errmsg = format_string("[R3C_CMD][%s:%d] %s", __FILE__, __LINE__, errinfo.raw_errmsg.c_str());
+            (*g_error_log)("%s\n", errinfo.errmsg.c_str());
             break; // 没有任何master
         }
         if (NULL == redis_node->get_redis_context())
@@ -3960,7 +3972,10 @@ CRedisClient::redis_command(
         {
             if (!parse_moved_string(redis_reply->str, &node))
             {
-                (*g_error_log)("[%s:%d] node string error: %s\n", __FILE__, __LINE__, redis_reply->str);
+                (*g_error_log)("[%s:%d][%s][%s:%d] node string error: %s\n",
+                        __FILE__, __LINE__, get_mode_str(),
+                        redis_node->get_node().first.c_str(), redis_node->get_node().second,
+                        redis_reply->str);
                 break;
             }
             else
@@ -3998,8 +4013,10 @@ CRedisClient::redis_command(
             if (retry_sleep_milliseconds > 0)
                 millisleep(retry_sleep_milliseconds);
         }
-        if (redis_node->need_refresh_master())
+        if (cluster_mode() && redis_node->need_refresh_master())
         {
+            // 单击模式下走到这会导致没法重连接，
+            // 因为_redis_master_nodes被清空了。
             if (HR_RECONN_COND==errcode ||
                 HR_RECONN_UNCOND==errcode)
                 refresh_master_node_table(&errinfo, &node);
