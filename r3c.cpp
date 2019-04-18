@@ -3911,7 +3911,7 @@ CRedisClient::redis_command(
             errinfo.errcode = ERROR_NO_ANY_NODE;
             errinfo.raw_errmsg = format_string("[%s][%s][%s:%d] no any node", command_args.get_command(), get_mode_str(), node.first.c_str(), node.second);
             errinfo.errmsg = format_string("[R3C_CMD][%s:%d] %s", __FILE__, __LINE__, errinfo.raw_errmsg.c_str());
-            (*g_error_log)("%s\n", errinfo.errmsg.c_str());
+            (*g_error_log)("[NO_ANY_NODE] %s\n", errinfo.errmsg.c_str());
             break; // 没有任何master
         }
         if (NULL == redis_node->get_redis_context())
@@ -3921,22 +3921,19 @@ CRedisClient::redis_command(
         }
         else
         {
-            if (ask_node != NULL)
-            {
-                // When a slot is set as MIGRATING, the node will accept all queries that are about this hash slot,
-                // but only if the key in question exists,
-                // otherwise the query is forwarded using a -ASK redirection to the node that is target of the migration.
-                // 当一个槽状态为 MIGRATING时，原来负责该哈希槽的节点仍会接受所有跟这个哈希槽有关的请求，但只处理仍然在该节点上的键，
-                // 否则类似于MOVED，返回ASK重定向到目标节点。
-                //
-                // When a slot is set as IMPORTING, the node will accept all queries that are about this hash slot,
-                // but only if the request is preceded by an ASKING command.
-                // If the ASKING command was not given by the client, the query is redirected to the real hash slot owner via a -MOVED redirection error,
-                // as would happen normally.
-                // 当一个槽状态为 IMPORTING时，只有在接受到 ASKING命令之后节点才会接受所有查询这个哈希槽的请求，
-                // 如果客户端一直没有发送 ASKING命令，那么查询都会通过MOVED重定向错误转发到真正处理这个哈希槽的节点那里。
-                (void)redisCommand(redis_node->get_redis_context(), "ASKING");
-            }
+            // When a slot is set as MIGRATING, the node will accept all queries that are about this hash slot,
+            // but only if the key in question exists,
+            // otherwise the query is forwarded using a -ASK redirection to the node that is target of the migration.
+            // 当一个槽状态为 MIGRATING时，原来负责该哈希槽的节点仍会接受所有跟这个哈希槽有关的请求，但只处理仍然在该节点上的键，
+            // 否则类似于MOVED，返回ASK重定向到目标节点。
+            //
+            // When a slot is set as IMPORTING, the node will accept all queries that are about this hash slot,
+            // but only if the request is preceded by an ASKING command.
+            // If the ASKING command was not given by the client, the query is redirected to the real hash slot owner via a -MOVED redirection error,
+            // as would happen normally.
+            // 当一个槽状态为 IMPORTING时，只有在接受到 ASKING命令之后节点才会接受所有查询这个哈希槽的请求，
+            // 如果客户端一直没有发送 ASKING命令，那么查询都会通过MOVED重定向错误转发到真正处理这个哈希槽的节点那里。
+            if (ask_node != NULL) (void)redisCommand(redis_node->get_redis_context(), "ASKING");
             redis_reply = (redisReply*)redisCommandArgv(
                     redis_node->get_redis_context(),
                     command_args.get_argc(), command_args.get_argv(), command_args.get_argvlen());
@@ -3960,10 +3957,12 @@ CRedisClient::redis_command(
         else if (HR_ERROR == errcode)
         {
             // 不需要重试的错误立即返回，比如：EVAL命令语法错误
+            (*g_debug_log)("[NOTRETRY][%s:%d][%s][%s:%d] loop: %d\n",
+                    __FILE__, __LINE__, get_mode_str(),
+                    redis_node->get_node().first.c_str(), redis_node->get_node().second, loop_counter);
             break;
         }
-        else if (HR_RECONN_COND == errcode ||
-                 HR_RECONN_UNCOND == errcode)
+        else if (HR_RECONN_COND == errcode || HR_RECONN_UNCOND == errcode)
         {
             // 连接问题，先调用close关闭连接（调用get_redis_node时就会执行重连接）
             redis_node->close();
@@ -3972,7 +3971,7 @@ CRedisClient::redis_command(
         {
             if (!parse_moved_string(redis_reply->str, &node))
             {
-                (*g_error_log)("[%s:%d][%s][%s:%d] node string error: %s\n",
+                (*g_error_log)("[PARSE_MOVED][%s:%d][%s][%s:%d] node string error: %s\n",
                         __FILE__, __LINE__, get_mode_str(),
                         redis_node->get_node().first.c_str(), redis_node->get_node().second,
                         redis_reply->str);
@@ -3981,33 +3980,47 @@ CRedisClient::redis_command(
             else
             {
                 ask_node = &node;
-                if (loop_counter > 2)
-                    break;
-                else
+                if (loop_counter <= 2)
                     continue;
+                (*g_debug_log)("[REDIRECT][%s:%d][%s][%s:%d] retries more than %d\n",
+                        __FILE__, __LINE__, get_mode_str(),
+                        redis_node->get_node().first.c_str(), redis_node->get_node().second, loop_counter);
+                break;
             }
         }
 
         if (HR_RECONN_UNCOND == errcode)
         {
             // 保持至少重试一次（前提是先重新建立好连接）
-            if (loop_counter > num_retries)
+            if (loop_counter>num_retries && loop_counter>0)
+            {
+                (*g_debug_log)("[NOTRECONN][%s:%d][%s][%s:%d] retries more than %d\n",
+                        __FILE__, __LINE__, get_mode_str(),
+                        redis_node->get_node().first.c_str(), redis_node->get_node().second, num_retries);
                 break;
+            }
         }
         else if (HR_RETRY_UNCOND == errcode)
         {
             // 一般replica切换成master需要几秒钟，所以需要保证有足够的重试次数
             if (loop_counter >= NUM_RETRIES)
+            {
+                (*g_debug_log)("[RETRY_UNCOND][%s:%d][%s][%s:%d] retries more than %d\n",
+                        __FILE__, __LINE__, get_mode_str(),
+                        redis_node->get_node().first.c_str(), redis_node->get_node().second, NUM_RETRIES);
                 break;
+            }
         }
         else if (loop_counter>=num_retries-1)
         {
+            (*g_debug_log)("[OVERRETRY][%s:%d][%s][%s:%d] retries more than %d\n",
+                    __FILE__, __LINE__, get_mode_str(),
+                    redis_node->get_node().first.c_str(), redis_node->get_node().second, num_retries);
             break;
         }
 
         // 控制重试频率，以增强重试成功率
-        if (HR_RETRY_UNCOND == errcode ||
-            HR_RECONN_UNCOND == errcode)
+        if (HR_RETRY_UNCOND == errcode || HR_RECONN_UNCOND == errcode)
         {
             const int retry_sleep_milliseconds = get_retry_sleep_milliseconds(loop_counter);
             if (retry_sleep_milliseconds > 0)
@@ -4015,10 +4028,9 @@ CRedisClient::redis_command(
         }
         if (cluster_mode() && redis_node->need_refresh_master())
         {
-            // 单击模式下走到这会导致没法重连接，
+            // 单机模式下走到这会导致没法重连接，
             // 因为_redis_master_nodes被清空了。
-            if (HR_RECONN_COND==errcode ||
-                HR_RECONN_UNCOND==errcode)
+            if (HR_RECONN_COND==errcode || HR_RECONN_UNCOND==errcode)
                 refresh_master_node_table(&errinfo, &node);
             else
                 refresh_master_node_table(&errinfo, NULL);
@@ -4028,9 +4040,7 @@ CRedisClient::redis_command(
     // 错误以异常方式抛出
     if (_command_monitor!=NULL)
         _command_monitor->after_execute(1, node, command_args.get_command_str(), redis_reply.get());
-    THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(
-            errinfo, node.first, node.second,
-            command_args.get_command_str(), command_args.get_key_str());
+    THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(errinfo, node.first, node.second, command_args.get_command_str(), command_args.get_key_str());
 }
 
 CRedisClient::HandleResult
@@ -4660,6 +4670,12 @@ CRedisNode* CRedisClient::get_redis_node(
             // Standalone（单机redis）
             R3C_ASSERT(!_redis_master_nodes.empty());
             redis_node = _redis_master_nodes.begin()->second;
+            redis_context = redis_node->get_redis_context();
+            if (NULL == redis_context)
+            {
+                redis_context = connect_redis_node(redis_node->get_node(), errinfo, false);
+                redis_node->set_redis_context(redis_context);
+            }
             break;
         }
         else
