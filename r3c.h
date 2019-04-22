@@ -14,15 +14,13 @@
 #else
 #   include <unordered_map>
 #endif // __cplusplus < 201103L
-namespace r3c {
 
-enum
-{
-    R3C_VERSION = 0x000020,
-    R3C_MAJOR = 0x00,
-    R3C_MINOR = 0x00,
-    R3C_PATCH = 0x20
-};
+#define R3C_VERSION 0x000020
+#define R3C_MAJOR 0x00
+#define R3C_MINOR 0x00
+#define R3C_PATCH 0x20
+
+namespace r3c {
 
 extern int NUM_RETRIES /*=15*/; // The default number of retries is 15 (CLUSTERDOWN cost more than 6s)
 extern int CONNECT_TIMEOUT_MILLISECONDS /*=2000*/; // Connection timeout in milliseconds
