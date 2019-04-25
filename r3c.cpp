@@ -1999,6 +1999,24 @@ int CRedisClient::lpush(
     return 0;
 }
 
+// Inserts value at the head of the list stored at key, only if key already exists and holds a list.
+// In contrary to LPUSH, no operation will be performed when key does not yet exist.
+// Time complexity: O(1)
+int CRedisClient::lpushx(const std::string& key, const std::string& value, Node* which, int num_retries) throw (CRedisException)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("LPUSHX");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(value);
+    cmd_args.final();
+
+    // Integer reply: the length of the list after the push operation.
+    const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+    if (REDIS_REPLY_INTEGER == redis_reply->type)
+        return static_cast<int>(redis_reply->integer);
+    return 0;
+}
+
 // Time complexity:
 // O(S+N) where S is the distance of start offset from HEAD for small lists,
 // from nearest end (HEAD or TAIL) for large lists;
@@ -2045,6 +2063,88 @@ void CRedisClient::ltrim(
 
     // Simple string reply (REDIS_REPLY_STATUS)
     redis_command(false, num_retries, key, cmd_args, which);
+}
+
+void CRedisClient::lset(const std::string& key, int index, const std::string& value, Node* which, int num_retries) throw (CRedisException)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("LSET");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(index);
+    cmd_args.add_arg(value);
+    cmd_args.final();
+
+    // Simple string reply (REDIS_REPLY_STATUS)
+    // An error is returned for out of range indexes.
+    redis_command(false, num_retries, key, cmd_args, which);
+}
+
+// Inserts value in the list stored at key either before or after the reference value pivot.
+//
+// Time complexity:
+// O(N) where N is the number of elements to traverse before seeing the value pivot.
+// This means that inserting somewhere on the left end on the list (head) can be considered O(1)
+// and inserting somewhere on the right end (tail) is O(N).
+int CRedisClient::linsert(const std::string& key, const std::string& pivot, const std::string& value, bool before, Node* which, int num_retries) throw (CRedisException)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("LINSERT");
+    cmd_args.add_arg(key);
+    if (before)
+        cmd_args.add_arg("BEFORE");
+    else
+        cmd_args.add_arg("AFTER");
+    cmd_args.add_arg(pivot);
+    cmd_args.add_arg(value);
+    cmd_args.final();
+
+    // Integer reply:
+    // the length of the list after the insert operation,
+    // or -1 when the value pivot was not found.
+    const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+    if (REDIS_REPLY_INTEGER == redis_reply->type)
+        return static_cast<int>(redis_reply->integer);
+    return 0;
+}
+
+// Removes the first count occurrences of elements equal to value from the list stored at key.
+// Time complexity:
+// O(N) where N is the length of the list.
+int CRedisClient::lrem(const std::string& key, int count, const std::string& value, Node* which, int num_retries) throw (CRedisException)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("LREM");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(count);
+    cmd_args.add_arg(value);
+    cmd_args.final();
+
+    // Integer reply: the number of removed elements.
+    // Returns the number of removed elements.
+    const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+    if (REDIS_REPLY_INTEGER == redis_reply->type)
+        return static_cast<int>(redis_reply->integer);
+    return 0;
+}
+
+// Time complexity:
+// O(N) where N is the number of elements to traverse to get to the element at index.
+// This makes asking for the first or the last element of the list O(1).
+bool CRedisClient::lindex(const std::string& key, int index, std::string* value, Node* which, int num_retries) throw (CRedisException)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("LINDEX");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(index);
+    cmd_args.final();
+
+    // Bulk string reply: the requested element, or nil when index is out of range.
+    const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+    if (REDIS_REPLY_NIL == redis_reply->type)
+        return false;
+    if (REDIS_REPLY_STRING == redis_reply->type)
+        return get_value(redis_reply.get(), value);
+    return true;
 }
 
 // Time complexity: O(1)
