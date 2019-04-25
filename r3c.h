@@ -613,6 +613,11 @@ public: // LIST
     // Time complexity: O(1)
     int lpush(const std::string& key, const std::vector<std::string>& values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
+    // Inserts value at the head of the list stored at key, only if key already exists and holds a list.
+    // Time complexity: O(1)
+    // Returns the length of the list after the push operation.
+    int lpushx(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=0) throw (CRedisException);
+
     // Get a range of elements from a list.
     //
     // Time complexity:
@@ -627,6 +632,38 @@ public: // LIST
     // Time complexity:
     // O(N) where N is the number of elements to be removed by the operation.
     void ltrim(const std::string& key, int64_t start, int64_t end, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+
+    // Sets the list element at index to value.
+    // Time complexity:
+    // O(N) where N is the length of the list. Setting either the first or the last element of the list is O(1).
+    void lset(const std::string& key, int index, const std::string& value, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+
+    // Inserts value in the list stored at key either before or after the reference value pivot.
+    // Returns the length of the list after the insert operation,
+    // or -1 when the value pivot was not found.
+    int linsert(const std::string& key, const std::string& pivot, const std::string& value, bool before, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+
+    // Removes the first count occurrences of elements equal to value from the list stored at key.
+    // Time complexity: O(N) where N is the length of the list.
+    //
+    // The count argument influences the operation in the following ways:
+    // count > 0: Remove elements equal to value moving from head to tail.
+    // count < 0: Remove elements equal to value moving from tail to head.
+    // count = 0: Remove all elements equal to value.
+    //
+    // Returns the number of removed elements.
+    // Note that non-existing keys are treated like empty lists, so when key does
+    // not exist, the command will always return 0.
+    int lrem(const std::string& key, int count, const std::string& value, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+
+    // Get the element at index index in the list stored at key.
+    // The index is zero-based, so 0 means the first element, 1 the second element and so on.
+    // Negative indices can be used to designate elements starting at the tail of the list.
+    // Here, -1 means the last element, -2 means the penultimate and so forth.
+    //
+    // value the element at index index in the list stored at key.
+    // Returns true if the element exists, or returns false.
+    bool lindex(const std::string& key, int index, std::string* value, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
 
     // Remove and get the last element in a list.
     // Time complexity: O(1)

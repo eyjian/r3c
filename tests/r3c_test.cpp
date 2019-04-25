@@ -50,7 +50,8 @@ static void test_mget_and_mset(const std::string& redis_cluster_nodes, const std
 
 ////////////////////////////////////////////////////////////////////////////
 // LIST
-static void test_list(const std::string& redis_cluster_nodes, const std::string& redis_password);
+static void test_list1(const std::string& redis_cluster_nodes, const std::string& redis_password);
+static void test_list2(const std::string& redis_cluster_nodes, const std::string& redis_password);
 
 ////////////////////////////////////////////////////////////////////////////
 // HASH
@@ -139,7 +140,8 @@ int main(int argc, char* argv[])
 
     ////////////////////////////////////////////////////////////////////////////
     // LIST
-    test_list(redis_cluster_nodes, redis_password);
+    test_list1(redis_cluster_nodes, redis_password);
+    test_list2(redis_cluster_nodes, redis_password);
 
     ////////////////////////////////////////////////////////////////////////////
     // HASH
@@ -1193,7 +1195,7 @@ void test_mget_and_mset(const std::string& redis_cluster_nodes, const std::strin
 
 ////////////////////////////////////////////////////////////////////////////
 // LIST
-void test_list(const std::string& redis_cluster_nodes, const std::string& redis_password)
+void test_list1(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
 
@@ -1307,6 +1309,134 @@ void test_list(const std::string& redis_cluster_nodes, const std::string& redis_
         }
 
         rc.del(key);
+        SUCCESS_PRINT("%s", "OK");
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        ERROR_PRINT("ERROR: %s", ex.str().c_str());
+    }
+}
+
+void test_list2(const std::string& redis_cluster_nodes, const std::string& redis_password)
+{
+    TIPS_PRINT();
+
+    try
+    {
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
+        std::string k1 = "k1";
+        std::string v1;
+        std::string errmsg;
+        bool have_exception;
+        int n = 0;
+
+        // LSET & LINDEX
+        rc.del(k1);
+        rc.lpush(k1, "v1");
+        rc.lpush(k1, "v3");
+        rc.lpush(k1, "v5");
+        rc.lset(k1, 0, "v2");
+        if (!rc.lindex(k1, 0, &v1))
+        {
+            ERROR_PRINT("%s", "lindex error");
+            return;
+        }
+        if (v1 != "v2")
+        {
+            ERROR_PRINT("%s", "lset or lindex error");
+            return;
+        }
+
+        // lset
+        try
+        {
+            have_exception = false;
+            rc.lset(k1, 3, "v3");
+        }
+        catch (r3c::CRedisException& ex)
+        {
+            have_exception = true;
+            errmsg = ex.str();
+        }
+        if (!have_exception)
+        {
+            ERROR_PRINT("%s", "lset error");
+            return;
+        }
+
+        // LREM
+        rc.del(k1);
+        rc.lpush(k1, "v1");
+        rc.lpush(k1, "v2");
+        rc.lpush(k1, "v3");
+        rc.lpush(k1, "v2");
+        rc.lpush(k1, "v4");
+        rc.lpush(k1, "v2");
+        rc.lpush(k1, "v5");
+        n  = rc.lrem(k1, 1, "v2");
+        if (n != 1)
+        {
+            ERROR_PRINT("%s", "lrem error");
+            return;
+        }
+        v1.clear();
+        if (!rc.lindex(k1, 1, &v1))
+        {
+            ERROR_PRINT("%s", "lindex error");
+            return;
+        }
+        if (v1 != "v4")
+        {
+            ERROR_PRINT("lrem or lindex error: %s", v1.c_str());
+            return;
+        }
+
+        // LINSERT
+        rc.del(k1);
+        rc.lpush(k1, "v1");
+        rc.lpush(k1, "v2");
+        rc.lpush(k1, "v3");
+        n = rc.linsert(k1, "V2", "X", true);
+        if (n != -1)
+        {
+            ERROR_PRINT("%s", "linsert/BEFORE error");
+            return;
+        }
+        n = rc.linsert(k1, "V2", "X", false);
+        if (n != -1)
+        {
+            ERROR_PRINT("%s", "linsert/AFTER error");
+            return;
+        }
+        n = rc.linsert(k1, "v2", "X1", true);
+        if (n != 4)
+        {
+            ERROR_PRINT("%s", "linsert/BEFORE error");
+        }
+        n = rc.linsert(k1, "v2", "X2", false);
+        if (n != 5)
+        {
+            ERROR_PRINT("%s", "linsert/AFTER error");
+            return;
+        }
+
+        // LPUSHX
+        rc.del(k1);
+        n = rc.lpushx(k1, "v1");
+        if (n != 0)
+        {
+            ERROR_PRINT("%s", "lpushx error");
+            return;
+        }
+        rc.lpush(k1, "v1");
+        n = rc.lpushx(k1, "v2");
+        if (n != 2)
+        {
+            ERROR_PRINT("%s", "lpushx error");
+            return;
+        }
+
+        rc.del(k1);
         SUCCESS_PRINT("%s", "OK");
     }
     catch (r3c::CRedisException& ex)
