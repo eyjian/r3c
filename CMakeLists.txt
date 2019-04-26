@@ -78,7 +78,6 @@ else ()
         PATHS 
         /usr/local/hiredis/include/hiredis
         /usr/include
-        /usr/local/include/hiredis/
         /usr/local/thirdparty/hiredis/include/hiredis
         ${CMAKE_INSTALL_PREFIX}/include/hiredis
         NO_DEFAULT_PATH
@@ -89,7 +88,6 @@ else ()
         NAMES
         libhiredis.a
         PATHS 
-        /usr/local/lib/
         /usr/local/hiredis/lib
         /usr/lib
         /usr/local/thirdparty/hiredis/lib
