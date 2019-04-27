@@ -807,7 +807,6 @@ void test_get_and_set2(const std::string& redis_cluster_nodes, const std::string
         // memset used to fix valgrind warning:
         // Syscall param write(buf) points to uninitialised byte(s)
         // Address 0x678368b is 43 bytes inside a block of size 101 alloc'd
-        memset(&v, 0, sizeof(v));
         v.a = 1;
         v.b = 3;
         v.c = 5;
@@ -1535,7 +1534,6 @@ void test_hget_and_hset2(const std::string& redis_cluster_nodes, const std::stri
         // memset used to fix valgrind warning:
         // Syscall param write(buf) points to uninitialised byte(s)
         // Address 0x74d80a6 is 54 bytes inside a block of size 123 alloc'd
-        memset(&v, 0, sizeof(v));
         v.a = 2;
         v.b = 4;
         v.c = 6;
