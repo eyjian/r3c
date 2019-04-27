@@ -681,7 +681,7 @@ CRedisClient::CRedisClient(
         int readwrite_timeout_milliseconds,
         const std::string& password,
         ReadPolicy read_policy
-        ) throw (CRedisException)
+        )
             : _command_monitor(NULL),
               _raw_nodes_string(raw_nodes_string),
               _connect_timeout_milliseconds(connect_timeout_milliseconds),
@@ -697,7 +697,7 @@ CRedisClient::CRedisClient(
         const std::string& password,
         int connect_timeout_milliseconds,
         int readwrite_timeout_milliseconds,
-        ReadPolicy read_policy) throw (CRedisException)
+        ReadPolicy read_policy)
             : _command_monitor(NULL),
               _raw_nodes_string(raw_nodes_string),
               _connect_timeout_milliseconds(connect_timeout_milliseconds),
@@ -713,7 +713,7 @@ CRedisClient::CRedisClient(
         ReadPolicy read_policy,
         const std::string& password,
         int connect_timeout_milliseconds,
-        int readwrite_timeout_milliseconds) throw (CRedisException)
+        int readwrite_timeout_milliseconds)
             : _command_monitor(NULL),
               _raw_nodes_string(raw_nodes_string),
               _connect_timeout_milliseconds(connect_timeout_milliseconds),
@@ -757,7 +757,7 @@ const char* CRedisClient::get_mode_str() const
     return cluster_mode()? "CLUSTER": "STANDALONE";
 }
 
-int CRedisClient::list_nodes(std::vector<struct NodeInfo>* nodes_info) throw (CRedisException)
+int CRedisClient::list_nodes(std::vector<struct NodeInfo>* nodes_info)
 {
     struct ErrorInfo errinfo;
 
@@ -781,7 +781,7 @@ int CRedisClient::list_nodes(std::vector<struct NodeInfo>* nodes_info) throw (CR
     return static_cast<int>(nodes_info->size());
 }
 
-void CRedisClient::flushall() throw (CRedisException)
+void CRedisClient::flushall()
 {
     const int num_retries = NUM_RETRIES;
     const std::string key;
@@ -793,7 +793,7 @@ void CRedisClient::flushall() throw (CRedisException)
     redis_command(true, num_retries, key, cmd_args, NULL);
 }
 
-void CRedisClient::multi(const std::string& key, Node* which) throw (CRedisException)
+void CRedisClient::multi(const std::string& key, Node* which)
 {
     if (cluster_mode())
     {
@@ -816,7 +816,7 @@ void CRedisClient::multi(const std::string& key, Node* which) throw (CRedisExcep
     }
 }
 
-const RedisReplyHelper CRedisClient::exec(const std::string& key, Node* which) throw (CRedisException)
+const RedisReplyHelper CRedisClient::exec(const std::string& key, Node* which)
 {
     if (cluster_mode())
     {
@@ -849,7 +849,7 @@ bool CRedisClient::expire(
         const std::string& key,
         uint32_t seconds,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("EXPIRE");
@@ -868,7 +868,7 @@ bool CRedisClient::expire(
 
 // Time complexity: O(1)
 // EXISTS key [key ...]
-bool CRedisClient::exists(const std::string& key, Node* which, int num_retries) throw (CRedisException)
+bool CRedisClient::exists(const std::string& key, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("EXISTS");
@@ -889,7 +889,7 @@ bool CRedisClient::exists(const std::string& key, Node* which, int num_retries) 
 // When a key to remove holds a value other than a string,
 // the individual complexity for this key is O(M) where M is the number of elements in the list, set, sorted set or hash.
 // Removing a single key that holds a string value is O(1).
-bool CRedisClient::del(const std::string& key, Node* which, int num_retries) throw (CRedisException)
+bool CRedisClient::del(const std::string& key, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("DEL");
@@ -910,7 +910,7 @@ bool CRedisClient::get(
         const std::string& key,
         std::string* value,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("GET");
@@ -933,7 +933,7 @@ void CRedisClient::set(
         const std::string& key,
         const std::string& value,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("SET");
@@ -957,7 +957,7 @@ bool CRedisClient::setnx(
         const std::string& key,
         const std::string& value,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("SETNX");
@@ -981,7 +981,7 @@ void CRedisClient::setex(
         const std::string& value,
         uint32_t expired_seconds,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("SETEX");
@@ -1001,7 +1001,7 @@ bool CRedisClient::setnxex(
         const std::string& value,
         uint32_t expired_seconds,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("SET");
@@ -1029,7 +1029,7 @@ int CRedisClient::mget(
         const std::vector<std::string>& keys,
         std::vector<std::string>* values,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     values->clear();
 
@@ -1080,7 +1080,7 @@ int CRedisClient::mget(
 int CRedisClient::mset(
         const std::map<std::string, std::string>& kv_map,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     int success = 0;
 
@@ -1124,7 +1124,7 @@ int64_t CRedisClient::incrby(
         const std::string& key,
         int64_t increment,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("INCRBY");
@@ -1144,7 +1144,7 @@ int64_t CRedisClient::incrby(
         const std::string& key,
         int64_t increment, int64_t expired_increment, uint32_t expired_seconds,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     // 注意ARGV[2]和n需类型相同才可以比较，所以要么n转成字符串，要么ARGV[2]转成数字
     const std::string lua_scripts =
@@ -1164,13 +1164,13 @@ int64_t CRedisClient::incrby(
         const std::string& key,
         int64_t increment, uint32_t expired_seconds,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     const int64_t expired_increment = increment;
     return incrby(key, increment, expired_increment, expired_seconds, which, num_retries);
 }
 
-bool CRedisClient::key_type(const std::string& key, std::string* key_type, Node* which, int num_retries) throw (CRedisException)
+bool CRedisClient::key_type(const std::string& key, std::string* key_type, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("TYPE");
@@ -1186,7 +1186,7 @@ bool CRedisClient::key_type(const std::string& key, std::string* key_type, Node*
     return get_value(redis_reply.get(), key_type);
 }
 
-int64_t CRedisClient::ttl(const std::string& key, Node* which, int num_retries) throw (CRedisException)
+int64_t CRedisClient::ttl(const std::string& key, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("TTL");
@@ -1205,13 +1205,13 @@ int64_t CRedisClient::ttl(const std::string& key, Node* which, int num_retries) 
 // including enough command calls for the cursor to return back to 0. N is the number of elements inside the collection.
 //
 // SCAN cursor [MATCH pattern] [COUNT count]
-int64_t CRedisClient::scan(int64_t cursor, std::vector<std::string>* values, Node* which, int num_retries) throw (CRedisException)
+int64_t CRedisClient::scan(int64_t cursor, std::vector<std::string>* values, Node* which, int num_retries)
 {
     return scan(cursor, std::string(""), 0, values, which, num_retries);
 }
 
 // SCAN cursor [MATCH pattern] [COUNT count]
-int64_t CRedisClient::scan(int64_t cursor, int count, std::vector<std::string>* values, Node* which, int num_retries) throw (CRedisException)
+int64_t CRedisClient::scan(int64_t cursor, int count, std::vector<std::string>* values, Node* which, int num_retries)
 {
     return scan(cursor, std::string(""), count, values, which, num_retries);
 }
@@ -1221,7 +1221,7 @@ int64_t CRedisClient::scan(
         int64_t cursor, const std::string& pattern,
         std::vector<std::string>* values,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     return scan(cursor, pattern, 0, values, which, num_retries);
 }
@@ -1231,7 +1231,7 @@ int64_t CRedisClient::scan(
         int64_t cursor, const std::string& pattern, int count,
         std::vector<std::string>* values,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     const std::string key;
     CommandArgs cmd_args;
@@ -1308,7 +1308,7 @@ const RedisReplyHelper CRedisClient::eval(
         const std::string& key,
         const std::string& lua_scripts,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     const int numkeys = 1;
     CommandArgs cmd_args;
@@ -1327,7 +1327,7 @@ const RedisReplyHelper CRedisClient::eval(
         const std::string& lua_scripts,
         const std::vector<std::string>& parameters,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     const int numkeys = 1;
     CommandArgs cmd_args;
@@ -1346,7 +1346,7 @@ const RedisReplyHelper CRedisClient::evalsha(
         const std::string& key,
         const std::string& sha1,
         const std::vector<std::string>& parameters,
-        Node* which, int num_retries) throw (CRedisException)
+        Node* which, int num_retries)
 {
     const int numkeys = 1;
     CommandArgs cmd_args;
@@ -1365,7 +1365,7 @@ const RedisReplyHelper CRedisClient::eval(
         const std::string& lua_scripts,
         const std::vector<std::string>& keys, const std::vector<std::string>& parameters,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     if (cluster_mode() && keys_crossslots(keys))
     {
@@ -1397,7 +1397,7 @@ const RedisReplyHelper CRedisClient::evalsha(
         const std::vector<std::string>& keys,
         const std::vector<std::string>& parameters,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     if (cluster_mode() && keys_crossslots(keys))
     {
@@ -1430,7 +1430,7 @@ const RedisReplyHelper CRedisClient::evalsha(
 
 // Time complexity: O(N) where N is the number of fields to be removed.
 // HDEL key field [field ...]
-bool CRedisClient::hdel(const std::string& key, const std::string& field, Node* which, int num_retries) throw (CRedisException)
+bool CRedisClient::hdel(const std::string& key, const std::string& field, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("HDEL");
@@ -1452,7 +1452,7 @@ int CRedisClient::hdel(
         const std::string& key,
         const std::vector<std::string>& fields,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     return hmdel(key, fields, which, num_retries);
 }
@@ -1461,7 +1461,7 @@ int CRedisClient::hmdel(
         const std::string& key,
         const std::vector<std::string>& fields,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("HDEL");
@@ -1481,7 +1481,7 @@ int CRedisClient::hmdel(
 
 // Time complexity: O(1)
 // HEXISTS key field
-bool CRedisClient::hexists(const std::string& key, const std::string& field, Node* which, int num_retries) throw (CRedisException)
+bool CRedisClient::hexists(const std::string& key, const std::string& field, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("HEXISTS");
@@ -1500,7 +1500,7 @@ bool CRedisClient::hexists(const std::string& key, const std::string& field, Nod
 
 // Time complexity: O(1)
 // HLEN key
-int CRedisClient::hlen(const std::string& key, Node* which, int num_retries) throw (CRedisException)
+int CRedisClient::hlen(const std::string& key, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("HLEN");
@@ -1521,7 +1521,7 @@ bool CRedisClient::hset(
         const std::string& field,
         const std::string& value,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("HSET");
@@ -1545,7 +1545,7 @@ bool CRedisClient::hsetex(
         const std::string& value,
         uint32_t expired_seconds,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     const std::string lua_scripts =
             "local n;n=redis.call('HSET',KEYS[1],ARGV[1],ARGV[2]);"
@@ -1568,7 +1568,7 @@ bool CRedisClient::hsetnx(
         const std::string& field,
         const std::string& value,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("HSETNX");
@@ -1592,7 +1592,7 @@ bool CRedisClient::hsetnxex(
         const std::string& value,
         uint32_t expired_seconds,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     const std::string lua_scripts =
             "local n=redis.call('HLEN',KEYS[1]);"
@@ -1616,7 +1616,7 @@ bool CRedisClient::hget(
         const std::string& field,
         std::string* value,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("HGET");
@@ -1641,7 +1641,7 @@ int64_t CRedisClient::hincrby(
         const std::string& field,
         int64_t increment,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("HINCRBY");
@@ -1662,7 +1662,7 @@ void CRedisClient::hincrby(
         const std::vector<std::pair<std::string, int64_t> >& increments,
         std::vector<int64_t>* values,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     hmincrby(key, increments, values, which, num_retries);
 }
@@ -1672,7 +1672,7 @@ void CRedisClient::hmincrby(
         const std::vector<std::pair<std::string, int64_t> >& increments,
         std::vector<int64_t>* values,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     const std::string lua_scripts =
             "local j=1;local results={};"
@@ -1696,7 +1696,7 @@ void CRedisClient::hset(
         const std::string& key,
         const std::map<std::string, std::string>& map,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     hmset(key, map, which, num_retries);
 }
@@ -1707,7 +1707,7 @@ void CRedisClient::hmset(
         const std::string& key,
         const std::map<std::string, std::string>& map,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("HMSET");
@@ -1725,7 +1725,7 @@ int CRedisClient::hget(
         std::map<std::string, std::string>* map,
         bool keep_null,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     return hmget(key, fields, map, keep_null, which, num_retries);
 }
@@ -1738,7 +1738,7 @@ int CRedisClient::hmget(
         std::map<std::string, std::string>* map,
         bool keep_null,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("HMGET");
@@ -1762,7 +1762,7 @@ int CRedisClient::hgetall(
         const std::string& key,
         std::map<std::string, std::string>* map,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("HGETALL");
@@ -1781,7 +1781,7 @@ int CRedisClient::hgetall(
 
 // Time complexity: O(1)
 // HSTRLEN key field
-int CRedisClient::hstrlen(const std::string& key, const std::string& field, Node* which, int num_retries) throw (CRedisException)
+int CRedisClient::hstrlen(const std::string& key, const std::string& field, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("HSTRLEN");
@@ -1802,7 +1802,7 @@ int CRedisClient::hstrlen(const std::string& key, const std::string& field, Node
 
 // Time complexity: O(N) where N is the size of the hash.
 // HKEYS key
-int CRedisClient::hkeys(const std::string& key, std::vector<std::string>* fields, Node* which, int num_retries) throw (CRedisException)
+int CRedisClient::hkeys(const std::string& key, std::vector<std::string>* fields, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("HKEYS");
@@ -1821,7 +1821,7 @@ int CRedisClient::hkeys(const std::string& key, std::vector<std::string>* fields
 
 // Time complexity: O(N) where N is the size of the hash.
 // HVALS key
-int CRedisClient::hvals(const std::string& key, std::vector<std::string>* vals, Node* which, int num_retries) throw (CRedisException)
+int CRedisClient::hvals(const std::string& key, std::vector<std::string>* vals, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("HVALS");
@@ -1848,7 +1848,7 @@ int64_t CRedisClient::hscan(
         int64_t cursor,
         std::map<std::string, std::string>* map,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     return hscan(key, cursor, std::string(""), 0, map, which, num_retries);
 }
@@ -1858,7 +1858,7 @@ int64_t CRedisClient::hscan(
         int64_t cursor, int count,
         std::map<std::string, std::string>* map,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     return hscan(key, cursor, std::string(""), count, map, which, num_retries);
 }
@@ -1868,7 +1868,7 @@ int64_t CRedisClient::hscan(
         int64_t cursor, const std::string& pattern,
         std::map<std::string, std::string>* map,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     return hscan(key, cursor, pattern, 0, map, which, num_retries);
 }
@@ -1878,7 +1878,7 @@ int64_t CRedisClient::hscan(
         int64_t cursor, const std::string& pattern, int count,
         std::map<std::string, std::string>* map,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("HSCAN");
@@ -1925,7 +1925,7 @@ int64_t CRedisClient::hscan(
 
 // Time complexity: O(1)
 // LLEN key
-int CRedisClient::llen(const std::string& key, Node* which, int num_retries) throw (CRedisException)
+int CRedisClient::llen(const std::string& key, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("LLEN");
@@ -1941,7 +1941,7 @@ int CRedisClient::llen(const std::string& key, Node* which, int num_retries) thr
 
 // Time complexity: O(1)
 // LPOP key
-bool CRedisClient::lpop(const std::string& key, std::string* value, Node* which, int num_retries) throw (CRedisException)
+bool CRedisClient::lpop(const std::string& key, std::string* value, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("LPOP");
@@ -1963,7 +1963,7 @@ int CRedisClient::lpush(
         const std::string& key,
         const std::string& value,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("LPUSH");
@@ -1984,7 +1984,7 @@ int CRedisClient::lpush(
         const std::string& key,
         const std::vector<std::string>& values,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("LPUSH");
@@ -2002,7 +2002,7 @@ int CRedisClient::lpush(
 // Inserts value at the head of the list stored at key, only if key already exists and holds a list.
 // In contrary to LPUSH, no operation will be performed when key does not yet exist.
 // Time complexity: O(1)
-int CRedisClient::lpushx(const std::string& key, const std::string& value, Node* which, int num_retries) throw (CRedisException)
+int CRedisClient::lpushx(const std::string& key, const std::string& value, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("LPUSHX");
@@ -2028,7 +2028,7 @@ int CRedisClient::lrange(
         int64_t start, int64_t end,
         std::vector<std::string>* values,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("LRANGE");
@@ -2052,7 +2052,7 @@ void CRedisClient::ltrim(
         const std::string& key,
         int64_t start, int64_t end,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("LTRIM");
@@ -2065,7 +2065,7 @@ void CRedisClient::ltrim(
     redis_command(false, num_retries, key, cmd_args, which);
 }
 
-void CRedisClient::lset(const std::string& key, int index, const std::string& value, Node* which, int num_retries) throw (CRedisException)
+void CRedisClient::lset(const std::string& key, int index, const std::string& value, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("LSET");
@@ -2085,7 +2085,7 @@ void CRedisClient::lset(const std::string& key, int index, const std::string& va
 // O(N) where N is the number of elements to traverse before seeing the value pivot.
 // This means that inserting somewhere on the left end on the list (head) can be considered O(1)
 // and inserting somewhere on the right end (tail) is O(N).
-int CRedisClient::linsert(const std::string& key, const std::string& pivot, const std::string& value, bool before, Node* which, int num_retries) throw (CRedisException)
+int CRedisClient::linsert(const std::string& key, const std::string& pivot, const std::string& value, bool before, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("LINSERT");
@@ -2110,7 +2110,7 @@ int CRedisClient::linsert(const std::string& key, const std::string& pivot, cons
 // Removes the first count occurrences of elements equal to value from the list stored at key.
 // Time complexity:
 // O(N) where N is the length of the list.
-int CRedisClient::lrem(const std::string& key, int count, const std::string& value, Node* which, int num_retries) throw (CRedisException)
+int CRedisClient::lrem(const std::string& key, int count, const std::string& value, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("LREM");
@@ -2130,7 +2130,7 @@ int CRedisClient::lrem(const std::string& key, int count, const std::string& val
 // Time complexity:
 // O(N) where N is the number of elements to traverse to get to the element at index.
 // This makes asking for the first or the last element of the list O(1).
-bool CRedisClient::lindex(const std::string& key, int index, std::string* value, Node* which, int num_retries) throw (CRedisException)
+bool CRedisClient::lindex(const std::string& key, int index, std::string* value, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("LINDEX");
@@ -2153,7 +2153,7 @@ bool CRedisClient::rpop(
         const std::string& key,
         std::string* value,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("RPOP");
@@ -2174,7 +2174,7 @@ int CRedisClient::rpush(
         const std::string& key,
         const std::string& value,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("RPUSH");
@@ -2194,7 +2194,7 @@ int CRedisClient::rpush(
         const std::string& key,
         const std::vector<std::string>& values,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("RPUSH");
@@ -2214,7 +2214,7 @@ int CRedisClient::rpushx(
         const std::string& key,
         const std::string& value,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("RPUSHX");
@@ -2240,7 +2240,7 @@ int CRedisClient::sadd(
         const std::string& key,
         const std::string& value,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("SADD");
@@ -2261,7 +2261,7 @@ int CRedisClient::sadd(
         const std::string& key,
         const std::vector<std::string>& values,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("SADD");
@@ -2278,7 +2278,7 @@ int CRedisClient::sadd(
 }
 
 // O(1)
-int CRedisClient::scard(const std::string& key, Node* which, int num_retries) throw (CRedisException)
+int CRedisClient::scard(const std::string& key, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("SCARD");
@@ -2297,7 +2297,7 @@ bool CRedisClient::sismember(
         const std::string& key,
         const std::string& value,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("SISMEMBER");
@@ -2319,7 +2319,7 @@ int CRedisClient::smembers(
         const std::string& key,
         std::vector<std::string>* values,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("SMEMBERS");
@@ -2339,7 +2339,7 @@ bool CRedisClient::spop(
         const std::string& key,
         std::string* value,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     std::vector<std::string> values;
     const int n = spop(key, 1, &values, which, num_retries);
@@ -2356,7 +2356,7 @@ int CRedisClient::spop(
         int count,
         std::vector<std::string>* values,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("SPOP");
@@ -2377,7 +2377,7 @@ bool CRedisClient::srandmember(
         const std::string& key,
         std::string* value,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("SRANDMEMBER");
@@ -2401,7 +2401,7 @@ int CRedisClient::srandmember(
         int count,
         std::vector<std::string>* values,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("SRANDMEMBER");
@@ -2423,7 +2423,7 @@ int CRedisClient::srem(
         const std::string& key,
         const std::string& value,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("SREM");
@@ -2443,7 +2443,7 @@ int CRedisClient::srem(
         const std::string& key,
         const std::vector<std::string>& values,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("SREM");
@@ -2468,7 +2468,7 @@ int64_t CRedisClient::sscan(
         int64_t cursor,
         std::vector<std::string>* values,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     return sscan(key, cursor, std::string(""), 0, values, which, num_retries);
 }
@@ -2478,7 +2478,7 @@ int64_t CRedisClient::sscan(
         int64_t cursor, int count,
         std::vector<std::string>* values,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     return sscan(key, cursor, std::string(""), count, values, which, num_retries);
 }
@@ -2488,7 +2488,7 @@ int64_t CRedisClient::sscan(
         int64_t cursor, const std::string& pattern,
         std::vector<std::string>* values,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     return sscan(key, cursor, pattern, 0, values, which, num_retries);
 }
@@ -2498,7 +2498,7 @@ int64_t CRedisClient::sscan(
         int64_t cursor, const std::string& pattern, int count,
         std::vector<std::string>* values,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     // SSCAN key cursor [MATCH pattern] [COUNT count]
     CommandArgs cmd_args;
@@ -2543,7 +2543,7 @@ int64_t CRedisClient::sscan(
         int count,
         std::set<std::string>* values,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     // SSCAN key cursor [MATCH pattern] [COUNT count]
     CommandArgs cmd_args;
@@ -2583,7 +2583,7 @@ int CRedisClient::zrem(
         const std::string& key,
         const std::string& field,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("ZREM");
@@ -2605,7 +2605,7 @@ int CRedisClient::zrem(
         const std::string& key,
         const std::vector<std::string>& fields,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("ZREM");
@@ -2631,7 +2631,7 @@ int CRedisClient::zadd(
         int64_t score,
         ZADDFLAG flag,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     std::map<std::string, int64_t> map;
     map[field] = score;
@@ -2643,7 +2643,7 @@ int CRedisClient::zadd(
         const std::map<std::string, int64_t>& map,
         ZADDFLAG flag,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     const std::string& flag_str = zaddflag2str(flag);
     CommandArgs cmd_args;
@@ -2669,7 +2669,7 @@ int CRedisClient::zadd(
 }
 
 // Time complexity: O(1)
-int64_t CRedisClient::zcard(const std::string& key, Node* which, int num_retries) throw (CRedisException)
+int64_t CRedisClient::zcard(const std::string& key, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("ZCARD");
@@ -2692,7 +2692,7 @@ int64_t CRedisClient::zcount(
         const std::string& key,
         int64_t min, int64_t max ,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("ZCOUNT");
@@ -2717,7 +2717,7 @@ int64_t CRedisClient::zincrby(
         const std::string& key,
         const std::string& field, int64_t increment,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("ZINCRBY");
@@ -2747,7 +2747,7 @@ int CRedisClient::zrange(
         int64_t start, int64_t end, bool withscores,
         std::vector<std::pair<std::string, int64_t> >* vec,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("ZRANGE");
@@ -2777,7 +2777,7 @@ int CRedisClient::zrevrange(
         int64_t start, int64_t end, bool withscores,
         std::vector<std::pair<std::string, int64_t> >* vec,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("ZREVRANGE");
@@ -2808,7 +2808,7 @@ int CRedisClient::zrangebyscore(
         int64_t min, int64_t max, bool withscores,
         std::vector<std::pair<std::string, int64_t> >* vec,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("ZRANGEBYSCORE");
@@ -2839,7 +2839,7 @@ int CRedisClient::zrevrangebyscore(
         int64_t max, int64_t min, bool withscores,
         std::vector<std::pair<std::string, int64_t> >* vec,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("ZREVRANGEBYSCORE");
@@ -2866,7 +2866,7 @@ int CRedisClient::zrangebyscore(
         int64_t min, int64_t max, int64_t offset, int64_t count, bool withscores,
         std::vector<std::pair<std::string, int64_t> >* vec,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("ZREVRANGEBYSCORE");
@@ -2896,7 +2896,7 @@ int CRedisClient::zrevrangebyscore(
         int64_t max, int64_t min, int64_t offset, int64_t count, bool withscores,
         std::vector<std::pair<std::string, int64_t> >* vec,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("ZREVRANGEBYSCORE");
@@ -2928,7 +2928,7 @@ int CRedisClient::zremrangebyrank(
         const std::string& key,
         int64_t start, int64_t end,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("ZREMRANGEBYRANK");
@@ -2948,7 +2948,7 @@ int CRedisClient::zremrangebyrank(
 // Time complexity: O(log(N))
 //
 // ZRANK key member
-int CRedisClient::zrank(const std::string& key, const std::string& field, Node* which, int num_retries) throw (CRedisException)
+int CRedisClient::zrank(const std::string& key, const std::string& field, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("ZRANK");
@@ -2971,7 +2971,7 @@ int CRedisClient::zrank(const std::string& key, const std::string& field, Node* 
     }
 }
 
-int CRedisClient::zrevrank(const std::string& key, const std::string& field, Node* which, int num_retries) throw (CRedisException)
+int CRedisClient::zrevrank(const std::string& key, const std::string& field, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("ZREVRANK");
@@ -2996,7 +2996,7 @@ int CRedisClient::zrevrank(const std::string& key, const std::string& field, Nod
 
 // Time complexity: O(1)
 // ZSCORE key member
-int64_t CRedisClient::zscore(const std::string& key, const std::string& field, Node* which, int num_retries) throw (CRedisException)
+int64_t CRedisClient::zscore(const std::string& key, const std::string& field, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("ZSCORE");
@@ -3030,7 +3030,7 @@ int64_t CRedisClient::zscan(
         int64_t cursor,
         std::vector<std::pair<std::string, int64_t> >* values,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     return zscan(key, cursor, std::string(""), 0, values, which, num_retries);
 }
@@ -3040,7 +3040,7 @@ int64_t CRedisClient::zscan(
         int64_t cursor, int count,
         std::vector<std::pair<std::string, int64_t> >* values,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     return zscan(key, cursor, std::string(""), count, values, which, num_retries);
 }
@@ -3050,7 +3050,7 @@ int64_t CRedisClient::zscan(
         int64_t cursor, const std::string& pattern,
         std::vector<std::pair<std::string, int64_t> >* values,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     return zscan(key, cursor, pattern, 0, values, which, num_retries);
 }
@@ -3060,7 +3060,7 @@ int64_t CRedisClient::zscan(
         int64_t cursor, const std::string& pattern, int count,
         std::vector<std::pair<std::string, int64_t> >* values,
         Node* which,
-        int num_retries) throw (CRedisException)
+        int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("ZSCAN");
@@ -3098,7 +3098,7 @@ int64_t CRedisClient::zscan(
 int CRedisClient::xack(
         const std::string& key, const std::string& groupname,
         const std::vector<std::string>& ids,
-        Node* which, int num_retries) throw (CRedisException)
+        Node* which, int num_retries)
 {
     std::string value;
     CommandArgs cmd_args;
@@ -3116,7 +3116,7 @@ int CRedisClient::xack(
 int CRedisClient::xack(
         const std::string& key, const std::string& groupname,
         const std::string& id,
-        Node* which, int num_retries) throw (CRedisException)
+        Node* which, int num_retries)
 {
     std::vector<std::string> ids(1);
     ids[0] = id;
@@ -3129,7 +3129,7 @@ std::string CRedisClient::xadd(
         const std::string& key, const std::string& id,
         const std::vector<FVPair>& values,
         int64_t maxlen, char c,
-        Node* which, int num_retries) throw (CRedisException)
+        Node* which, int num_retries)
 {
     std::string value;
     CommandArgs cmd_args;
@@ -3152,7 +3152,7 @@ std::string CRedisClient::xadd(
 std::string CRedisClient::xadd(
         const std::string& key, const std::string& id,
         const std::vector<FVPair>& values,
-        Node* which, int num_retries) throw (CRedisException)
+        Node* which, int num_retries)
 {
     std::string value;
     CommandArgs cmd_args;
@@ -3177,7 +3177,7 @@ std::string CRedisClient::xadd(
 void CRedisClient::xgroup_create(
         const std::string& key, const std::string& groupname, const std::string& id,
         bool mkstream,
-        Node* which, int num_retries) throw (CRedisException)
+        Node* which, int num_retries)
 {
     // xgroup CREATE key groupname id-or-$
     CommandArgs cmd_args;
@@ -3206,7 +3206,7 @@ void CRedisClient::xgroup_create(
 // Consumers in a consumer group are auto-created every time a new consumer name is mentioned by some command.
 //
 // XGROUP DESTROY key groupname
-void CRedisClient::xgroup_destroy(const std::string& key, const std::string& groupname, Node* which, int num_retries) throw (CRedisException)
+void CRedisClient::xgroup_destroy(const std::string& key, const std::string& groupname, Node* which, int num_retries)
 {
     // xgroup DESTROY key groupname
     CommandArgs cmd_args;
@@ -3222,7 +3222,7 @@ void CRedisClient::xgroup_destroy(const std::string& key, const std::string& gro
 }
 
 // XGROUP SETID key groupname id-or-$
-void CRedisClient::xgroup_setid(const std::string& key, const std::string& id, Node* which, int num_retries) throw (CRedisException)
+void CRedisClient::xgroup_setid(const std::string& key, const std::string& id, Node* which, int num_retries)
 {
     // xgroup SETID key id-or-$
     CommandArgs cmd_args;
@@ -3236,7 +3236,7 @@ void CRedisClient::xgroup_setid(const std::string& key, const std::string& id, N
 }
 
 // XGROUP DELCONSUMER key groupname consumername
-void CRedisClient::xgroup_delconsumer(const std::string& key, const std::string& groupname, const std::string& consumername, Node* which, int num_retries) throw (CRedisException)
+void CRedisClient::xgroup_delconsumer(const std::string& key, const std::string& groupname, const std::string& consumername, Node* which, int num_retries)
 {
     // xgroup DELCONSUMER key groupname consumername
     CommandArgs cmd_args;
@@ -3273,7 +3273,7 @@ void CRedisClient::xreadgroup(
         const std::vector<std::string>& keys, const std::vector<std::string>& ids,
         int64_t count, int64_t block_milliseconds, bool noack,
         std::vector<Stream>* values,
-        Node* which, int num_retries) throw (CRedisException)
+        Node* which, int num_retries)
 {
     if (keys.empty())
     {
@@ -3339,7 +3339,7 @@ void CRedisClient::xreadgroup(
         const std::vector<std::string>& keys, const std::vector<std::string>& ids,
         int64_t count, bool noack,
         std::vector<Stream>* values,
-        Node* which, int num_retries) throw (CRedisException)
+        Node* which, int num_retries)
 {
     const int64_t block_milliseconds = -1; // -1 means, no BLOCK argument given
     xreadgroup(groupname, consumername, keys, ids, count, block_milliseconds, noack, values, which, num_retries);
@@ -3351,7 +3351,7 @@ void CRedisClient::xreadgroup(
         const std::vector<std::string>& keys, const std::vector<std::string>& ids,
         bool noack,
         std::vector<Stream>* values,
-        Node* which, int num_retries) throw (CRedisException)
+        Node* which, int num_retries)
 {
     const int64_t count = 0;
     const int64_t block_milliseconds = -1; // -1 means, no BLOCK argument given
@@ -3365,7 +3365,7 @@ void CRedisClient::xreadgroup(
         int64_t count, int64_t block_milliseconds,
         bool noack,
         std::vector<StreamEntry>* values,
-        Node* which, int num_retries) throw (CRedisException)
+        Node* which, int num_retries)
 {
     std::vector<Stream> streams;
     std::vector<std::string> keys(1);
@@ -3383,7 +3383,7 @@ void CRedisClient::xreadgroup(
         int64_t count, int64_t block_milliseconds,
         bool noack,
         std::vector<StreamEntry>* values,
-        Node* which, int num_retries) throw (CRedisException)
+        Node* which, int num_retries)
 {
     std::vector<Stream> streams;
     std::vector<std::string> keys(1);
@@ -3401,7 +3401,7 @@ void CRedisClient::xreadgroup(
 void CRedisClient::xread(
         const std::vector<std::string>& keys, const std::vector<std::string>& ids,
         int64_t count, int64_t block_milliseconds,
-        std::vector<Stream>* values, Node* which, int num_retries) throw (CRedisException)
+        std::vector<Stream>* values, Node* which, int num_retries)
 {
     if (keys.empty())
     {
@@ -3457,7 +3457,7 @@ void CRedisClient::xread(
 void CRedisClient::xread(
         const std::vector<std::string>& keys, const std::vector<std::string>& ids,
         int64_t count,
-        std::vector<Stream>* values, Node* which, int num_retries) throw (CRedisException)
+        std::vector<Stream>* values, Node* which, int num_retries)
 {
     const int64_t block_milliseconds = -1; // -1 means, no BLOCK argument given
     xread(keys, ids, count, block_milliseconds, values, which, num_retries);
@@ -3466,7 +3466,7 @@ void CRedisClient::xread(
 // Reads more than one keys
 void CRedisClient::xread(
         const std::vector<std::string>& keys, const std::vector<std::string>& ids,
-        std::vector<Stream>* values, Node* which, int num_retries) throw (CRedisException)
+        std::vector<Stream>* values, Node* which, int num_retries)
 {
     const int64_t count = 0;
     const int64_t block_milliseconds = -1; // -1 means, no BLOCK argument given
@@ -3478,7 +3478,7 @@ void CRedisClient::xread(
         const std::string& key, const std::vector<std::string>& ids,
         int64_t count, int64_t block_milliseconds,
         std::vector<StreamEntry>* values,
-        Node* which, int num_retries) throw (CRedisException)
+        Node* which, int num_retries)
 {
     std::vector<Stream> streams;
     std::vector<std::string> keys(1);
@@ -3494,7 +3494,7 @@ void CRedisClient::xread(
         const std::string& key,
         int64_t count, int64_t block_milliseconds,
         std::vector<StreamEntry>* values,
-        Node* which, int num_retries) throw (CRedisException)
+        Node* which, int num_retries)
 {
     std::vector<Stream> streams;
     std::vector<std::string> keys(1);
@@ -3508,7 +3508,7 @@ void CRedisClient::xread(
 }
 
 // XDEL <key> [<ID1> <ID2> ... <IDN>]
-int CRedisClient::xdel(const std::string& key, const std::vector<std::string>& ids, Node* which, int num_retries) throw (CRedisException)
+int CRedisClient::xdel(const std::string& key, const std::vector<std::string>& ids, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("XDEL");
@@ -3523,7 +3523,7 @@ int CRedisClient::xdel(const std::string& key, const std::vector<std::string>& i
     return 0;
 }
 
-int CRedisClient::xdel(const std::string& key, const std::string& id, Node* which, int num_retries) throw (CRedisException)
+int CRedisClient::xdel(const std::string& key, const std::string& id, Node* which, int num_retries)
 {
     std::vector<std::string> ids(1);
     ids[0] = id;
@@ -3531,7 +3531,7 @@ int CRedisClient::xdel(const std::string& key, const std::string& id, Node* whic
 }
 
 // XTRIM key MAXLEN [~] count
-int64_t CRedisClient::xtrim(const std::string& key, int64_t maxlen, char c, Node* which, int num_retries) throw (CRedisException)
+int64_t CRedisClient::xtrim(const std::string& key, int64_t maxlen, char c, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("XTRIM");
@@ -3547,7 +3547,7 @@ int64_t CRedisClient::xtrim(const std::string& key, int64_t maxlen, char c, Node
     return 0;
 }
 
-int64_t CRedisClient::xtrim(const std::string& key, int64_t maxlen, Node* which, int num_retries) throw (CRedisException)
+int64_t CRedisClient::xtrim(const std::string& key, int64_t maxlen, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("XTRIM");
@@ -3563,7 +3563,7 @@ int64_t CRedisClient::xtrim(const std::string& key, int64_t maxlen, Node* which,
 }
 
 // XLEN key
-int64_t CRedisClient::xlen(const std::string& key, Node* which, int num_retries) throw (CRedisException)
+int64_t CRedisClient::xlen(const std::string& key, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("XLEN");
@@ -3582,7 +3582,7 @@ void CRedisClient::xrange(
         const std::string& key,
         const std::string& start, const std::string& end, int64_t count,
         std::vector<StreamEntry>* values,
-        Node* which, int num_retries) throw (CRedisException)
+        Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("XRANGE");
@@ -3604,7 +3604,7 @@ void CRedisClient::xrange(
         const std::string& key,
         const std::string& start, const std::string& end,
         std::vector<StreamEntry>* values,
-        Node* which, int num_retries) throw (CRedisException)
+        Node* which, int num_retries)
 {
     const int64_t count = -1;
     xrange(key, start, end, count, values, which, num_retries);
@@ -3615,7 +3615,7 @@ void CRedisClient::xrevrange(
         const std::string& key,
         const std::string& end, const std::string& start, int64_t count,
         std::vector<StreamEntry>* values,
-        Node* which, int num_retries) throw (CRedisException)
+        Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("XRANGE");
@@ -3637,7 +3637,7 @@ void CRedisClient::xrevrange(
         const std::string& key,
         const std::string& end, const std::string& start,
         std::vector<StreamEntry>* values,
-        Node* which, int num_retries) throw (CRedisException)
+        Node* which, int num_retries)
 {
     const int64_t count = -1;
     xrevrange(key, start, end, count, values, which, num_retries);
@@ -3649,7 +3649,7 @@ int CRedisClient::xpending(
         const std::string& key, const std::string& groupname,
         const std::string& start, const std::string& end, int count, const std::string& consumer,
         std::vector<struct DetailedPending>* pendings,
-        Node* which, int num_retries) throw (CRedisException)
+        Node* which, int num_retries)
 {
     if (start.empty() || end.empty() || consumer.empty())
     {
@@ -3684,7 +3684,7 @@ int CRedisClient::xpending(
         const std::string& key, const std::string& groupname,
         const std::string& start, const std::string& end, int count,
         std::vector<struct DetailedPending>* pendings,
-        Node* which, int num_retries) throw (CRedisException)
+        Node* which, int num_retries)
 {
     const std::string consumer;
     return xpending(key, groupname, start, end, count, consumer, pendings, which, num_retries);
@@ -3693,7 +3693,7 @@ int CRedisClient::xpending(
 int CRedisClient::xpending(
         const std::string& key, const std::string& groupname,
         struct GroupPending* groups,
-        Node* which, int num_retries) throw (CRedisException)
+        Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("XPENDING");
@@ -3769,7 +3769,7 @@ void CRedisClient::xclaim(
         int64_t minidle, const std::vector<std::string>& ids,
         int64_t idletime, int64_t unixtime, int64_t retrycount, bool force,
         std::vector<StreamEntry>* values,
-        Node* which, int num_retries) throw (CRedisException)
+        Node* which, int num_retries)
 {
     if (ids.empty())
     {
@@ -3827,7 +3827,7 @@ void CRedisClient::xclaim(
         const std::string& key, const std::string& groupname, const std::string& consumer,
         int64_t minidle, const std::vector<std::string>& ids,
         std::vector<StreamEntry>* values,
-        Node* which, int num_retries) throw (CRedisException)
+        Node* which, int num_retries)
 {
     const int64_t idletime = -1;
     const int64_t unixtime = -1;
@@ -3842,7 +3842,7 @@ void CRedisClient::xclaim(
         int64_t idletime, int64_t unixtime, int64_t retrycount,
         bool force,
         std::vector<std::string>* values,
-        Node* which, int num_retries) throw (CRedisException)
+        Node* which, int num_retries)
 {
     if (ids.empty())
     {
@@ -3900,7 +3900,7 @@ void CRedisClient::xclaim(
         const std::string& key, const std::string& groupname, const std::string& consumer,
         int64_t minidle, const std::vector<std::string>& ids,
         std::vector<std::string>* values,
-        Node* which, int num_retries) throw (CRedisException)
+        Node* which, int num_retries)
 {
     const int64_t idletime = -1;
     const int64_t unixtime = -1;
@@ -3914,7 +3914,7 @@ void CRedisClient::xclaim(
 int CRedisClient::xinfo_consumers(
         const std::string& key, const std::string& groupname,
         std::vector<struct ConsumerInfo>* infos,
-        Node* which, int num_retries) throw (CRedisException)
+        Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("XINFO");
@@ -3932,7 +3932,7 @@ int CRedisClient::xinfo_consumers(
 int CRedisClient::xinfo_groups(
         const std::string& key,
         std::vector<struct GroupInfo>* infos,
-        Node* which, int num_retries) throw (CRedisException)
+        Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("XINFO");
@@ -3949,7 +3949,7 @@ int CRedisClient::xinfo_groups(
 void CRedisClient::xinfo_stream(
         const std::string& key,
         struct StreamInfo* info,
-        Node* which, int num_retries) throw (CRedisException)
+        Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("XINFO");

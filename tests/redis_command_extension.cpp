@@ -43,7 +43,7 @@ int incrbyex_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 
     size_t len;
     char *s = RedisModule_StringDMA(key, &len, REDISMODULE_READ|REDISMODULE_WRITE);
-    if (0 == len || NULL == s || s == '\0') {
+    if (len == 0 || s == NULL || *s == '\0') {
         // set必须在Expire之前，否则会冲掉Expire的作用，
         // 这也是else分支未用RedisModule_StringSet的原因
         RedisModule_StringSet(key, increment);
