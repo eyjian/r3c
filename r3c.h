@@ -319,21 +319,21 @@ public:
             int readwrite_timeout_milliseconds=READWRITE_TIMEOUT_MILLISECONDS,
             const std::string& password=std::string(""),
             ReadPolicy read_policy=RP_ONLY_MASTER
-            ) throw (CRedisException);
+            );
     CRedisClient(
             const std::string& raw_nodes_string,
             const std::string& password,
             int connect_timeout_milliseconds=CONNECT_TIMEOUT_MILLISECONDS,
             int readwrite_timeout_milliseconds=READWRITE_TIMEOUT_MILLISECONDS,
             ReadPolicy read_policy=RP_ONLY_MASTER
-            ) throw (CRedisException);
+            );
     CRedisClient(
             const std::string& raw_nodes_string,
             ReadPolicy read_policy,
             const std::string& password=std::string(""),
             int connect_timeout_milliseconds=CONNECT_TIMEOUT_MILLISECONDS,
             int readwrite_timeout_milliseconds=READWRITE_TIMEOUT_MILLISECONDS
-            ) throw (CRedisException);
+            );
     ~CRedisClient();
     const std::string& get_raw_nodes_string() const;
     const std::string& get_nodes_string() const;
@@ -345,32 +345,32 @@ public:
     const char* get_mode_str() const;
 
 public:
-    int list_nodes(std::vector<struct NodeInfo>* nodes_info) throw (CRedisException);
+    int list_nodes(std::vector<struct NodeInfo>* nodes_info);
 
     // NOT SUPPORT CLUSTER
     //
     // Remove all keys from all databases.
     //
     // The time-complexity for this operation is O(N), N being the number of keys in all existing databases.
-    void flushall() throw (CRedisException);
+    void flushall();
 
     // NOT SUPPORT cluster mode
-    void multi(const std::string& key=std::string(""), Node* which=NULL) throw (CRedisException);
+    void multi(const std::string& key=std::string(""), Node* which=NULL);
 
     // NOT SUPPORT cluster mode
-    const RedisReplyHelper exec(const std::string& key=std::string(""), Node* which=NULL) throw (CRedisException);
+    const RedisReplyHelper exec(const std::string& key=std::string(""), Node* which=NULL);
 
 public: // KV
     // Set a key's time to live in seconds.
     // Time complexity: O(1)
     //
     // Returns true if the timeout was set, or false when key does not exist.
-    bool expire(const std::string& key, uint32_t seconds, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    bool expire(const std::string& key, uint32_t seconds, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Determine if a key exists.
     // Time complexity: O(1)
     // Returns true if the key exists, or false when the key does not exist.
-    bool exists(const std::string& key, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    bool exists(const std::string& key, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Time complexity:
     // O(N) where N is the number of keys that will be removed.
@@ -379,26 +379,26 @@ public: // KV
     // Removing a single key that holds a string value is O(1).
     //
     // Returns true, or false when key does not exist.
-    bool del(const std::string& key, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    bool del(const std::string& key, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Get the value of a key
     // Time complexity: O(1)
     // Returns false if key does not exist.
-    bool get(const std::string& key, std::string* value, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    bool get(const std::string& key, std::string* value, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Set the string value of a key.
     // Time complexity: O(1)
-    void set(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void set(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Set the value of a key, only if the does not exist.
     // Time complexity: O(1)
     // Returns true if the key was set, or false the key was not set.
-    bool setnx(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=0) throw (CRedisException);
+    bool setnx(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=0);
 
     // Set the value and expiration of a key.
     // Time complexity: O(1)
-    void setex(const std::string& key, const std::string& value, uint32_t expired_seconds, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    bool setnxex(const std::string& key, const std::string& value, uint32_t expired_seconds, Node* which=NULL, int num_retries=0) throw (CRedisException);
+    void setex(const std::string& key, const std::string& value, uint32_t expired_seconds, Node* which=NULL, int num_retries=NUM_RETRIES);
+    bool setnxex(const std::string& key, const std::string& value, uint32_t expired_seconds, Node* which=NULL, int num_retries=0);
 
     // Get the values of all the given keys.
     //
@@ -408,7 +408,7 @@ public: // KV
     // For every key that does not hold a string value or does not exist, the value will be empty string value.
     //
     // Returns the number of values.
-    int mget(const std::vector<std::string>& keys, std::vector<std::string>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int mget(const std::vector<std::string>& keys, std::vector<std::string>* values, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Set multiple keys to multiple values.
     //
@@ -416,12 +416,12 @@ public: // KV
     //
     // Time complexity:
     // O(N) where N is the number of keys to set.
-    int mset(const std::map<std::string, std::string>& kv_map, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int mset(const std::map<std::string, std::string>& kv_map, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Increment the integer value of a key by the given value.
     // Time complexity: O(1)
     // Returns the value of key after the increment.
-    int64_t incrby(const std::string& key, int64_t increment, Node* which=NULL, int num_retries=0) throw (CRedisException);
+    int64_t incrby(const std::string& key, int64_t increment, Node* which=NULL, int num_retries=0);
 
     // Atomically increment and expire a key with given seconds.
     // Expiration is set only if the value returned by incrby is equal to expired_increment.
@@ -430,14 +430,14 @@ public: // KV
     //
     // e.g.,
     // incrby(key, 1, 1, 10);
-    int64_t incrby(const std::string& key, int64_t increment, int64_t expired_increment, uint32_t expired_seconds, Node* which=NULL, int num_retries=0) throw (CRedisException);
+    int64_t incrby(const std::string& key, int64_t increment, int64_t expired_increment, uint32_t expired_seconds, Node* which=NULL, int num_retries=0);
 
     // Same as incrby(key, increment, increment, expired_seconds, which, num_retries)
-    int64_t incrby(const std::string& key, int64_t increment, uint32_t expired_seconds, Node* which=NULL, int num_retries=0) throw (CRedisException);
+    int64_t incrby(const std::string& key, int64_t increment, uint32_t expired_seconds, Node* which=NULL, int num_retries=0);
 
     // Determine the type stored at key.
     // Time complexity: O(1)
-    bool key_type(const std::string& key, std::string* key_type, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    bool key_type(const std::string& key, std::string* key_type, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Get the time to live for a key
     //
@@ -445,7 +445,7 @@ public: // KV
     // Returns the remaining time to live of a key that has a timeout in seconds.
     // Returns -2 if the key does not exist.
     // Returns -1 if the key exists but has no associated expire.
-    int64_t ttl(const std::string& key, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int64_t ttl(const std::string& key, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // NOT SUPPORTED CLUSTER
     //
@@ -456,13 +456,13 @@ public: // KV
     // including enough command calls for the cursor to return back to 0. N is the number of elements inside the collection.
     //
     // Returns an updated cursor that the user needs to use as the cursor argument in the next call.
-    int64_t scan(int64_t cursor, std::vector<std::string>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    int64_t scan(int64_t cursor, int count, std::vector<std::string>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    int64_t scan(int64_t cursor, const std::string& pattern, std::vector<std::string>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int64_t scan(int64_t cursor, std::vector<std::string>* values, Node* which=NULL, int num_retries=NUM_RETRIES);
+    int64_t scan(int64_t cursor, int count, std::vector<std::string>* values, Node* which=NULL, int num_retries=NUM_RETRIES);
+    int64_t scan(int64_t cursor, const std::string& pattern, std::vector<std::string>* values, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // If pattern is empty, then not using MATCH,
     // If count is 0, then not using COUNT
-    int64_t scan(int64_t cursor, const std::string& pattern, int count, std::vector<std::string>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int64_t scan(int64_t cursor, const std::string& pattern, int count, std::vector<std::string>* values, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Execute a Lua script server side.
     //
@@ -470,9 +470,9 @@ public: // KV
     // NOTICE2: Key can not include newline character ('\n')
     //
     // Time complexity: Depends on the script that is executed.
-    const RedisReplyHelper eval(const std::string& key, const std::string& lua_scripts, std::pair<std::string, uint16_t>* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    const RedisReplyHelper eval(const std::string& key, const std::string& lua_scripts, const std::vector<std::string>& parameters, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    const RedisReplyHelper evalsha(const std::string& key, const std::string& sha1, const std::vector<std::string>& parameters, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    const RedisReplyHelper eval(const std::string& key, const std::string& lua_scripts, std::pair<std::string, uint16_t>* which=NULL, int num_retries=NUM_RETRIES);
+    const RedisReplyHelper eval(const std::string& key, const std::string& lua_scripts, const std::vector<std::string>& parameters, Node* which=NULL, int num_retries=NUM_RETRIES);
+    const RedisReplyHelper evalsha(const std::string& key, const std::string& sha1, const std::vector<std::string>& parameters, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Only standlone
     //
@@ -489,89 +489,89 @@ public: // KV
     // parameters[2] = "3";
     //
     // eval(false, lua_scripts, keys, parameters);
-    const RedisReplyHelper eval(const std::string& lua_scripts, const std::vector<std::string>& keys, const std::vector<std::string>& parameters, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    const RedisReplyHelper evalsha(const std::string& sha1, const std::vector<std::string>& keys, const std::vector<std::string>& parameters, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    const RedisReplyHelper eval(const std::string& lua_scripts, const std::vector<std::string>& keys, const std::vector<std::string>& parameters, Node* which=NULL, int num_retries=NUM_RETRIES);
+    const RedisReplyHelper evalsha(const std::string& sha1, const std::vector<std::string>& keys, const std::vector<std::string>& parameters, Node* which=NULL, int num_retries=NUM_RETRIES);
 
 public: // HASH
     // Delete a hash field.
     // Time complexity: O(1)
-    bool hdel(const std::string& key, const std::string& field, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    bool hdel(const std::string& key, const std::string& field, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Delete one or more hash fields.
     // Time complexity: O(N) where N is the number of fields to be removed.
     // Returns the number of fields that were removed from the hash, not including specified but non existing fields.
-    int hdel(const std::string& key, const std::vector<std::string>& fields, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    int hmdel(const std::string& key, const std::vector<std::string>& fields, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int hdel(const std::string& key, const std::vector<std::string>& fields, Node* which=NULL, int num_retries=NUM_RETRIES);
+    int hmdel(const std::string& key, const std::vector<std::string>& fields, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Determinte if a hash field exists.
     // Time complexity: O(1)
     // Returns true if the hash contains field, or false when the hash does not contain field, or key does not exist.
-    bool hexists(const std::string& key, const std::string& field, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    bool hexists(const std::string& key, const std::string& field, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Get the number of fields in a hash
     // Time complexity: O(1)
     // Returns number of fields in the hash, or 0 when key does not exist.
-    int hlen(const std::string& key, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int hlen(const std::string& key, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Set the string value of a hash field.
     // Time complexity: O(1)
     // Returns true if field is a new field in the hash and value was set, or false.
-    bool hset(const std::string& key, const std::string& field, const std::string& value, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    bool hsetex(const std::string& key, const std::string& field, const std::string& value, uint32_t expired_seconds, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    bool hset(const std::string& key, const std::string& field, const std::string& value, Node* which=NULL, int num_retries=NUM_RETRIES);
+    bool hsetex(const std::string& key, const std::string& field, const std::string& value, uint32_t expired_seconds, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Set the value of a hash field, only if the field does not exists.
     //
     // Time complexity: O(1)
     // Returns true if field is a new field in the hash and value was set,
     // or field already exists in the hash and no operation was performed.
-    bool hsetnx(const std::string& key, const std::string& field, const std::string& value, Node* which=NULL, int num_retries=0) throw (CRedisException);
+    bool hsetnx(const std::string& key, const std::string& field, const std::string& value, Node* which=NULL, int num_retries=0);
 
     // Based on EVAL, NOT SUPPORT binary key & field & value
-    bool hsetnxex(const std::string& key, const std::string& field, const std::string& value, uint32_t expired_seconds, Node* which=NULL, int num_retries=0) throw (CRedisException);
+    bool hsetnxex(const std::string& key, const std::string& field, const std::string& value, uint32_t expired_seconds, Node* which=NULL, int num_retries=0);
 
     // Time complexity: O(1)
     // Returns true if exists, or false when field is not present in the hash or key does not exist.
-    bool hget(const std::string& key, const std::string& field, std::string* value, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    bool hget(const std::string& key, const std::string& field, std::string* value, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Increment the integer value of a hash field by the given number.
     //
     // Time complexity: O(1)
     // Returns the value at field after the increment operation.
-    int64_t hincrby(const std::string& key, const std::string& field, int64_t increment, Node* which=NULL, int num_retries=0) throw (CRedisException);
+    int64_t hincrby(const std::string& key, const std::string& field, int64_t increment, Node* which=NULL, int num_retries=0);
 
     // Based on EVAL, NOT SUPPORT binary key & field
-    void hincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values=NULL, Node* which=NULL, int num_retries=0) throw (CRedisException);
+    void hincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values=NULL, Node* which=NULL, int num_retries=0);
 
     // Based on EVAL, NOT SUPPORT binary key & field
-    void hmincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values=NULL, Node* which=NULL, int num_retries=0) throw (CRedisException);
+    void hmincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values=NULL, Node* which=NULL, int num_retries=0);
 
     // Set multiple hash fields to multiple values.
     // Time complexity: O(N) where N is the number of fields being set.
-    void hset(const std::string& key, const std::map<std::string, std::string>& map, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    void hmset(const std::string& key, const std::map<std::string, std::string>& map, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void hset(const std::string& key, const std::map<std::string, std::string>& map, Node* which=NULL, int num_retries=NUM_RETRIES);
+    void hmset(const std::string& key, const std::map<std::string, std::string>& map, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Get the values of all the given hash fields.
     // Time complexity: O(N) where N is the number of fields being requested.
-    int hget(const std::string& key, const std::vector<std::string>& fields, std::map<std::string, std::string>* map, bool keep_null=false, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    int hmget(const std::string& key, const std::vector<std::string>& fields, std::map<std::string, std::string>* map, bool keep_null=false, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int hget(const std::string& key, const std::vector<std::string>& fields, std::map<std::string, std::string>* map, bool keep_null=false, Node* which=NULL, int num_retries=NUM_RETRIES);
+    int hmget(const std::string& key, const std::vector<std::string>& fields, std::map<std::string, std::string>* map, bool keep_null=false, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Get all the fields and values in a hash.
     // Time complexity: O(N) where N is the size of the hash.
-    int hgetall(const std::string& key, std::map<std::string, std::string>* map, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int hgetall(const std::string& key, std::map<std::string, std::string>* map, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Time complexity: O(1)
     //
     // Returns the string length of the value associated with field,
     // or zero when field is not present in the hash or key does not exist at all.
-    int hstrlen(const std::string& key, const std::string& field, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int hstrlen(const std::string& key, const std::string& field, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Get all the fields in a hash.
     // Time complexity: O(N) where N is the size of the hash.
-    int hkeys(const std::string& key, std::vector<std::string>* fields, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int hkeys(const std::string& key, std::vector<std::string>* fields, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Get all the values in a hash.
     // Time complexity: O(N) where N is the size of the hash.
-    int hvals(const std::string& key, std::vector<std::string>* vals, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int hvals(const std::string& key, std::vector<std::string>* vals, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Incrementally iterate hash fields and associated values.
     //
@@ -582,41 +582,41 @@ public: // HASH
     // Returns an updated cursor that the user needs to use as the cursor argument in the next call.
     int64_t hscan(const std::string& key, int64_t cursor,
             std::map<std::string, std::string>* map,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
     int64_t hscan(const std::string& key, int64_t cursor, int count,
             std::map<std::string, std::string>* map,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
     int64_t hscan(const std::string& key, int64_t cursor, const std::string& pattern,
             std::map<std::string, std::string>* map,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // If pattern is empty, then not using MATCH,
     // If count is 0, then not using COUNT
     int64_t hscan(const std::string& key, int64_t cursor, const std::string& pattern, int count,
             std::map<std::string, std::string>* map,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
 
 public: // LIST
     // Get the length of a list
     // Time complexity: O(1)
-    int llen(const std::string& key, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int llen(const std::string& key, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Remove and get the first element in a list.
     // Time complexity: O(1)
-    bool lpop(const std::string& key, std::string* value, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    bool lpop(const std::string& key, std::string* value, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Prepend a value to a list.
     // Time complexity: O(1)
-    int lpush(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int lpush(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Prepend one or multiple values to a list.
     // Time complexity: O(1)
-    int lpush(const std::string& key, const std::vector<std::string>& values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int lpush(const std::string& key, const std::vector<std::string>& values, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Inserts value at the head of the list stored at key, only if key already exists and holds a list.
     // Time complexity: O(1)
     // Returns the length of the list after the push operation.
-    int lpushx(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=0) throw (CRedisException);
+    int lpushx(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=0);
 
     // Get a range of elements from a list.
     //
@@ -626,22 +626,22 @@ public: // LIST
     // and N is the number of elements in the specified range.
     //
     // Returns the number of elements in the specified range.
-    int lrange(const std::string& key, int64_t start, int64_t end, std::vector<std::string>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int lrange(const std::string& key, int64_t start, int64_t end, std::vector<std::string>* values, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Trim a list to the specified range.
     // Time complexity:
     // O(N) where N is the number of elements to be removed by the operation.
-    void ltrim(const std::string& key, int64_t start, int64_t end, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void ltrim(const std::string& key, int64_t start, int64_t end, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Sets the list element at index to value.
     // Time complexity:
     // O(N) where N is the length of the list. Setting either the first or the last element of the list is O(1).
-    void lset(const std::string& key, int index, const std::string& value, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void lset(const std::string& key, int index, const std::string& value, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Inserts value in the list stored at key either before or after the reference value pivot.
     // Returns the length of the list after the insert operation,
     // or -1 when the value pivot was not found.
-    int linsert(const std::string& key, const std::string& pivot, const std::string& value, bool before, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int linsert(const std::string& key, const std::string& pivot, const std::string& value, bool before, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Removes the first count occurrences of elements equal to value from the list stored at key.
     // Time complexity: O(N) where N is the length of the list.
@@ -654,7 +654,7 @@ public: // LIST
     // Returns the number of removed elements.
     // Note that non-existing keys are treated like empty lists, so when key does
     // not exist, the command will always return 0.
-    int lrem(const std::string& key, int count, const std::string& value, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int lrem(const std::string& key, int count, const std::string& value, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Get the element at index index in the list stored at key.
     // The index is zero-based, so 0 means the first element, 1 the second element and so on.
@@ -663,21 +663,21 @@ public: // LIST
     //
     // value the element at index index in the list stored at key.
     // Returns true if the element exists, or returns false.
-    bool lindex(const std::string& key, int index, std::string* value, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    bool lindex(const std::string& key, int index, std::string* value, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Remove and get the last element in a list.
     // Time complexity: O(1)
-    bool rpop(const std::string& key, std::string* value, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    bool rpop(const std::string& key, std::string* value, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Append a value to a list.
     // Time complexity: O(1)
     // Returns the length of the list after the push operation.
-    int rpush(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int rpush(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Append one or multiple values to a list.
     // Time complexity: O(1)
     // Returns the length of the list after the push operation.
-    int rpush(const std::string& key, const std::vector<std::string>& values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int rpush(const std::string& key, const std::vector<std::string>& values, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Inserts value at the tail of the list stored at key,
     // only if key already exists and holds a list. In contrary to RPUSH,
@@ -686,43 +686,43 @@ public: // LIST
     // Time complexity: O(1)
     //
     // Returns the length of the list after the push operation.
-    int rpushx(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=0) throw (CRedisException);
+    int rpushx(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=0);
 
 public: // SET
     // Returns the number of elements that were added to the set,
     // not including all the elements already present into the set.
-    int sadd(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    int sadd(const std::string& key, const std::vector<std::string>& values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int sadd(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=NUM_RETRIES);
+    int sadd(const std::string& key, const std::vector<std::string>& values, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Returns the cardinality (number of elements) of the set, or 0 if key does not exist.
-    int scard(const std::string& key, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    bool sismember(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    int smembers(const std::string& key, std::vector<std::string>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int scard(const std::string& key, Node* which=NULL, int num_retries=NUM_RETRIES);
+    bool sismember(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=NUM_RETRIES);
+    int smembers(const std::string& key, std::vector<std::string>* values, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Removes and returns a random elements from the set value store at key.
     // Time complexity: O(1)
     // Returns true if key exists, or false when key does not exist.
-    bool spop(const std::string& key, std::string* value, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    bool spop(const std::string& key, std::string* value, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Removes and returns one or more random elements from the set value store at key.
     // Time complexity: O(1)
     // Returns the number of removed elements.
-    int spop(const std::string& key, int count, std::vector<std::string>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int spop(const std::string& key, int count, std::vector<std::string>* values, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Returns true if key exists, or false when key does not exist.
-    bool srandmember(const std::string& key, std::string* value, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    bool srandmember(const std::string& key, std::string* value, Node* which=NULL, int num_retries=NUM_RETRIES);
     // Returns number of values, or 0 when key does not exist.
-    int srandmember(const std::string& key, int count, std::vector<std::string>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int srandmember(const std::string& key, int count, std::vector<std::string>* values, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Remove a member from a set.
     // Time complexity: O(1)
     // Returns the number of members that were removed from the set, not including non existing members.
-    int srem(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int srem(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Remove one or more members from a set.
     // Time complexity: O(N) where N is the number of members to be removed.
     // Returns the number of members that were removed from the set, not including non existing members.
-    int srem(const std::string& key, const std::vector<std::string>& values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int srem(const std::string& key, const std::vector<std::string>& values, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Incrementally iterate set elements.
     //
@@ -733,22 +733,22 @@ public: // SET
     // Returns an updated cursor that the user needs to use as the cursor argument in the next call.
     int64_t sscan(const std::string& key, int64_t cursor,
             std::vector<std::string>* values,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
     int64_t sscan(const std::string& key, int64_t cursor, int count,
             std::vector<std::string>* values,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
     int64_t sscan(const std::string& key, int64_t cursor, const std::string& pattern,
             std::vector<std::string>* values,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // If pattern is empty, then not using MATCH,
     // If count is 0, then not using COUNT
     int64_t sscan(const std::string& key, int64_t cursor, const std::string& pattern, int count,
             std::vector<std::string>* values,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
     int64_t sscan(const std::string& key, int64_t cursor, const std::string& pattern, int count,
             std::set<std::string>* values,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
 
 public: // ZSET
     // Removes the specified members from the sorted set stored at key. Non existing members are ignored.
@@ -757,8 +757,8 @@ public: // ZSET
     // O(M*log(N)) with N being the number of elements in the sorted set and M the number of elements to be removed.
     //
     // Returns the number of members removed from the sorted set, not including non existing members.
-    int zrem(const std::string& key, const std::string& field, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    int zrem(const std::string& key, const std::vector<std::string>& fields, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int zrem(const std::string& key, const std::string& field, Node* which=NULL, int num_retries=NUM_RETRIES);
+    int zrem(const std::string& key, const std::vector<std::string>& fields, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Adds all the specified members with the specified scores to the sorted set stored at key.
     // If key does not exist, a new sorted set with the specified members as sole members is created,
@@ -769,38 +769,38 @@ public: // ZSET
     //
     // Returns The number of elements added to the sorted sets,
     // not including elements already existing for which the score was updated.
-    int zadd(const std::string& key, const std::string& field, int64_t score, ZADDFLAG flag=Z_NS, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    int zadd(const std::string& key, const std::map<std::string, int64_t>& map, ZADDFLAG flag=Z_NS, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int zadd(const std::string& key, const std::string& field, int64_t score, ZADDFLAG flag=Z_NS, Node* which=NULL, int num_retries=NUM_RETRIES);
+    int zadd(const std::string& key, const std::map<std::string, int64_t>& map, ZADDFLAG flag=Z_NS, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Get the number of members in a sorted set.
     // Time complexity: O(1)
     // Returns the sorted set cardinality (number of elements) of the sorted set stored at key.
-    int64_t zcard(const std::string& key, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int64_t zcard(const std::string& key, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Count the members in a sorted set with scores within the given values.
     //
     // Time complexity:
     // O(log(N)) with N being the number of elements in the sorted set.
     // Returns the number of elements in the sorted set at key with a score between min and max.
-    int64_t zcount(const std::string& key, int64_t min, int64_t max , Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int64_t zcount(const std::string& key, int64_t min, int64_t max , Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Increment the score of a member in a sorted set.
     //
     // Time complexity:
     // O(log(N)) where N is the number of elements in the sorted set.
-    int64_t zincrby(const std::string& key, const std::string& field, int64_t increment, Node* which=NULL, int num_retries=0) throw (CRedisException);
+    int64_t zincrby(const std::string& key, const std::string& field, int64_t increment, Node* which=NULL, int num_retries=0);
 
     // Return a range of members in a sorted set by index.
     //
     // Time complexity:
     // O(log(N)+M) with N being the number of elements in the sorted set and M the number of elements returned.
-    int zrange(const std::string& key, int64_t start, int64_t end, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int zrange(const std::string& key, int64_t start, int64_t end, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Return a range of members in a sorted set by index, with scores ordered from high to low.
     //
     // Time complexity:
     // O(log(N)+M) with N being the number of elements in the sorted set and M the number of elements returned.
-    int zrevrange(const std::string& key, int64_t start, int64_t end, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int zrevrange(const std::string& key, int64_t start, int64_t end, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Get all the elements in the sorted set at key with a score between min and max
     // (including elements with score equal to min or max).
@@ -814,7 +814,7 @@ public: // ZSET
     // If M is constant (e.g. always asking for the first 10 elements with LIMIT), you can consider it O(log(N)).
     //
     // Return the number of elements with a score between min and max (including elements with score equal to min or max).
-    int zrangebyscore(const std::string& key, int64_t min, int64_t max, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int zrangebyscore(const std::string& key, int64_t min, int64_t max, bool withscores, std::vector<std::pair<std::string, int64_t> >* vec, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Get all the elements in the sorted set at key with a score between max and min
     // (including elements with score equal to max or min).
@@ -831,18 +831,18 @@ public: // ZSET
     int zrevrangebyscore(const std::string& key,
             int64_t max, int64_t min, bool withscores,
             std::vector<std::pair<std::string, int64_t> >* vec,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Return a range of members in a sorted set by score with scores ordered from low to high.
     int zrangebyscore(const std::string& key,
             int64_t min, int64_t max, int64_t offset, int64_t count, bool withscores,
             std::vector<std::pair<std::string, int64_t> >* vec,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
     // Return a range of members in a sorted set by score with scores ordered from high to low.
     int zrevrangebyscore(const std::string& key,
             int64_t max, int64_t min, int64_t offset, int64_t count, bool withscores,
             std::vector<std::pair<std::string, int64_t> >* vec,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Removes all elements in the sorted set stored at key with rank between start and stop.
     // Both start and stop are 0 -based indexes with 0 being the element with the lowest score.
@@ -855,20 +855,20 @@ public: // ZSET
     // O(log(N)+M) with N being the number of elements in the sorted set and M the number of elements removed by the operation.
     //
     // Return the number of elements removed.
-    int zremrangebyrank(const std::string& key, int64_t start, int64_t end, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int zremrangebyrank(const std::string& key, int64_t start, int64_t end, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Determine the index of a member in a sorted set.
     // Time complexity: O(log(N))
     // Return -1 if field not exists
-    int zrank(const std::string& key, const std::string& field, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int zrank(const std::string& key, const std::string& field, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Determine the index of a member in a sorted set, with scores ordered from high to low.
-    int zrevrank(const std::string& key, const std::string& field, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int zrevrank(const std::string& key, const std::string& field, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Get the score associated with the given memer in a sorted set.
     // Time complexity: O(1)
     // Return -1 if field not exists
-    int64_t zscore(const std::string& key, const std::string& field, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int64_t zscore(const std::string& key, const std::string& field, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Incrementally iterate sorted sets elements and associated scores.
     //
@@ -879,25 +879,25 @@ public: // ZSET
     // Returns an updated cursor that the user needs to use as the cursor argument in the next call.
     int64_t zscan(const std::string& key, int64_t cursor,
             std::vector<std::pair<std::string, int64_t> >* values,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
     int64_t zscan(const std::string& key, int64_t cursor, int count,
             std::vector<std::pair<std::string, int64_t> >* values,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
     int64_t zscan(const std::string& key, int64_t cursor, const std::string& pattern,
             std::vector<std::pair<std::string, int64_t> >* values,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // If pattern is empty, then not using MATCH,
     // If count is 0, then not using COUNT
     int64_t zscan(const std::string& key, int64_t cursor, const std::string& pattern, int count,
             std::vector<std::pair<std::string, int64_t> >* values,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
 
 public: // STREAM (key like kafka's topic), available since 5.0.0.
     // Removes one or multiple messages from the pending entries list (PEL) of a stream consumer group.
     // The command returns the number of messages successfully acknowledged.
-    int xack(const std::string& key, const std::string& groupname, const std::vector<std::string>& ids, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    int xack(const std::string& key, const std::string& groupname, const std::string& id, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int xack(const std::string& key, const std::string& groupname, const std::vector<std::string>& ids, Node* which=NULL, int num_retries=NUM_RETRIES);
+    int xack(const std::string& key, const std::string& groupname, const std::string& id, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Returns the ID of the added entry. The ID is the one auto-
     // generated if * is passed as ID argument, otherwise the command just
@@ -906,10 +906,10 @@ public: // STREAM (key like kafka's topic), available since 5.0.0.
     // c '~' or '='
     std::string xadd(const std::string& key, const std::string& id,
             const std::vector<FVPair>& values, int64_t maxlen, char c,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
     std::string xadd(const std::string& key, const std::string& id,
             const std::vector<FVPair>& values,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Create a new consumer group associated with a stream.
     // There are no hard limits to the number of consumer groups you can associate to a given stream.
@@ -917,90 +917,90 @@ public: // STREAM (key like kafka's topic), available since 5.0.0.
     // '$' the ID of the last item in the stream
     void xgroup_create(const std::string& key, const std::string& groupname,
             const std::string& id=std::string("$"), bool mkstream=false,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
     void xgroup_destroy(const std::string& key, const std::string& groupname,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
     void xgroup_setid(const std::string& key,
             const std::string& id=std::string("$"),
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
     void xgroup_delconsumer(const std::string& key, const std::string& groupname, const std::string& consumername,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Reads more than one keys
     // xread is a read command, can be called on slaves, xreadgroup is not
     void xread(const std::vector<std::string>& keys, const std::vector<std::string>& ids,
             int64_t count, int64_t block_milliseconds, std::vector<Stream>* values,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
     void xread(const std::vector<std::string>& keys, const std::vector<std::string>& ids,
             int64_t count, std::vector<Stream>* values,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
     void xread(const std::vector<std::string>& keys, const std::vector<std::string>& ids,
             std::vector<Stream>* values,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Only read one key
     void xread(const std::string& key, const std::vector<std::string>& ids,
             int64_t count, int64_t block_milliseconds, std::vector<StreamEntry>* values,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
     // Use '>' as id
     void xread(const std::string& key,
             int64_t count, int64_t block_milliseconds, std::vector<StreamEntry>* values,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Reads more than one keys
     // xreadgroup is not read command
     void xreadgroup(const std::string& groupname, const std::string& consumername,
             const std::vector<std::string>& keys, const std::vector<std::string>& ids,
             int64_t count, int64_t block_milliseconds, bool noack, std::vector<Stream>* values,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
     void xreadgroup(const std::string& groupname,
             const std::string& consumername, const std::vector<std::string>& keys,
             const std::vector<std::string>& ids, int64_t count, bool noack, std::vector<Stream>* values,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
     void xreadgroup(const std::string& groupname, const std::string& consumername,
             const std::vector<std::string>& keys, const std::vector<std::string>& ids,
             bool noack, std::vector<Stream>* values,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Only read one key
     void xreadgroup(const std::string& groupname, const std::string& consumername,
             const std::string& key, const std::vector<std::string>& ids,
             int64_t count, int64_t block_milliseconds, bool noack, std::vector<StreamEntry>* values,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
     // Use '>' as id
     void xreadgroup(const std::string& groupname, const std::string& consumername,
             const std::string& key, int64_t count, int64_t block_milliseconds,
             bool noack, std::vector<StreamEntry>* values,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Removes the specified entries from a stream, and returns the number of
     // entries deleted, that may be different from the number of IDs passed to the
     // command in case certain IDs do not exist.
-    int xdel(const std::string& key, const std::vector<std::string>& ids, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    int xdel(const std::string& key, const std::string& id, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int xdel(const std::string& key, const std::vector<std::string>& ids, Node* which=NULL, int num_retries=NUM_RETRIES);
+    int xdel(const std::string& key, const std::string& id, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Trims the stream to a given number of items, evicting older items (items with lower IDs) if needed
     // Returns the number of entries deleted from the stream
-    int64_t xtrim(const std::string& key, int64_t maxlen, char c, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    int64_t xtrim(const std::string& key, int64_t maxlen, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int64_t xtrim(const std::string& key, int64_t maxlen, char c, Node* which=NULL, int num_retries=NUM_RETRIES);
+    int64_t xtrim(const std::string& key, int64_t maxlen, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Returns the number of entries inside a stream. If the specified key does not
     // exist the command returns zero, as if the stream was empty.
-    int64_t xlen(const std::string& key, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int64_t xlen(const std::string& key, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Returns the stream entries matching a given range of IDs
     // start The '-' special ID mean respectively the minimum ID possible inside a stream
     // end The '+' special ID mean respectively the maximum ID possible inside a stream
     void xrange(const std::string& key,
             const std::string& start, const std::string& end, int64_t count, std::vector<StreamEntry>* values,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
-    void xrange(const std::string& key, const std::string& start, const std::string& end, std::vector<StreamEntry>* values, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
+    void xrange(const std::string& key, const std::string& start, const std::string& end, std::vector<StreamEntry>* values, Node* which=NULL, int num_retries=NUM_RETRIES);
     void xrevrange(const std::string& key,
             const std::string& end, const std::string& start, int64_t count, std::vector<StreamEntry>* values,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
     void xrevrange(const std::string& key,
             const std::string& end, const std::string& start, std::vector<StreamEntry>* values,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Fetching data from a stream via a consumer group,
     // and not acknowledging such data, has the effect of creating pending entries.
@@ -1009,11 +1009,11 @@ public: // STREAM (key like kafka's topic), available since 5.0.0.
     int xpending(const std::string& key, const std::string& groupname,
             const std::string& start, const std::string& end, int count, const std::string& consumer,
             std::vector<struct DetailedPending>* pendings,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
     int xpending(const std::string& key, const std::string& groupname,
             const std::string& start, const std::string& end, int count,
             std::vector<struct DetailedPending>* pendings,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // start the smallest ID among the pending messages
     // end the greatest ID among the pending messages
@@ -1021,7 +1021,7 @@ public: // STREAM (key like kafka's topic), available since 5.0.0.
     // consumers the list of consumers in the consumer group with at least one pending message
     //
     // Returns the total number of pending messages for this consumer group
-    int xpending(const std::string& key, const std::string& groupname, struct GroupPending* groups, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int xpending(const std::string& key, const std::string& groupname, struct GroupPending* groups, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Gets ownership of one or multiple messages in the Pending Entries List
     // of a given stream consumer group.
@@ -1030,30 +1030,30 @@ public: // STREAM (key like kafka's topic), available since 5.0.0.
             int64_t minidle, const std::vector<std::string>& ids,
             int64_t idletime, int64_t unixtime, int64_t retrycount, bool force,
             std::vector<StreamEntry>* values,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
     void xclaim(
             const std::string& key, const std::string& groupname, const std::string& consumer,
             int64_t minidle, const std::vector<std::string>& ids,
             std::vector<StreamEntry>* values,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
     void xclaim(
             const std::string& key, const std::string& groupname, const std::string& consumer,
             int64_t minidle, const std::vector<std::string>& ids,
             int64_t idletime, int64_t unixtime, int64_t retrycount, bool force,
             std::vector<std::string>* values,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
     void xclaim(
             const std::string& key, const std::string& groupname, const std::string& consumer,
             int64_t minidle, const std::vector<std::string>& ids,
             std::vector<std::string>* values,
-            Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+            Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Get the list of every consumer in a specific consumer group
-    int xinfo_consumers(const std::string& key, const std::string& groupname, std::vector<struct ConsumerInfo>* infos, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int xinfo_consumers(const std::string& key, const std::string& groupname, std::vector<struct ConsumerInfo>* infos, Node* which=NULL, int num_retries=NUM_RETRIES);
     // Get as output all the consumer groups associated with the stream
-    int xinfo_groups(const std::string& key, std::vector<struct GroupInfo>* infos, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    int xinfo_groups(const std::string& key, std::vector<struct GroupInfo>* infos, Node* which=NULL, int num_retries=NUM_RETRIES);
     // Returns general information about the stream stored at the specified key
-    void xinfo_stream(const std::string& key, struct StreamInfo* info, Node* which=NULL, int num_retries=NUM_RETRIES) throw (CRedisException);
+    void xinfo_stream(const std::string& key, struct StreamInfo* info, Node* which=NULL, int num_retries=NUM_RETRIES);
 
 public:
     // Standlone: key should be empty
