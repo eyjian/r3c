@@ -601,7 +601,7 @@ public: // HASH
     //
     //Time complexity: O(N) where N is the size of the hash.
     //
-    int64_t hgetall(const std::string& key,  std::string>* map,
+    int64_t hgetall(const std::string& key,  std::map<std::string, std::string>* map,
             Node* which=NULL, int num_retries=NUM_RETRIES);    
     
 public: // LIST
