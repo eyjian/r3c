@@ -594,15 +594,7 @@ public: // HASH
     // If count is 0, then not using COUNT
     int64_t hscan(const std::string& key, int64_t cursor, const std::string& pattern, int count,
             std::map<std::string, std::string>* map,
-            Node* which=NULL, int num_retries=NUM_RETRIES);
-
-    //Returns all fields and values of the hash stored at key. 
-    //Returns an updated cursor that the user needs to use as the cursor argument in the next call.
-    //
-    //Time complexity: O(N) where N is the size of the hash.
-    //
-    int64_t hgetall(const std::string& key,  std::map<std::string, std::string>* map,
-            Node* which=NULL, int num_retries=NUM_RETRIES);    
+            Node* which=NULL, int num_retries=NUM_RETRIES);   
     
 public: // LIST
     // Get the length of a list

@@ -1920,40 +1920,6 @@ int64_t CRedisClient::hscan(
 }
 
 
-int64_t CRedisClient::hgetall(
-        const std::string& key,
-        std::map<std::string, std::string>* map,
-        Node* which,
-        int num_retries)
-{
-    CommandArgs cmd_args;
-    cmd_args.add_arg("HGETALL");
-    cmd_args.add_arg(key);
-    cmd_args.final();
-
-    // (gdb) p *redis_reply
-    // $1 = {type = 2, integer = 0, len = 0, str = 0x0, elements = 2, element = 0x641450}
-    // (gdb) p *redis_reply->element[0]
-    // $2 = {type = 1, integer = 0, len = 1, str = 0x641820 "0", elements = 0, element = 0x0}
-    // (gdb) p *redis_reply->element[1]
-    // $3 = {type = 2, integer = 0, len = 0, str = 0x0, elements = 8, element = 0x6414b0}
-    // (gdb) p *redis_reply->element[1]->element[0]
-    // $4 = {type = 1, integer = 0, len = 2, str = 0x6418f0 "f1", elements = 0, element = 0x0}
-    // (gdb) p *redis_reply->element[1]->element[1]
-    // $5 = {type = 1, integer = 0, len = 2, str = 0x641950 "v1", elements = 0, element = 0x0}
-    // (gdb) p *redis_reply->element[1]->element[2]
-    // $6 = {type = 1, integer = 0, len = 2, str = 0x6419b0 "f2", elements = 0, element = 0x0}
-    // (gdb) p *redis_reply->element[1]->element[3]
-    // $7 = {type = 1, integer = 0, len = 2, str = 0x641a10 "v2", elements = 0, element = 0x0}
-    const RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
-    if (REDIS_REPLY_ARRAY == redis_reply->type)
-    {
-        get_values(redis_reply->element[1], map);
-        return static_cast<int64_t>(atoll(redis_reply->element[0]->str));
-    }
-    return 0;
-}
-
 
 //
 // LIST
@@ -2611,8 +2577,11 @@ int64_t CRedisClient::sscan(
 // Copies all members of source keys to destinationkey.
 // Time complexity: O(N) where N is the total number of elements in all given sets.
 // Returns the number of members that were in resulting set.
-int  CRedisClient::sunionstore(const std::string& destinationkey, const std::vector<std::string>& keys, Node* which=NULL, int num_retries=NUM_RETRIES)
-
+int  CRedisClient::sunionstore(
+    const std::string& destinationkey, 
+    const std::vector<std::string>& keys, 
+    Node* which, 
+    int num_retries)
 {
     
     std::vector<std::string> allKeys;
