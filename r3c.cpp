@@ -1919,6 +1919,8 @@ int64_t CRedisClient::hscan(
     return 0;
 }
 
+
+
 //
 // LIST
 //
@@ -2570,6 +2572,51 @@ int64_t CRedisClient::sscan(
     }
     return 0;
 }
+
+
+// Copies all members of source keys to destinationkey.
+// Time complexity: O(N) where N is the total number of elements in all given sets.
+// Returns the number of members that were in resulting set.
+int  CRedisClient::sunionstore(
+    const std::string& destinationkey, 
+    const std::vector<std::string>& keys, 
+    Node* which, 
+    int num_retries)
+{
+    
+    std::vector<std::string> allKeys;
+    allKeys=keys;
+    allKeys.push_back(destinationkey);
+    if(keys.size()<1){
+        struct ErrorInfo errinfo;
+        errinfo.errcode = ERROR_NOT_SUPPORT;
+        errinfo.errmsg = "There must be minimum one key";
+        THROW_REDIS_EXCEPTION(errinfo);        
+    }
+    else if (cluster_mode() && keys_crossslots(allKeys))
+    {
+        struct ErrorInfo errinfo;
+        errinfo.errcode = ERROR_NOT_SUPPORT;
+        errinfo.errmsg = "CROSSSLOT not supported in cluster mode";
+        THROW_REDIS_EXCEPTION(errinfo);
+    }
+    else
+    {    
+        CommandArgs cmd_args;
+        cmd_args.add_arg("SUNIONSTORE");
+        cmd_args.add_arg(destinationkey);
+        cmd_args.add_args(keys);
+        cmd_args.final();
+
+        // Integer reply, specifically:
+        // Integer reply: the number of elements in the resulting set..
+        const RedisReplyHelper redis_reply = redis_command(false, num_retries, destinationkey, cmd_args, which);
+        if (REDIS_REPLY_INTEGER == redis_reply->type)
+            return static_cast<int>(redis_reply->integer);
+        return 0;
+    }
+}
+
 
 //
 // ZSET
