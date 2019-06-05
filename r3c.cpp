@@ -4949,7 +4949,8 @@ CRedisClient::list_cluster_nodes(
             errinfo->raw_errmsg = redis_context->errstr;
         else
             errinfo->raw_errmsg = "redisCommand failed";
-        errinfo->errmsg = format_string("[R3C_LIST_NODES][%s:%d][%s] (sys:%d,redis:%d)%s", __FILE__, __LINE__, node2string(node).c_str(), sys_errcode, redis_errcode, errinfo->raw_errmsg.c_str());
+        errinfo->errmsg = format_string("[R3C_LIST_NODES][%s:%d][NODE:%s] (sys:%d,redis:%d)%s",
+                __FILE__, __LINE__, node2string(node).c_str(), sys_errcode, redis_errcode, errinfo->raw_errmsg.c_str());
         (*g_error_log)("%s\n", errinfo->errmsg.c_str());
         (*g_info_log)("[%s:%d] %s\n", __FILE__, __LINE__, _nodes_string.c_str());
     }
@@ -4958,7 +4959,8 @@ CRedisClient::list_cluster_nodes(
         // ERR This instance has cluster support disabled
         errinfo->errcode = ERROR_COMMAND;
         errinfo->raw_errmsg = redis_reply->str;
-        errinfo->errmsg = format_string("[R3C_LIST_NODES][%s:%d][%s] %s", __FILE__, __LINE__, node2string(node).c_str(), redis_reply->str);
+        errinfo->errmsg = format_string("[R3C_LIST_NODES][%s:%d][NODE:%s] %s",
+                __FILE__, __LINE__, node2string(node).c_str(), redis_reply->str);
         (*g_error_log)("%s\n", errinfo->errmsg.c_str());
     }
     else if (redis_reply->type != REDIS_REPLY_STRING)
@@ -4966,7 +4968,8 @@ CRedisClient::list_cluster_nodes(
         // Unexpected reply type
         errinfo->errcode = ERROR_UNEXCEPTED_REPLY_TYPE;
         errinfo->raw_errmsg = redis_reply->str;
-        errinfo->errmsg = format_string("[R3C_LIST_NODES][%s:%d][%s] (type:%d)%s", __FILE__, __LINE__, node2string(node).c_str(), redis_reply->type, redis_reply->str);
+        errinfo->errmsg = format_string("[R3C_LIST_NODES][%s:%d][NODE:%s] (type:%d)%s",
+                __FILE__, __LINE__, node2string(node).c_str(), redis_reply->type, redis_reply->str);
         (*g_error_log)("%s\n", errinfo->errmsg.c_str());
     }
     else
@@ -4993,7 +4996,8 @@ CRedisClient::list_cluster_nodes(
         {
             errinfo->errcode = ERROR_REPLY_FORMAT;
             errinfo->raw_errmsg = "reply nothing";
-            errinfo->errmsg = format_string("[R3C_LIST_NODES][%s:%d][%s] %s", __FILE__, __LINE__, node2string(node).c_str(), "reply nothing");
+            errinfo->errmsg = format_string("[R3C_LIST_NODES][%s:%d][NODE:%s][REPLY:%s] %s",
+                    __FILE__, __LINE__, node2string(node).c_str(), redis_reply->str, "reply nothing");
             (*g_error_log)("%s\n", errinfo->errmsg.c_str());
         }
         for (int row=0; row<num_lines; ++row)
@@ -5013,7 +5017,8 @@ CRedisClient::list_cluster_nodes(
                 nodes_info->clear();
                 errinfo->errcode = ERROR_REPLY_FORMAT;
                 errinfo->raw_errmsg = "reply format error";
-                errinfo->errmsg = format_string("[R3C_LIST_NODES][%s:%d][%s] %s", __FILE__, __LINE__, node2string(node).c_str(), "reply format error");
+                errinfo->errmsg = format_string("[R3C_LIST_NODES][%s:%d][NODE:%s][LINE:%s] %s",
+                        __FILE__, __LINE__, node2string(node).c_str(), line.c_str(), "reply format error");
                 (*g_error_log)("%s\n", errinfo->errmsg.c_str());
                 break;
             }
@@ -5027,7 +5032,8 @@ CRedisClient::list_cluster_nodes(
                     nodes_info->clear();
                     errinfo->errcode = ERROR_REPLY_FORMAT;
                     errinfo->raw_errmsg = "reply format error";
-                    errinfo->errmsg = format_string("[R3C_LIST_NODES][%s:%d][%s] %s", __FILE__, __LINE__, node2string(node).c_str(), "reply format error");
+                    errinfo->errmsg = format_string("[R3C_LIST_NODES][%s:%d][NODE:%s][TOKEN:%s][LINE:%s] %s",
+                            __FILE__, __LINE__, node2string(node).c_str(), tokens[1].c_str(), line.c_str(), "reply format error");
                     (*g_error_log)("%s\n", errinfo->errmsg.c_str());
                     break;
                 }
@@ -5059,7 +5065,7 @@ CRedisClient::list_cluster_nodes(
                         }
                     }
 
-                    (*g_debug_log)("[R3C_LIST_NODES][%s:%d][%s] %s\n",
+                    (*g_debug_log)("[R3C_LIST_NODES][%s:%d][NODE:%s] %s\n",
                             __FILE__, __LINE__, node2string(node).c_str(), nodeinfo.str().c_str());
                     nodes_info->push_back(nodeinfo);
                 }

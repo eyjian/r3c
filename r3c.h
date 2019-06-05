@@ -745,8 +745,7 @@ public: // SET
     // Time complexity: O(N) where N is the total number of elements in all given sets.
     // Returns the number of members that were in resulting set.
     int sunionstore(const std::string& destinationkey, const std::vector<std::string>& keys, Node* which=NULL, int num_retries=NUM_RETRIES);
-    
-    
+
     // If pattern is empty, then not using MATCH,
     // If count is 0, then not using COUNT
     int64_t sscan(const std::string& key, int64_t cursor, const std::string& pattern, int count,
