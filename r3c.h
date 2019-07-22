@@ -594,8 +594,8 @@ public: // HASH
     // If count is 0, then not using COUNT
     int64_t hscan(const std::string& key, int64_t cursor, const std::string& pattern, int count,
             std::map<std::string, std::string>* map,
-            Node* which=NULL, int num_retries=NUM_RETRIES);
-
+            Node* which=NULL, int num_retries=NUM_RETRIES);   
+    
 public: // LIST
     // Get the length of a list
     // Time complexity: O(1)
@@ -740,6 +740,11 @@ public: // SET
     int64_t sscan(const std::string& key, int64_t cursor, const std::string& pattern,
             std::vector<std::string>* values,
             Node* which=NULL, int num_retries=NUM_RETRIES);
+
+    // Copies all members of source keys to destinationkey.
+    // Time complexity: O(N) where N is the total number of elements in all given sets.
+    // Returns the number of members that were in resulting set.
+    int sunionstore(const std::string& destinationkey, const std::vector<std::string>& keys, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // If pattern is empty, then not using MATCH,
     // If count is 0, then not using COUNT
