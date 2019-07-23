@@ -1060,6 +1060,35 @@ public: // STREAM (key like kafka's topic), available since 5.0.0.
     // Returns general information about the stream stored at the specified key
     void xinfo_stream(const std::string& key, struct StreamInfo* info, Node* which=NULL, int num_retries=NUM_RETRIES);
 
+public: // BITMAP    
+    // Sets or clears the bit on the specified offset for the string value stored by key.
+    // Automatically generates a new string value when the key does not exist.
+    //
+    // Time complexity: O(1)
+    void setbit(const std::string& key, uint32_t offset, uint32_t value, Node* which=NULL, int num_retries=NUM_RETRIES);
+
+    // Gets the bit at the specified offset for the string value stored by key.
+    // Return 0 if offset is larger than the length of the string value, or if key does not exist.
+    //
+    // Time complexity: O(1)
+    int getbit(const std::string& key, uint32_t offset, Node* which=NULL, int num_retries=NUM_RETRIES);
+
+    // Calculates the number of bits set to 1 in a given string. 
+    // In general, the entire string given will be counted. 
+    // By specifying an extra start or end parameter,the count can only be made on a specific bit.
+    // In particular, the range indicated by the start and end parameters is a range of bytes, not a series of bit ranges.
+    //
+    // Time complexity: O(N)
+    int bitcount(const std::string& key, int32_t start=0, int32_t end=-1,Node* which=NULL, int num_retries=NUM_RETRIES);
+
+    // Returns the position of the first bit in the bitmap whose value is bit.
+    // By default, the command will detect the entire bitmap, 
+    // but the user can also specify the range to detect with the optional start and end parameters.
+    // In particular, the range indicated by the start and end parameters is a range of bytes, not a series of bit ranges.
+    //
+    // Time complexity: O(N)
+    int bitpos(const std::string& key, uint8_t bit, int32_t start=0, int32_t end=-1,Node* which=NULL, int num_retries=NUM_RETRIES);
+
 public:
     // Standlone: key should be empty
     // Cluse mode: key used to locate node
