@@ -2336,6 +2336,25 @@ int CRedisClient::smembers(
     return 0;
 }
 
+int CRedisClient::smembers(
+        const std::string& key,
+        std::set<std::string>* values,
+        Node* which,
+        int num_retries)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("SMEMBERS");
+    cmd_args.add_arg(key);
+    cmd_args.final();
+
+    // Array reply:
+    // all elements of the set.
+    const RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
+    if (REDIS_REPLY_ARRAY == redis_reply->type)
+        return get_values(redis_reply.get(), values);
+    return 0;
+}
+
 // Time complexity: O(1)
 bool CRedisClient::spop(
         const std::string& key,

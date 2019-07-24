@@ -698,6 +698,7 @@ public: // SET
     int scard(const std::string& key, Node* which=NULL, int num_retries=NUM_RETRIES);
     bool sismember(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=NUM_RETRIES);
     int smembers(const std::string& key, std::vector<std::string>* values, Node* which=NULL, int num_retries=NUM_RETRIES);
+    int smembers(const std::string& key, std::set<std::string>* values, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Removes and returns a random elements from the set value store at key.
     // Time complexity: O(1)
