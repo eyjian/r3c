@@ -4027,6 +4027,79 @@ void CRedisClient::xinfo_stream(
     get_value(redis_reply.get(), info);
 }
 
+// SETBIT key offset value
+// Time complexity: O(1)
+void CRedisClient::setbit(const std::string& key, uint32_t offset, uint32_t value, Node* which, int num_retries)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("SETBIT");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(offset);
+    cmd_args.add_arg(value);
+    cmd_args.final();
+
+    // Integer reply:
+    // the original value of the bit on the specified offset.
+    redis_command(false, num_retries, key, cmd_args, which);
+}
+
+// GETBIT key offset 
+// Time complexity: O(1)
+int CRedisClient::getbit(const std::string& key, uint32_t offset, Node* which, int num_retries)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("GETBIT");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(offset);
+    cmd_args.final();
+
+    // Integer reply:
+    // the value of the bit on the offset, return 0 if key does not exist.
+    RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
+    if (REDIS_REPLY_INTEGER == redis_reply->type)
+        return static_cast<int>(redis_reply->integer);
+    return 0;
+}
+
+// BITCOUNT key [start end]
+// Time complexity: O(N)
+int CRedisClient::bitcount(const std::string& key, int32_t start, int32_t end, Node* which, int num_retries)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("BITCOUNT");
+    cmd_args.add_arg(key);       
+    cmd_args.add_arg(start);
+    cmd_args.add_arg(end);
+    cmd_args.final();
+    
+    // Integer reply:
+    // the number of bits set to 1.
+    RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
+    if (REDIS_REPLY_INTEGER == redis_reply->type)
+        return static_cast<int>(redis_reply->integer);
+    return 0;
+}
+
+// BITPOS key bit [start] [end]
+// Time complexity: O(N)
+int CRedisClient::bitpos(const std::string& key, uint8_t bit, int32_t start, int32_t end, Node* which, int num_retries)
+{
+    CommandArgs cmd_args;
+    cmd_args.add_arg("BITPOS");
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(bit);        
+    cmd_args.add_arg(start);
+    cmd_args.add_arg(end);
+    cmd_args.final();
+    
+    // Integer reply:
+    // the position of the first bit in the bitmap whose value is bit.
+    RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
+    if (REDIS_REPLY_INTEGER == redis_reply->type)
+        return static_cast<int>(redis_reply->integer);
+    return 0;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 const RedisReplyHelper
