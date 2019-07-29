@@ -1066,7 +1066,14 @@ public: // BITMAP
     // Automatically generates a new string value when the key does not exist.
     //
     // Time complexity: O(1)
+#if !defined(setbit)
     void setbit(const std::string& key, uint32_t offset, uint32_t value, Node* which=NULL, int num_retries=NUM_RETRIES);
+#else
+#undef setbit
+    // <sys/param.h>
+    // #define setbit(a,i) ((a)[(i)/NBBY] |= 1<<((i)%NBBY))
+    void setbit(const std::string& key, uint32_t offset, uint32_t value, Node* which=NULL, int num_retries=NUM_RETRIES);
+#endif // setbit
 
     // Gets the bit at the specified offset for the string value stored by key.
     // Return 0 if offset is larger than the length of the string value, or if key does not exist.

@@ -4029,7 +4029,12 @@ void CRedisClient::xinfo_stream(
 
 // SETBIT key offset value
 // Time complexity: O(1)
+#if !defined(setbit)
 void CRedisClient::setbit(const std::string& key, uint32_t offset, uint32_t value, Node* which, int num_retries)
+#else
+#undef setbit
+void CRedisClient::setbit(const std::string& key, uint32_t offset, uint32_t value, Node* which, int num_retries)
+#endif // setbit
 {
     CommandArgs cmd_args;
     cmd_args.add_arg("SETBIT");
