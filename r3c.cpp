@@ -4308,8 +4308,8 @@ CRedisClient::handle_redis_command_error(
     // For other values, the "errstr" field will hold a description.
     const int redis_errcode = redis_context->err;
     errinfo->errcode = errno;
-    errinfo->raw_errmsg = format_string("[%s] (%d)%s",
-            redis_node->str().c_str(), redis_errcode, redis_context->errstr);
+    errinfo->raw_errmsg = format_string("[%s] (%d/%d)%s",
+            redis_node->str().c_str(), redis_errcode, errinfo->errcode, redis_context->errstr);
     errinfo->errmsg = format_string("[R3C_CMD_ERROR][%s:%d][%s] %s",
             __FILE__, __LINE__, command_args.get_command(), errinfo->raw_errmsg.c_str());
     (*g_error_log)("%s\n", errinfo->errmsg.c_str());
