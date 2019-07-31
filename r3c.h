@@ -344,6 +344,14 @@ public:
     bool cluster_mode() const;
     const char* get_mode_str() const;
 
+public: // Control logs
+    void enable_debug_log();
+    void disable_debug_log();
+    void enable_info_log();
+    void disable_info_log();
+    void enable_error_log();
+    void disable_error_log();
+
 public:
     int list_nodes(std::vector<struct NodeInfo>* nodes_info);
 
@@ -1212,6 +1220,11 @@ public: // Stream
 public:
     void set_command_monitor(CommandMonitor* command_monitor) { _command_monitor = command_monitor; }
     CommandMonitor* get_command_monitor() const { return _command_monitor; }
+
+private:
+    bool _enable_debug_log; // Default: true
+    bool _enable_info_log;  // Default: true
+    bool _enable_error_log; // Default: true
 
 private:
     CommandMonitor* _command_monitor;

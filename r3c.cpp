@@ -331,7 +331,7 @@ public:
         if (NULL == _redis_context)
         {
             ++_conn_errors;
-            (*g_debug_log)("%s\n", str().c_str());
+            //(*g_debug_log)("%s\n", str().c_str());
         }
     }
 
@@ -755,6 +755,36 @@ bool CRedisClient::cluster_mode() const
 const char* CRedisClient::get_mode_str() const
 {
     return cluster_mode()? "CLUSTER": "STANDALONE";
+}
+
+void CRedisClient::enable_debug_log()
+{
+    _enable_debug_log = true;
+}
+
+void CRedisClient::disable_debug_log()
+{
+    _enable_debug_log = false;
+}
+
+void CRedisClient::enable_info_log()
+{
+    _enable_info_log = true;
+}
+
+void CRedisClient::disable_info_log()
+{
+    _enable_info_log = false;
+}
+
+void CRedisClient::enable_error_log()
+{
+    _enable_error_log = true;
+}
+
+void CRedisClient::disable_error_log()
+{
+    _enable_error_log = false;
 }
 
 int CRedisClient::list_nodes(std::vector<struct NodeInfo>* nodes_info)
@@ -4125,7 +4155,8 @@ CRedisClient::redis_command(
         errinfo.errcode = ERROR_ZERO_KEY;
         errinfo.raw_errmsg = format_string("[%s] key is empty in cluster node", command_args.get_command());
         errinfo.errmsg = format_string("[R3C_CMD][%s:%d] %s", __FILE__, __LINE__, errinfo.raw_errmsg.c_str());
-        (*g_error_log)("%s\n", errinfo.errmsg.c_str());
+        if (_enable_error_log)
+            (*g_error_log)("%s\n", errinfo.errmsg.c_str());
         THROW_REDIS_EXCEPTION(errinfo);
     }
     for (int loop_counter=0;;++loop_counter)
@@ -4155,7 +4186,8 @@ CRedisClient::redis_command(
             errinfo.errcode = ERROR_NO_ANY_NODE;
             errinfo.raw_errmsg = format_string("[%s][%s][%s:%d] no any node", command_args.get_command(), get_mode_str(), node.first.c_str(), node.second);
             errinfo.errmsg = format_string("[R3C_CMD][%s:%d] %s", __FILE__, __LINE__, errinfo.raw_errmsg.c_str());
-            (*g_error_log)("[NO_ANY_NODE] %s\n", errinfo.errmsg.c_str());
+            if (_enable_error_log)
+                (*g_error_log)("[NO_ANY_NODE] %s\n", errinfo.errmsg.c_str());
             break; // 没有任何master
         }
         if (NULL == redis_node->get_redis_context())
@@ -4201,9 +4233,12 @@ CRedisClient::redis_command(
         else if (HR_ERROR == errcode)
         {
             // 不需要重试的错误立即返回，比如：EVAL命令语法错误
-            (*g_debug_log)("[NOTRETRY][%s:%d][%s][%s:%d] loop: %d\n",
-                    __FILE__, __LINE__, get_mode_str(),
-                    redis_node->get_node().first.c_str(), redis_node->get_node().second, loop_counter);
+            if (_enable_debug_log)
+            {
+                (*g_debug_log)("[NOTRETRY][%s:%d][%s][%s:%d] loop: %d\n",
+                        __FILE__, __LINE__, get_mode_str(),
+                        redis_node->get_node().first.c_str(), redis_node->get_node().second, loop_counter);
+            }
             break;
         }
         else if (HR_RECONN_COND == errcode || HR_RECONN_UNCOND == errcode)
@@ -4215,10 +4250,13 @@ CRedisClient::redis_command(
         {
             if (!parse_moved_string(redis_reply->str, &node))
             {
-                (*g_error_log)("[PARSE_MOVED][%s:%d][%s][%s:%d] node string error: %s\n",
-                        __FILE__, __LINE__, get_mode_str(),
-                        redis_node->get_node().first.c_str(), redis_node->get_node().second,
-                        redis_reply->str);
+                if (_enable_error_log)
+                {
+                    (*g_error_log)("[PARSE_MOVED][%s:%d][%s][%s:%d] node string error: %s\n",
+                            __FILE__, __LINE__, get_mode_str(),
+                            redis_node->get_node().first.c_str(), redis_node->get_node().second,
+                            redis_reply->str);
+                }
                 break;
             }
             else
@@ -4226,9 +4264,12 @@ CRedisClient::redis_command(
                 ask_node = &node;
                 if (loop_counter <= 2)
                     continue;
-                (*g_debug_log)("[REDIRECT][%s:%d][%s][%s:%d] retries more than %d\n",
-                        __FILE__, __LINE__, get_mode_str(),
-                        redis_node->get_node().first.c_str(), redis_node->get_node().second, loop_counter);
+                if (_enable_debug_log)
+                {
+                    (*g_debug_log)("[REDIRECT][%s:%d][%s][%s:%d] retries more than %d\n",
+                            __FILE__, __LINE__, get_mode_str(),
+                            redis_node->get_node().first.c_str(), redis_node->get_node().second, loop_counter);
+                }
                 break;
             }
         }
@@ -4238,9 +4279,12 @@ CRedisClient::redis_command(
             // 保持至少重试一次（前提是先重新建立好连接）
             if (loop_counter>num_retries && loop_counter>0)
             {
-                (*g_debug_log)("[NOTRECONN][%s:%d][%s][%s:%d] retries more than %d\n",
-                        __FILE__, __LINE__, get_mode_str(),
-                        redis_node->get_node().first.c_str(), redis_node->get_node().second, num_retries);
+                if (_enable_debug_log)
+                {
+                    (*g_debug_log)("[NOTRECONN][%s:%d][%s][%s:%d] retries more than %d\n",
+                            __FILE__, __LINE__, get_mode_str(),
+                            redis_node->get_node().first.c_str(), redis_node->get_node().second, num_retries);
+                }
                 break;
             }
         }
@@ -4249,17 +4293,23 @@ CRedisClient::redis_command(
             // 一般replica切换成master需要几秒钟，所以需要保证有足够的重试次数
             if (loop_counter >= NUM_RETRIES)
             {
-                (*g_debug_log)("[RETRY_UNCOND][%s:%d][%s][%s:%d] retries more than %d\n",
-                        __FILE__, __LINE__, get_mode_str(),
-                        redis_node->get_node().first.c_str(), redis_node->get_node().second, NUM_RETRIES);
+                if (_enable_debug_log)
+                {
+                    (*g_debug_log)("[RETRY_UNCOND][%s:%d][%s][%s:%d] retries more than %d\n",
+                            __FILE__, __LINE__, get_mode_str(),
+                            redis_node->get_node().first.c_str(), redis_node->get_node().second, NUM_RETRIES);
+                }
                 break;
             }
         }
         else if (loop_counter>=num_retries-1)
         {
-            (*g_debug_log)("[OVERRETRY][%s:%d][%s][%s:%d] retries more than %d\n",
-                    __FILE__, __LINE__, get_mode_str(),
-                    redis_node->get_node().first.c_str(), redis_node->get_node().second, num_retries);
+            if (_enable_debug_log)
+            {
+                (*g_debug_log)("[OVERRETRY][%s:%d][%s][%s:%d] retries more than %d\n",
+                        __FILE__, __LINE__, get_mode_str(),
+                        redis_node->get_node().first.c_str(), redis_node->get_node().second, num_retries);
+            }
             break;
         }
 
@@ -4312,7 +4362,8 @@ CRedisClient::handle_redis_command_error(
             redis_node->str().c_str(), redis_errcode, errinfo->errcode, redis_context->errstr, strerror(errinfo->errcode));
     errinfo->errmsg = format_string("[R3C_CMD_ERROR][%s:%d][%s] %s",
             __FILE__, __LINE__, command_args.get_command(), errinfo->raw_errmsg.c_str());
-    (*g_error_log)("%s\n", errinfo->errmsg.c_str());
+    if (_enable_error_log)
+        (*g_error_log)("%s\n", errinfo->errmsg.c_str());
 
     // REDIS_ERR_IO:
     // There was an I/O error while creating the connection, trying to write
@@ -4386,7 +4437,8 @@ CRedisClient::handle_redis_replay_error(
     errinfo->errcode = ERROR_COMMAND;
     errinfo->raw_errmsg = format_string("[%s] %s", redis_node->str().c_str(), redis_reply->str);
     errinfo->errmsg = format_string("[R3C_REPLAY_ERROR][%s:%d][%s] %s", __FILE__, __LINE__, command_args.get_command(), errinfo->raw_errmsg.c_str());
-    (*g_error_log)("%s\n", errinfo->errmsg.c_str());
+    if (_enable_error_log)
+        (*g_error_log)("%s\n", errinfo->errmsg.c_str());
 
     // EVAL不会返回“MOVED”的错误，需特别处理
     if (is_clusterdown_error(errinfo->errtype))
@@ -4425,6 +4477,10 @@ void CRedisClient::fini()
 
 void CRedisClient::init()
 {
+    _enable_debug_log = true;
+    _enable_info_log = true;
+    _enable_error_log = true;
+
     try
     {
         const int num_nodes = parse_nodes(&_nodes, _raw_nodes_string);
@@ -4435,7 +4491,8 @@ void CRedisClient::init()
             errinfo.errcode = ERROR_PARAMETER;
             errinfo.errmsg = format_string("[R3C_INIT][%s:%d] parameter[nodes] error: %s", __FILE__, __LINE__, _raw_nodes_string.c_str());
             errinfo.raw_errmsg = format_string("parameter[nodes] error: %s", _raw_nodes_string.c_str());
-            (*g_error_log)("%s\n", errinfo.errmsg.c_str());
+            if (_enable_error_log)
+                (*g_error_log)("%s\n", errinfo.errmsg.c_str());
             THROW_REDIS_EXCEPTION(errinfo);
         }
         else if (1 == num_nodes)
@@ -4701,7 +4758,8 @@ void CRedisClient::clear_invalid_master_nodes(const NodeInfoTable& master_nodein
         {
             CRedisMasterNode* master_node = node_iter->second;
             const NodeId nodeid = master_node->get_nodeid();
-            (*g_info_log)("[R3C_CLEAR_INVALID][%s:%d] %s is removed because it is not a master now\n", __FILE__, __LINE__, master_node->str().c_str());
+            if (_enable_info_log)
+                (*g_info_log)("[R3C_CLEAR_INVALID][%s:%d] %s is removed because it is not a master now\n", __FILE__, __LINE__, master_node->str().c_str());
 
 #if __cplusplus < 201103L
             _redis_master_nodes.erase(node_iter++);
@@ -4755,8 +4813,11 @@ redisContext* CRedisClient::connect_redis_node(const Node& node, struct ErrorInf
     redisContext* redis_context = NULL;
 
     errinfo->clear();
-    (*g_debug_log)("[R3C_CONN][%s:%d] To connect %s with timeout: %dms\n",
-            __FILE__, __LINE__, node2string(node).c_str(), _connect_timeout_milliseconds);
+    if (_enable_debug_log)
+    {
+        (*g_debug_log)("[R3C_CONN][%s:%d] To connect %s with timeout: %dms\n",
+                __FILE__, __LINE__, node2string(node).c_str(), _connect_timeout_milliseconds);
+    }
     if (_connect_timeout_milliseconds <= 0)
     {
         redis_context = redisConnect(node.first.c_str(), node.second);
@@ -4776,7 +4837,8 @@ redisContext* CRedisClient::connect_redis_node(const Node& node, struct ErrorInf
         errinfo->raw_errmsg = "can not allocate redis context";
         errinfo->errmsg = format_string("[R3C_CONN][%s:%d][%s:%d] %s",
                 __FILE__, __LINE__, node.first.c_str(), node.second, errinfo->raw_errmsg.c_str());
-        (*g_error_log)("%s\n", errinfo->errmsg.c_str());
+        if (_enable_error_log)
+            (*g_error_log)("%s\n", errinfo->errmsg.c_str());
     }
     else if (redis_context->err != 0)
     {
@@ -4803,15 +4865,20 @@ redisContext* CRedisClient::connect_redis_node(const Node& node, struct ErrorInf
                     __FILE__, __LINE__, node.first.c_str(), node.second,
                     redis_context->err, errinfo->raw_errmsg.c_str());
         }
-        (*g_error_log)("%s\n", errinfo->errmsg.c_str());
+        if (_enable_error_log)
+        {
+            (*g_error_log)("%s\n", errinfo->errmsg.c_str());
+        }
         redisFree(redis_context);
         redis_context = NULL;
     }
     else
     {
-        (*g_debug_log)("[R3C_CONN][%s:%d] Connect %s successfully with readwrite timeout: %dms\n",
-                __FILE__, __LINE__, node2string(node).c_str(), _readwrite_timeout_milliseconds);
-
+        if (_enable_debug_log)
+        {
+            (*g_debug_log)("[R3C_CONN][%s:%d] Connect %s successfully with readwrite timeout: %dms\n",
+                    __FILE__, __LINE__, node2string(node).c_str(), _readwrite_timeout_milliseconds);
+        }
         if (_readwrite_timeout_milliseconds > 0)
         {
             struct timeval data_timeout;
@@ -4826,7 +4893,8 @@ redisContext* CRedisClient::connect_redis_node(const Node& node, struct ErrorInf
                 errinfo->errmsg = format_string("[R3C_CONN][%s:%d][%s:%d] (errno:%d,err:%d)%s",
                         __FILE__, __LINE__, node.first.c_str(), node.second,
                         errno, redis_context->err, errinfo->raw_errmsg.c_str());
-                (*g_error_log)("%s\n", errinfo->errmsg.c_str());
+                if (_enable_error_log)
+                    (*g_error_log)("%s\n", errinfo->errmsg.c_str());
                 redisFree(redis_context);
                 redis_context = NULL;
             }
@@ -4838,8 +4906,9 @@ redisContext* CRedisClient::connect_redis_node(const Node& node, struct ErrorInf
             if (redis_reply && 0==strcmp(redis_reply->str, "OK"))
             {
                 // AUTH success
-                (*g_info_log)("[R3C_AUTH][%s:%d] Connect redis://%s:%d success\n",
-                        __FILE__, __LINE__, node.first.c_str(), node.second);
+                if (_enable_info_log)
+                    (*g_info_log)("[R3C_AUTH][%s:%d] Connect redis://%s:%d success\n",
+                            __FILE__, __LINE__, node.first.c_str(), node.second);
             }
             else
             {
@@ -4858,7 +4927,8 @@ redisContext* CRedisClient::connect_redis_node(const Node& node, struct ErrorInf
 
                 errinfo->errmsg = format_string("[R3C_AUTH][%s:%d][%s:%d] %s",
                         __FILE__, __LINE__, node.first.c_str(), node.second, errinfo->raw_errmsg.c_str());
-                (*g_error_log)("%s\n", errinfo->errmsg.c_str());
+                if (_enable_error_log)
+                    (*g_error_log)("%s\n", errinfo->errmsg.c_str());
                 redisFree(redis_context);
                 redis_context = NULL;
             }
@@ -4871,8 +4941,9 @@ redisContext* CRedisClient::connect_redis_node(const Node& node, struct ErrorInf
         if (redis_reply && 0==strcmp(redis_reply->str, "OK"))
         {
             // READONLY success
-            (*g_info_log)("[R3C_READONLY][%s:%d] READONLY redis://%s:%d success\n",
-                    __FILE__, __LINE__, node.first.c_str(), node.second);
+            if (_enable_info_log)
+                (*g_info_log)("[R3C_READONLY][%s:%d] READONLY redis://%s:%d success\n",
+                        __FILE__, __LINE__, node.first.c_str(), node.second);
         }
         else
         {
@@ -4891,7 +4962,8 @@ redisContext* CRedisClient::connect_redis_node(const Node& node, struct ErrorInf
 
             errinfo->errmsg = format_string("[R3C_READONLY][%s:%d][%s:%d] %s",
                     __FILE__, __LINE__, node.first.c_str(), node.second, errinfo->raw_errmsg.c_str());
-            (*g_error_log)("%s\n", errinfo->errmsg.c_str());
+            if (_enable_error_log)
+                (*g_error_log)("%s\n", errinfo->errmsg.c_str());
             redisFree(redis_context);
             redis_context = NULL;
         }
@@ -5048,8 +5120,10 @@ CRedisClient::list_cluster_nodes(
             errinfo->raw_errmsg = "redisCommand failed";
         errinfo->errmsg = format_string("[R3C_LIST_NODES][%s:%d][NODE:%s] (sys:%d,redis:%d)%s",
                 __FILE__, __LINE__, node2string(node).c_str(), sys_errcode, redis_errcode, errinfo->raw_errmsg.c_str());
-        (*g_error_log)("%s\n", errinfo->errmsg.c_str());
-        (*g_info_log)("[%s:%d] %s\n", __FILE__, __LINE__, _nodes_string.c_str());
+        if (_enable_error_log)
+            (*g_error_log)("%s\n", errinfo->errmsg.c_str());
+        if (_enable_info_log)
+            (*g_info_log)("[%s:%d] %s\n", __FILE__, __LINE__, _nodes_string.c_str());
     }
     else if (REDIS_REPLY_ERROR == redis_reply->type)
     {
@@ -5058,7 +5132,8 @@ CRedisClient::list_cluster_nodes(
         errinfo->raw_errmsg = redis_reply->str;
         errinfo->errmsg = format_string("[R3C_LIST_NODES][%s:%d][NODE:%s] %s",
                 __FILE__, __LINE__, node2string(node).c_str(), redis_reply->str);
-        (*g_error_log)("%s\n", errinfo->errmsg.c_str());
+        if (_enable_error_log)
+            (*g_error_log)("%s\n", errinfo->errmsg.c_str());
     }
     else if (redis_reply->type != REDIS_REPLY_STRING)
     {
@@ -5067,7 +5142,8 @@ CRedisClient::list_cluster_nodes(
         errinfo->raw_errmsg = redis_reply->str;
         errinfo->errmsg = format_string("[R3C_LIST_NODES][%s:%d][NODE:%s] (type:%d)%s",
                 __FILE__, __LINE__, node2string(node).c_str(), redis_reply->type, redis_reply->str);
-        (*g_error_log)("%s\n", errinfo->errmsg.c_str());
+        if (_enable_error_log)
+            (*g_error_log)("%s\n", errinfo->errmsg.c_str());
     }
     else
     {
@@ -5095,7 +5171,8 @@ CRedisClient::list_cluster_nodes(
             errinfo->raw_errmsg = "reply nothing";
             errinfo->errmsg = format_string("[R3C_LIST_NODES][%s:%d][NODE:%s][REPLY:%s] %s",
                     __FILE__, __LINE__, node2string(node).c_str(), redis_reply->str, "reply nothing");
-            (*g_error_log)("%s\n", errinfo->errmsg.c_str());
+            if (_enable_error_log)
+                (*g_error_log)("%s\n", errinfo->errmsg.c_str());
         }
         for (int row=0; row<num_lines; ++row)
         {
@@ -5116,7 +5193,8 @@ CRedisClient::list_cluster_nodes(
                 errinfo->raw_errmsg = "reply format error";
                 errinfo->errmsg = format_string("[R3C_LIST_NODES][%s:%d][NODE:%s][LINE:%s] %s",
                         __FILE__, __LINE__, node2string(node).c_str(), line.c_str(), "reply format error");
-                (*g_error_log)("%s\n", errinfo->errmsg.c_str());
+                if (_enable_error_log)
+                    (*g_error_log)("%s\n", errinfo->errmsg.c_str());
                 break;
             }
             else
@@ -5131,7 +5209,8 @@ CRedisClient::list_cluster_nodes(
                     errinfo->raw_errmsg = "reply format error";
                     errinfo->errmsg = format_string("[R3C_LIST_NODES][%s:%d][NODE:%s][TOKEN:%s][LINE:%s] %s",
                             __FILE__, __LINE__, node2string(node).c_str(), tokens[1].c_str(), line.c_str(), "reply format error");
-                    (*g_error_log)("%s\n", errinfo->errmsg.c_str());
+                    if (_enable_error_log)
+                        (*g_error_log)("%s\n", errinfo->errmsg.c_str());
                     break;
                 }
                 else
@@ -5162,8 +5241,9 @@ CRedisClient::list_cluster_nodes(
                         }
                     }
 
-                    (*g_debug_log)("[R3C_LIST_NODES][%s:%d][NODE:%s] %s\n",
-                            __FILE__, __LINE__, node2string(node).c_str(), nodeinfo.str().c_str());
+                    if (_enable_debug_log)
+                        (*g_debug_log)("[R3C_LIST_NODES][%s:%d][NODE:%s] %s\n",
+                                __FILE__, __LINE__, node2string(node).c_str(), nodeinfo.str().c_str());
                     nodes_info->push_back(nodeinfo);
                 }
             }
