@@ -4363,7 +4363,11 @@ CRedisClient::handle_redis_command_error(
     errinfo->errmsg = format_string("[R3C_CMD_ERROR][%s:%d][%s] %s",
             __FILE__, __LINE__, command_args.get_command(), errinfo->raw_errmsg.c_str());
     if (_enable_error_log)
-        (*g_error_log)("%s\n", errinfo->errmsg.c_str());
+    {
+        const unsigned int conn_errors = redis_node->get_conn_errors();
+        if (conn_errors==0 || conn_errors%10==0) // Reduce duplicate error logs
+            (*g_error_log)("%s\n", errinfo->errmsg.c_str());
+    }
 
     // REDIS_ERR_IO:
     // There was an I/O error while creating the connection, trying to write
