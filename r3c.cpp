@@ -4290,19 +4290,20 @@ CRedisClient::redis_command(
         }
         else if (HR_RETRY_UNCOND == errcode)
         {
-            // 一般replica切换成master需要几秒钟，所以需要保证有足够的重试次数
-            if (loop_counter >= NUM_RETRIES)
+            // 一般replica切换成master需要几秒钟，
+            // 所以需要保证有足够的重试次数
+            if (loop_counter > num_retries)
             {
                 if (_enable_debug_log)
                 {
                     (*g_debug_log)("[RETRY_UNCOND][%s:%d][%s][%s:%d] retries more than %d\n",
                             __FILE__, __LINE__, get_mode_str(),
-                            redis_node->get_node().first.c_str(), redis_node->get_node().second, NUM_RETRIES);
+                            redis_node->get_node().first.c_str(), redis_node->get_node().second, num_retries);
                 }
                 break;
             }
         }
-        else if (loop_counter>=num_retries-1)
+        else if (loop_counter>=num_retries)
         {
             if (_enable_debug_log)
             {
