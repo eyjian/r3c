@@ -1687,20 +1687,100 @@ int64_t CRedisClient::hincrby(
     return 0;
 }
 
-void CRedisClient::hincrby(
+// hk Hash tag key
+//
+// ARGV[1] field
+// ARGV[2] increment
+// ARGV[3] unique id
+// ARGV[4] expiration seconds
+/*
+local hk='{'..KEYS[1]..'}'..ARGV[3]
+local ret=redis.call('SET',hk,'1','EX',ARGV[4],'NX')
+if not ret then
+  return nil
+else
+  return redis.call('HINCRBY',KEYS[1],ARGV[1],ARGV[2])
+end
+*/
+bool CRedisClient::hincrby(
         const std::string& key,
-        const std::vector<std::pair<std::string, int64_t> >& increments,
-        std::vector<int64_t>* values,
+        const std::string& field,
+        int64_t increment,
+        const std::string& uid,
+        uint32_t expired_seconds,
+        int64_t* newvalue,
         Node* which,
         int num_retries)
 {
-    hmincrby(key, increments, values, which, num_retries);
+    int retries = 0;
+
+HINCRBY_NOSCRIPT_RETRY: // No script to retry
+    try
+    {
+        static const std::string hincrby_script =
+                "local hk='{'..KEYS[1]..'}'..ARGV[3];"
+                "local ret=redis.call('SET',hk,'1','EX',ARGV[4],'NX');"
+                "if not ret then"
+                "  return nil;"
+                "else"
+                "  return redis.call('HINCRBY',KEYS[1],ARGV[1],ARGV[2]);"
+                "end";
+        std::vector<std::string> parameters(4);
+        RedisReplyHelper redis_reply;
+        int64_t val = 0;
+
+        parameters[0] = field;
+        parameters[1] = int2string(increment);
+        parameters[2] = uid;
+        parameters[3] = int2string(expired_seconds);
+        if (!_hincrby_shastr1.empty())
+        {
+            redis_reply = evalsha(key, _hincrby_shastr1, parameters, which, num_retries);
+        }
+        else
+        {
+            redis_reply = eval(key, hincrby_script, parameters, which, num_retries);
+            _hincrby_shastr1 = strsha1(hincrby_script);
+        }
+        if (REDIS_REPLY_NIL == redis_reply->type) // Exists
+            return false;
+        else if (REDIS_REPLY_INTEGER == redis_reply->type) // Not Exists
+            val = static_cast<int64_t>(redis_reply->integer);
+        else if (REDIS_REPLY_STRING == redis_reply->type) // Not Exists
+            string2int(redis_reply->str, redis_reply->len, &val);
+        if (newvalue != NULL)
+            *newvalue = val;
+        return true;
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        ++retries; // Only retry once
+        if (retries>1 || !is_noscript_error(ex.errtype()))
+        {
+            throw;
+        }
+        else
+        {
+            _hincrby_shastr1.clear();
+            goto HINCRBY_NOSCRIPT_RETRY;
+        }
+    }
+}
+
+void CRedisClient::hincrby(
+        const std::string& key,
+        const std::vector<std::pair<std::string, int64_t> >& increments,
+        std::vector<int64_t>* newvalues,
+        Node* which,
+        int num_retries)
+{
+    hmincrby(key, increments, newvalues, which, num_retries);
 }
 
 void CRedisClient::hmincrby(
         const std::string& key,
         const std::vector<std::pair<std::string, int64_t> >& increments,
-        std::vector<int64_t>* values,
+        std::vector<int64_t>* newvalues,
         Node* which,
         int num_retries)
 {
@@ -1719,7 +1799,105 @@ void CRedisClient::hmincrby(
     }
     const RedisReplyHelper redis_reply = eval(key, lua_scripts, parameters, which, num_retries);
     if (REDIS_REPLY_ARRAY == redis_reply->type)
-        get_values(redis_reply.get(), values);
+        get_values(redis_reply.get(), newvalues);
+}
+
+// hk Hash tag key
+//
+// ARGV[1] unique id
+// ARGV[2] expiration seconds
+// ARGV[3] field1
+// ARGV[4] value1
+// ARGV[5] field2
+// ARGV[6] value2
+// ... ...
+/*
+local hk='{'..KEYS[1]..'}'..ARGV[1]
+local ret=redis.call('SET',hk,'1','EX',ARGV[2],'NX')
+if not ret then
+  return nil
+else
+  local results={}
+  local j=1
+  for i=3,#ARGV,2
+  do
+    local f=ARGV[i]
+    local v=ARGV[i+1]
+    results[j]=redis.call('HINCRBY',KEYS[1],f,v)
+    j=j+1
+  end
+  return results
+end
+*/
+bool CRedisClient::hmincrby(
+        const std::string& key,
+        const std::vector<std::pair<std::string, int64_t> >& increments,
+        const std::string& uid,
+        uint32_t expired_seconds,
+        std::vector<int64_t>* newvalues,
+        Node* which,
+        int num_retries)
+{
+    int retries = 0;
+
+HMINCRBY_NOSCRIPT_RETRY:
+    try
+    {
+        static const std::string hmincrby_script =
+                "local hk='{'..KEYS[1]..'}'..ARGV[1];"
+                "local ret=redis.call('SET',hk,'1','EX',ARGV[2],'NX');"
+                "if not ret then"
+                "  return nil;"
+                "else"
+                "  local results={};"
+                "  local j=1;"
+                "  for i=3,#ARGV,2"
+                "  do"
+                "    local f=ARGV[i];"
+                "    local v=ARGV[i+1];"
+                "    results[j]=redis.call('HINCRBY',KEYS[1],f,v);"
+                "    j=j+1;"
+                "  end"
+                "  return results;"
+                "end";
+        RedisReplyHelper redis_reply;
+        std::vector<std::string> parameters(2+2*increments.size());
+        parameters[0] = uid;
+        parameters[1] = int2string(expired_seconds);
+        for (std::vector<std::pair<std::string, int64_t> >::size_type i=0,j=2; i<increments.size(); ++i,j+=2)
+        {
+            const std::pair<std::string, int64_t>& increment = increments[i];
+            parameters[j] = increment.first;
+            parameters[j+1] = int2string(increment.second);
+        }
+        if (!_hmincrby_shastr1.empty())
+        {
+            redis_reply = evalsha(key, _hmincrby_shastr1, parameters, which, num_retries);
+        }
+        else
+        {
+            redis_reply = eval(key, hmincrby_script, parameters, which, num_retries);
+            _hmincrby_shastr1 = strsha1(hmincrby_script);
+        }
+        if (REDIS_REPLY_NIL == redis_reply->type)
+            return false;
+        else if (REDIS_REPLY_ARRAY == redis_reply->type)
+            get_values(redis_reply.get(), newvalues);
+        return true;
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        ++retries; // Only retry once
+        if (retries>1 || !is_noscript_error(ex.errtype()))
+        {
+            throw;
+        }
+        else
+        {
+            _hmincrby_shastr1.clear();
+            goto HMINCRBY_NOSCRIPT_RETRY;
+        }
+    }
 }
 
 void CRedisClient::hset(

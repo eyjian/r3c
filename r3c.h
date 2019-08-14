@@ -547,11 +547,23 @@ public: // HASH
     // Returns the value at field after the increment operation.
     int64_t hincrby(const std::string& key, const std::string& field, int64_t increment, Node* which=NULL, int num_retries=0);
 
+    // Safely retry within the specified time by expired_seconds
+    // uid Unique ID
+    // Hash tag: {key}uid
     // Based on EVAL, NOT SUPPORT binary key & field
-    void hincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values=NULL, Node* which=NULL, int num_retries=0);
+    bool hincrby(const std::string& key, const std::string& field, int64_t increment, const std::string& uid, uint32_t expired_seconds=60, int64_t* newvalue=NULL, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Based on EVAL, NOT SUPPORT binary key & field
-    void hmincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* values=NULL, Node* which=NULL, int num_retries=0);
+    void hincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* newvalues=NULL, Node* which=NULL, int num_retries=0);
+
+    // Based on EVAL, NOT SUPPORT binary key & field
+    void hmincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* newvalues=NULL, Node* which=NULL, int num_retries=0);
+
+    // Safely retry within the specified time by expired_seconds
+    // uid Unique ID
+    // Hash tag: {key}uid
+    // Based on EVAL, NOT SUPPORT binary key & field
+    bool hmincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, const std::string& uid, uint32_t expired_seconds=60, std::vector<int64_t>* newvalues=NULL, Node* which=NULL, int num_retries=0);
 
     // Set multiple hash fields to multiple values.
     // Time complexity: O(N) where N is the number of fields being set.
@@ -1249,6 +1261,10 @@ private:
 private:
     std::vector<Node> _nodes; // All nodes array
     std::vector<Node> _slot2node; // Slot -> Node
+
+private:
+    std::string _hincrby_shastr1;
+    std::string _hmincrby_shastr1;
 };
 
 // Monitor the execution of the command by setting a CommandMonitor.
