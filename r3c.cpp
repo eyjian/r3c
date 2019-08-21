@@ -5319,7 +5319,7 @@ redisContext* CRedisClient::connect_redis_node(const Node& node, struct ErrorInf
         {
             // READONLY success
             if (_enable_info_log)
-                (*g_info_log)("[R3C_READONLY][%s:%d] READONLY redis://%s:%d success\n",
+                (*g_debug_log)("[R3C_READONLY][%s:%d] READONLY redis://%s:%d success\n",
                         __FILE__, __LINE__, node.first.c_str(), node.second);
         }
         else
