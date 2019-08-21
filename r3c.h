@@ -171,9 +171,7 @@ public:
     const char* get_command() const;
     const char* get_key() const;
     size_t get_command_length() const;
-    size_t get_key_length() const;
     std::string get_command_str() const;
-    std::string get_key_str() const;
 
 private:
     std::string _command;
@@ -200,7 +198,7 @@ class CRedisException: public std::exception
 {
 public:
     // key maybe a binary value
-    CRedisException(const struct ErrorInfo& errinfo, const char* file, int line, const std::string& node_ip=std::string("-"), uint16_t node_port=0, const std::string& command=std::string(""), const std::string& key=std::string("")) throw ();
+    CRedisException(const struct ErrorInfo& errinfo, const char* file, int line, const std::string& node_ip=std::string("-"), uint16_t node_port=0, const std::string& command=std::string("")) throw ();
     virtual ~CRedisException() throw () {}
     virtual const char* what() const throw ();
     int errcode() const { return _errinfo.errcode; }
@@ -211,7 +209,6 @@ public:
     const char* node_ip() const throw () { return _node_ip.c_str(); }
     uint16_t node_port() const throw () { return _node_port; }
     const std::string& command() const throw() { return _command; }
-    const std::string& key() const throw() { return _key; }
     const std::string& errtype() const throw () { return _errinfo.errtype; }
     const std::string& raw_errmsg() const throw () { return _errinfo.raw_errmsg; }
     const ErrorInfo& get_errinfo() const throw() { return _errinfo; }
@@ -223,7 +220,6 @@ private:
     const std::string _node_ip;
     const uint16_t _node_port;
     std::string _command;
-    std::string _key;
 };
 
 // FVPair: field-value pair

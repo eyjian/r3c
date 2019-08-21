@@ -9,8 +9,8 @@
     throw CRedisException(errinfo, __FILE__, __LINE__)
 #define THROW_REDIS_EXCEPTION_WITH_NODE(errinfo, node_ip, node_port) \
     throw CRedisException(errinfo, __FILE__, __LINE__, node_ip, node_port)
-#define THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(errinfo, node_ip, node_port, command, key) \
-    throw CRedisException(errinfo, __FILE__, __LINE__, node_ip, node_port, command, key)
+#define THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(errinfo, node_ip, node_port, command) \
+    throw CRedisException(errinfo, __FILE__, __LINE__, node_ip, node_port, command)
 
 namespace r3c {
 
@@ -240,27 +240,27 @@ void CommandArgs::final()
     }
 }
 
-inline int CommandArgs::get_argc() const
+int CommandArgs::get_argc() const
 {
     return _argc;
 }
 
-inline const char** CommandArgs::get_argv() const
+const char** CommandArgs::get_argv() const
 {
     return (const char**)_argv;
 }
 
-inline const size_t* CommandArgs::get_argvlen() const
+const size_t* CommandArgs::get_argvlen() const
 {
     return _argvlen;
 }
 
-inline const char* CommandArgs::get_command() const
+const char* CommandArgs::get_command() const
 {
     return _argv[0];
 }
 
-inline const char* CommandArgs::get_key() const
+const char* CommandArgs::get_key() const
 {
     if (!_key.empty())
         return _key.c_str();
@@ -269,24 +269,14 @@ inline const char* CommandArgs::get_key() const
     return "";
 }
 
-inline size_t CommandArgs::get_command_length() const
+size_t CommandArgs::get_command_length() const
 {
     return _argvlen[0];
-}
-
-inline size_t CommandArgs::get_key_length() const
-{
-    return _argvlen[1];
 }
 
 std::string CommandArgs::get_command_str() const
 {
     return std::string(get_command(), get_command_length());
-}
-
-std::string CommandArgs::get_key_str() const
-{
-    return std::string(get_key(), get_key_length());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -584,9 +574,8 @@ CRedisException::CRedisException(
         const struct ErrorInfo& errinfo,
         const char* file, int line,
         const std::string& node_ip, uint16_t node_port,
-        const std::string& command,
-        const std::string& key) throw ()
-    :  _errinfo(errinfo), _line(line), _node_ip(node_ip), _node_port(node_port), _command(command), _key(key)
+        const std::string& command) throw ()
+    :  _errinfo(errinfo), _line(line), _node_ip(node_ip), _node_port(node_port), _command(command)
 {
     const char* slash_position = strrchr(file, '/');
     const std::string* file_cp = &_file;
@@ -609,9 +598,9 @@ const char* CRedisException::what() const throw()
 
 std::string CRedisException::str() const throw ()
 {
-    const std::string& errmsg = format_string("redis_exception://%s:%d/CMD:%s/KEY:%.*s/%s/(%d)%s@%s:%d",
+    const std::string& errmsg = format_string("redis_exception://%s:%d/CMD:%s/%s/(%d)%s@%s:%d",
             _node_ip.c_str(), _node_port,
-            _command.c_str(), static_cast<int>(_key.length()), _key.c_str(),
+            _command.c_str(),
             _errinfo.errtype.c_str(), _errinfo.errcode, _errinfo.errmsg.c_str(),
             _file.c_str(), _line);
 
@@ -4513,7 +4502,7 @@ CRedisClient::redis_command(
     // 错误以异常方式抛出
     if (_command_monitor!=NULL)
         _command_monitor->after_execute(1, node, command_args.get_command_str(), redis_reply.get());
-    THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(errinfo, node.first, node.second, command_args.get_command_str(), command_args.get_key_str());
+    THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(errinfo, node.first, node.second, command_args.get_command_str());
 }
 
 CRedisClient::HandleResult
