@@ -9,8 +9,8 @@
     throw CRedisException(errinfo, __FILE__, __LINE__)
 #define THROW_REDIS_EXCEPTION_WITH_NODE(errinfo, node_ip, node_port) \
     throw CRedisException(errinfo, __FILE__, __LINE__, node_ip, node_port)
-#define THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(errinfo, node_ip, node_port, command) \
-    throw CRedisException(errinfo, __FILE__, __LINE__, node_ip, node_port, command)
+#define THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(errinfo, node_ip, node_port, command, key) \
+    throw CRedisException(errinfo, __FILE__, __LINE__, node_ip, node_port, command, key)
 
 namespace r3c {
 
@@ -149,6 +149,11 @@ void CommandArgs::set_key(const std::string& key)
     _key = key;
 }
 
+void CommandArgs::set_command(const std::string& command)
+{
+    _command = command;
+}
+
 void CommandArgs::add_arg(const std::string& arg)
 {
     _args.push_back(arg);
@@ -255,28 +260,14 @@ const size_t* CommandArgs::get_argvlen() const
     return _argvlen;
 }
 
-const char* CommandArgs::get_command() const
+const std::string& CommandArgs::get_command() const
 {
-    return _argv[0];
+    return _command;
 }
 
-const char* CommandArgs::get_key() const
+const std::string& CommandArgs::get_key() const
 {
-    if (!_key.empty())
-        return _key.c_str();
-    if (_argc > 1)
-        return _argv[1];
-    return "";
-}
-
-size_t CommandArgs::get_command_length() const
-{
-    return _argvlen[0];
-}
-
-std::string CommandArgs::get_command_str() const
-{
-    return std::string(get_command(), get_command_length());
+    return _key;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -574,8 +565,11 @@ CRedisException::CRedisException(
         const struct ErrorInfo& errinfo,
         const char* file, int line,
         const std::string& node_ip, uint16_t node_port,
-        const std::string& command) throw ()
-    :  _errinfo(errinfo), _line(line), _node_ip(node_ip), _node_port(node_port), _command(command)
+        const std::string& command, const std::string& key) throw ()
+    :  _errinfo(errinfo),
+       _line(line),
+       _node_ip(node_ip), _node_port(node_port),
+       _command(command), _key(key)
 {
     const char* slash_position = strrchr(file, '/');
     const std::string* file_cp = &_file;
@@ -805,7 +799,8 @@ void CRedisClient::flushall()
     const int num_retries = NUM_RETRIES;
     const std::string key;
     CommandArgs cmd_args;
-    cmd_args.add_arg("FLUSHALL");
+    cmd_args.set_command("FLUSHALL");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.final();
 
     // Simple string reply (REDIS_REPLY_STATUS)
@@ -826,7 +821,8 @@ void CRedisClient::multi(const std::string& key, Node* which)
         const int num_retries = 0;
         CommandArgs cmd_args;
         cmd_args.set_key(key);
-        cmd_args.add_arg("MULTI");
+        cmd_args.set_command("MULTI");
+        cmd_args.add_arg(cmd_args.get_command());
         cmd_args.final();
 
         // Simple string reply (REDIS_REPLY_STATUS):
@@ -849,7 +845,8 @@ const RedisReplyHelper CRedisClient::exec(const std::string& key, Node* which)
         const int num_retries = 0;
         CommandArgs cmd_args;
         cmd_args.set_key(key);
-        cmd_args.add_arg("EXEC");
+        cmd_args.set_command("EXEC");
+        cmd_args.add_arg(cmd_args.get_command());
         cmd_args.final();
 
         // Array reply:
@@ -871,7 +868,9 @@ bool CRedisClient::expire(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("EXPIRE");
+    cmd_args.set_key(key);
+    cmd_args.set_command("EXPIRE");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(seconds);
     cmd_args.final();
@@ -890,7 +889,9 @@ bool CRedisClient::expire(
 bool CRedisClient::exists(const std::string& key, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("EXISTS");
+    cmd_args.set_key(key);
+    cmd_args.set_command("EXISTS");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.final();
 
@@ -911,7 +912,9 @@ bool CRedisClient::exists(const std::string& key, Node* which, int num_retries)
 bool CRedisClient::del(const std::string& key, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("DEL");
+    cmd_args.set_key(key);
+    cmd_args.set_command("DEL");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.final();
 
@@ -932,7 +935,9 @@ bool CRedisClient::get(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("GET");
+    cmd_args.set_key(key);
+    cmd_args.set_command("GET");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.final();
 
@@ -955,7 +960,9 @@ void CRedisClient::set(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("SET");
+    cmd_args.set_key(key);
+    cmd_args.set_command("SET");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(value);
     cmd_args.final();
@@ -979,7 +986,9 @@ bool CRedisClient::setnx(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("SETNX");
+    cmd_args.set_key(key);
+    cmd_args.set_command("SETNX");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(value);
     cmd_args.final();
@@ -1003,7 +1012,9 @@ void CRedisClient::setex(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("SETEX");
+    cmd_args.set_key(key);
+    cmd_args.set_command("SETEX");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(expired_seconds);
     cmd_args.add_arg(value);
@@ -1023,7 +1034,9 @@ bool CRedisClient::setnxex(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("SET");
+    cmd_args.set_key(key);
+    cmd_args.set_command("SET");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(value);
     cmd_args.add_arg("EX");
@@ -1056,7 +1069,8 @@ int CRedisClient::mget(
     {
         const std::string key;
         CommandArgs cmd_args;
-        cmd_args.add_arg("MGET");
+        cmd_args.set_command("MGET");
+        cmd_args.add_arg(cmd_args.get_command());
         cmd_args.add_args(keys);
         cmd_args.final();
 
@@ -1114,7 +1128,8 @@ int CRedisClient::mset(
     {
         const std::string key;
         CommandArgs cmd_args;
-        cmd_args.add_arg("MSET");
+        cmd_args.set_command("MSET");
+        cmd_args.add_arg(cmd_args.get_command());
         cmd_args.add_args(kv_map);
         cmd_args.final();
 
@@ -1146,7 +1161,9 @@ int64_t CRedisClient::incrby(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("INCRBY");
+    cmd_args.set_key(key);
+    cmd_args.set_command("INCRBY");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(increment);
     cmd_args.final();
@@ -1192,7 +1209,9 @@ int64_t CRedisClient::incrby(
 bool CRedisClient::key_type(const std::string& key, std::string* key_type, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("TYPE");
+    cmd_args.set_key(key);
+    cmd_args.set_command("TYPE");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.final();
 
@@ -1208,7 +1227,9 @@ bool CRedisClient::key_type(const std::string& key, std::string* key_type, Node*
 int64_t CRedisClient::ttl(const std::string& key, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("TTL");
+    cmd_args.set_key(key);
+    cmd_args.set_command("TTL");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.final();
 
@@ -1254,8 +1275,8 @@ int64_t CRedisClient::scan(
 {
     const std::string key;
     CommandArgs cmd_args;
-    cmd_args.set_key("");
-    cmd_args.add_arg("SCAN");
+    cmd_args.set_command("SCAN");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(cursor);
     if (!pattern.empty())
     {
@@ -1332,7 +1353,8 @@ const RedisReplyHelper CRedisClient::eval(
     const int numkeys = 1;
     CommandArgs cmd_args;
     cmd_args.set_key(key);
-    cmd_args.add_arg("EVAL");
+    cmd_args.set_command("EVAL");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(lua_scripts);
     cmd_args.add_arg(numkeys);
     cmd_args.add_arg(key);
@@ -1351,7 +1373,8 @@ const RedisReplyHelper CRedisClient::eval(
     const int numkeys = 1;
     CommandArgs cmd_args;
     cmd_args.set_key(key);
-    cmd_args.add_arg("EVAL");
+    cmd_args.set_command("EVAL");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(lua_scripts);
     cmd_args.add_arg(numkeys);
     cmd_args.add_arg(key);
@@ -1370,7 +1393,8 @@ const RedisReplyHelper CRedisClient::evalsha(
     const int numkeys = 1;
     CommandArgs cmd_args;
     cmd_args.set_key(key);
-    cmd_args.add_arg("EVALSHA");
+    cmd_args.set_command("EVALSHA");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(sha1);
     cmd_args.add_arg(numkeys);
     cmd_args.add_arg(key);
@@ -1401,7 +1425,10 @@ const RedisReplyHelper CRedisClient::eval(
             key = keys[0];
 
         CommandArgs cmd_args;
-        cmd_args.add_arg("EVAL");
+        if (!key.empty())
+            cmd_args.set_key(key);
+        cmd_args.set_command("EVAL");
+        cmd_args.add_arg(cmd_args.get_command());
         cmd_args.add_arg(lua_scripts);
         cmd_args.add_arg(numkeys);
         cmd_args.add_args(keys);
@@ -1433,7 +1460,10 @@ const RedisReplyHelper CRedisClient::evalsha(
             key = keys[0];
 
         CommandArgs cmd_args;
-        cmd_args.add_arg("EVALSHA");
+        if (!key.empty())
+            cmd_args.set_key(key);
+        cmd_args.set_command("EVALSHA");
+        cmd_args.add_arg(cmd_args.get_command());
         cmd_args.add_arg(sha1);
         cmd_args.add_arg(numkeys);
         cmd_args.add_args(keys);
@@ -1452,7 +1482,9 @@ const RedisReplyHelper CRedisClient::evalsha(
 bool CRedisClient::hdel(const std::string& key, const std::string& field, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("HDEL");
+    cmd_args.set_key(key);
+    cmd_args.set_command("HDEL");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(field);
     cmd_args.final();
@@ -1483,7 +1515,9 @@ int CRedisClient::hmdel(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("HDEL");
+    cmd_args.set_key(key);
+    cmd_args.set_command("HDEL");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_args(fields);
     cmd_args.final();
@@ -1503,7 +1537,9 @@ int CRedisClient::hmdel(
 bool CRedisClient::hexists(const std::string& key, const std::string& field, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("HEXISTS");
+    cmd_args.set_key(key);
+    cmd_args.set_command("HEXISTS");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(field);
     cmd_args.final();
@@ -1522,7 +1558,9 @@ bool CRedisClient::hexists(const std::string& key, const std::string& field, Nod
 int CRedisClient::hlen(const std::string& key, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("HLEN");
+    cmd_args.set_key(key);
+    cmd_args.set_command("HLEN");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.final();
 
@@ -1543,7 +1581,9 @@ bool CRedisClient::hset(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("HSET");
+    cmd_args.set_key(key);
+    cmd_args.set_command("HSET");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(field);
     cmd_args.add_arg(value);
@@ -1590,7 +1630,9 @@ bool CRedisClient::hsetnx(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("HSETNX");
+    cmd_args.set_key(key);
+    cmd_args.set_command("HSETNX");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(field);
     cmd_args.add_arg(value);
@@ -1638,7 +1680,9 @@ bool CRedisClient::hget(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("HGET");
+    cmd_args.set_key(key);
+    cmd_args.set_command("HGET");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(field);
     cmd_args.final();
@@ -1663,7 +1707,9 @@ int64_t CRedisClient::hincrby(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("HINCRBY");
+    cmd_args.set_key(key);
+    cmd_args.set_command("HINCRBY");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(field);
     cmd_args.add_arg(increment);
@@ -1907,7 +1953,9 @@ void CRedisClient::hmset(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("HMSET");
+    cmd_args.set_key(key);
+    cmd_args.set_command("HMSET");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_args(map);
     cmd_args.final();
@@ -1938,7 +1986,9 @@ int CRedisClient::hmget(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("HMGET");
+    cmd_args.set_key(key);
+    cmd_args.set_command("HMGET");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_args(fields);
     cmd_args.final();
@@ -1962,7 +2012,9 @@ int CRedisClient::hgetall(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("HGETALL");
+    cmd_args.set_key(key);
+    cmd_args.set_command("HGETALL");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.final();
 
@@ -1981,7 +2033,9 @@ int CRedisClient::hgetall(
 int CRedisClient::hstrlen(const std::string& key, const std::string& field, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("HSTRLEN");
+    cmd_args.set_key(key);
+    cmd_args.set_command("HSTRLEN");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(field);
     cmd_args.final();
@@ -2002,7 +2056,9 @@ int CRedisClient::hstrlen(const std::string& key, const std::string& field, Node
 int CRedisClient::hkeys(const std::string& key, std::vector<std::string>* fields, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("HKEYS");
+    cmd_args.set_key(key);
+    cmd_args.set_command("HKEYS");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.final();
 
@@ -2021,7 +2077,9 @@ int CRedisClient::hkeys(const std::string& key, std::vector<std::string>* fields
 int CRedisClient::hvals(const std::string& key, std::vector<std::string>* vals, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("HVALS");
+    cmd_args.set_key(key);
+    cmd_args.set_command("HVALS");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.final();
 
@@ -2078,7 +2136,9 @@ int64_t CRedisClient::hscan(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("HSCAN");
+    cmd_args.set_key(key);
+    cmd_args.set_command("HSCAN");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(cursor);
     if (!pattern.empty())
@@ -2127,7 +2187,9 @@ int64_t CRedisClient::hscan(
 int CRedisClient::llen(const std::string& key, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("LLEN");
+    cmd_args.set_key(key);
+    cmd_args.set_command("LLEN");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.final();
 
@@ -2143,7 +2205,9 @@ int CRedisClient::llen(const std::string& key, Node* which, int num_retries)
 bool CRedisClient::lpop(const std::string& key, std::string* value, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("LPOP");
+    cmd_args.set_key(key);
+    cmd_args.set_command("LPOP");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.final();
 
@@ -2165,7 +2229,9 @@ int CRedisClient::lpush(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("LPUSH");
+    cmd_args.set_key(key);
+    cmd_args.set_command("LPUSH");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(value);
     cmd_args.final();
@@ -2186,7 +2252,9 @@ int CRedisClient::lpush(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("LPUSH");
+    cmd_args.set_key(key);
+    cmd_args.set_command("LPUSH");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_args(values);
     cmd_args.final();
@@ -2204,7 +2272,9 @@ int CRedisClient::lpush(
 int CRedisClient::lpushx(const std::string& key, const std::string& value, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("LPUSHX");
+    cmd_args.set_key(key);
+    cmd_args.set_command("LPUSHX");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(value);
     cmd_args.final();
@@ -2230,7 +2300,9 @@ int CRedisClient::lrange(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("LRANGE");
+    cmd_args.set_key(key);
+    cmd_args.set_command("LRANGE");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(start);
     cmd_args.add_arg(end);
@@ -2254,7 +2326,9 @@ void CRedisClient::ltrim(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("LTRIM");
+    cmd_args.set_key(key);
+    cmd_args.set_command("LTRIM");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(start);
     cmd_args.add_arg(end);
@@ -2267,7 +2341,9 @@ void CRedisClient::ltrim(
 void CRedisClient::lset(const std::string& key, int index, const std::string& value, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("LSET");
+    cmd_args.set_key(key);
+    cmd_args.set_command("LSET");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(index);
     cmd_args.add_arg(value);
@@ -2287,7 +2363,9 @@ void CRedisClient::lset(const std::string& key, int index, const std::string& va
 int CRedisClient::linsert(const std::string& key, const std::string& pivot, const std::string& value, bool before, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("LINSERT");
+    cmd_args.set_key(key);
+    cmd_args.set_command("LINSERT");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     if (before)
         cmd_args.add_arg("BEFORE");
@@ -2312,7 +2390,9 @@ int CRedisClient::linsert(const std::string& key, const std::string& pivot, cons
 int CRedisClient::lrem(const std::string& key, int count, const std::string& value, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("LREM");
+    cmd_args.set_key(key);
+    cmd_args.set_command("LREM");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(count);
     cmd_args.add_arg(value);
@@ -2332,7 +2412,9 @@ int CRedisClient::lrem(const std::string& key, int count, const std::string& val
 bool CRedisClient::lindex(const std::string& key, int index, std::string* value, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("LINDEX");
+    cmd_args.set_key(key);
+    cmd_args.set_command("LINDEX");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(index);
     cmd_args.final();
@@ -2355,7 +2437,9 @@ bool CRedisClient::rpop(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("RPOP");
+    cmd_args.set_key(key);
+    cmd_args.set_command("RPOP");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.final();
 
@@ -2376,7 +2460,9 @@ int CRedisClient::rpush(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("RPUSH");
+    cmd_args.set_key(key);
+    cmd_args.set_command("RPUSH");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(value);
     cmd_args.final();
@@ -2396,7 +2482,9 @@ int CRedisClient::rpush(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("RPUSH");
+    cmd_args.set_key(key);
+    cmd_args.set_command("RPUSH");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_args(values);
     cmd_args.final();
@@ -2416,7 +2504,9 @@ int CRedisClient::rpushx(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("RPUSHX");
+    cmd_args.set_key(key);
+    cmd_args.set_command("RPUSHX");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(value);
     cmd_args.final();
@@ -2442,7 +2532,9 @@ int CRedisClient::sadd(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("SADD");
+    cmd_args.set_key(key);
+    cmd_args.set_command("SADD");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(value);
     cmd_args.final();
@@ -2463,7 +2555,9 @@ int CRedisClient::sadd(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("SADD");
+    cmd_args.set_key(key);
+    cmd_args.set_command("SADD");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_args(values);
     cmd_args.final();
@@ -2480,7 +2574,9 @@ int CRedisClient::sadd(
 int CRedisClient::scard(const std::string& key, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("SCARD");
+    cmd_args.set_key(key);
+    cmd_args.set_command("SCARD");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.final();
 
@@ -2499,7 +2595,9 @@ bool CRedisClient::sismember(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("SISMEMBER");
+    cmd_args.set_key(key);
+    cmd_args.set_command("SISMEMBER");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(value);
     cmd_args.final();
@@ -2521,7 +2619,9 @@ int CRedisClient::smembers(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("SMEMBERS");
+    cmd_args.set_key(key);
+    cmd_args.set_command("SMEMBERS");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.final();
 
@@ -2540,7 +2640,9 @@ int CRedisClient::smembers(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("SMEMBERS");
+    cmd_args.set_key(key);
+    cmd_args.set_command("SMEMBERS");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.final();
 
@@ -2577,7 +2679,9 @@ int CRedisClient::spop(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("SPOP");
+    cmd_args.set_key(key);
+    cmd_args.set_command("SPOP");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(count);
     cmd_args.final();
@@ -2598,7 +2702,9 @@ bool CRedisClient::srandmember(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("SRANDMEMBER");
+    cmd_args.set_key(key);
+    cmd_args.set_command("SRANDMEMBER");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.final();
 
@@ -2622,7 +2728,9 @@ int CRedisClient::srandmember(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("SRANDMEMBER");
+    cmd_args.set_key(key);
+    cmd_args.set_command("SRANDMEMBER");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(count);
     cmd_args.final();
@@ -2644,7 +2752,9 @@ int CRedisClient::srem(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("SREM");
+    cmd_args.set_key(key);
+    cmd_args.set_command("SREM");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(value);
     cmd_args.final();
@@ -2664,7 +2774,9 @@ int CRedisClient::srem(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("SREM");
+    cmd_args.set_key(key);
+    cmd_args.set_command("SREM");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_args(values);
     cmd_args.final();
@@ -2720,7 +2832,9 @@ int64_t CRedisClient::sscan(
 {
     // SSCAN key cursor [MATCH pattern] [COUNT count]
     CommandArgs cmd_args;
-    cmd_args.add_arg("SSCAN");
+    cmd_args.set_key(key);
+    cmd_args.set_command("SSCAN");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(cursor);
     if (!pattern.empty())
@@ -2765,7 +2879,9 @@ int64_t CRedisClient::sscan(
 {
     // SSCAN key cursor [MATCH pattern] [COUNT count]
     CommandArgs cmd_args;
-    cmd_args.add_arg("SSCAN");
+    cmd_args.set_key(key);
+    cmd_args.set_command("SSCAN");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(cursor);
     if (!pattern.empty())
@@ -2819,7 +2935,8 @@ int  CRedisClient::sunionstore(
     else
     {    
         CommandArgs cmd_args;
-        cmd_args.add_arg("SUNIONSTORE");
+        cmd_args.set_command("SUNIONSTORE");
+        cmd_args.add_arg(cmd_args.get_command());
         cmd_args.add_arg(destinationkey);
         cmd_args.add_args(keys);
         cmd_args.final();
@@ -2849,7 +2966,9 @@ int CRedisClient::zrem(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("ZREM");
+    cmd_args.set_key(key);
+    cmd_args.set_command("ZREM");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(field);
     cmd_args.final();
@@ -2871,7 +2990,9 @@ int CRedisClient::zrem(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("ZREM");
+    cmd_args.set_key(key);
+    cmd_args.set_command("ZREM");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_args(fields);
     cmd_args.final();
@@ -2910,7 +3031,9 @@ int CRedisClient::zadd(
 {
     const std::string& flag_str = zaddflag2str(flag);
     CommandArgs cmd_args;
-    cmd_args.add_arg("ZADD");
+    cmd_args.set_key(key);
+    cmd_args.set_command("ZADD");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     if (!flag_str.empty())
     {
@@ -2935,7 +3058,9 @@ int CRedisClient::zadd(
 int64_t CRedisClient::zcard(const std::string& key, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("ZCARD");
+    cmd_args.set_key(key);
+    cmd_args.set_command("ZCARD");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.final();
 
@@ -2958,7 +3083,9 @@ int64_t CRedisClient::zcount(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("ZCOUNT");
+    cmd_args.set_key(key);
+    cmd_args.set_command("ZCOUNT");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(min);
     cmd_args.add_arg(max);
@@ -2983,7 +3110,9 @@ int64_t CRedisClient::zincrby(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("ZINCRBY");
+    cmd_args.set_key(key);
+    cmd_args.set_command("ZINCRBY");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(increment);
     cmd_args.add_arg(field);
@@ -3013,7 +3142,9 @@ int CRedisClient::zrange(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("ZRANGE");
+    cmd_args.set_key(key);
+    cmd_args.set_command("ZRANGE");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(start);
     cmd_args.add_arg(end);
@@ -3043,7 +3174,9 @@ int CRedisClient::zrevrange(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("ZREVRANGE");
+    cmd_args.set_key(key);
+    cmd_args.set_command("ZREVRANGE");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(start);
     cmd_args.add_arg(end);
@@ -3074,7 +3207,9 @@ int CRedisClient::zrangebyscore(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("ZRANGEBYSCORE");
+    cmd_args.set_key(key);
+    cmd_args.set_command("ZRANGEBYSCORE");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(min);
     cmd_args.add_arg(max);
@@ -3105,7 +3240,9 @@ int CRedisClient::zrevrangebyscore(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("ZREVRANGEBYSCORE");
+    cmd_args.set_key(key);
+    cmd_args.set_command("ZREVRANGEBYSCORE");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(max);
     cmd_args.add_arg(min);
@@ -3132,7 +3269,9 @@ int CRedisClient::zrangebyscore(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("ZRANGEBYSCORE");
+    cmd_args.set_key(key);
+    cmd_args.set_command("ZRANGEBYSCORE");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(min);
     cmd_args.add_arg(max);
@@ -3162,7 +3301,9 @@ int CRedisClient::zrevrangebyscore(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("ZREVRANGEBYSCORE");
+    cmd_args.set_key(key);
+    cmd_args.set_command("ZREVRANGEBYSCORE");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(max);
     cmd_args.add_arg(min);
@@ -3194,7 +3335,9 @@ int CRedisClient::zremrangebyrank(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("ZREMRANGEBYRANK");
+    cmd_args.set_key(key);
+    cmd_args.set_command("ZREMRANGEBYRANK");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(start);
     cmd_args.add_arg(end);
@@ -3214,7 +3357,9 @@ int CRedisClient::zremrangebyrank(
 int CRedisClient::zrank(const std::string& key, const std::string& field, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("ZRANK");
+    cmd_args.set_key(key);
+    cmd_args.set_command("ZRANK");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(field);
     cmd_args.final();
@@ -3237,7 +3382,9 @@ int CRedisClient::zrank(const std::string& key, const std::string& field, Node* 
 int CRedisClient::zrevrank(const std::string& key, const std::string& field, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("ZREVRANK");
+    cmd_args.set_key(key);
+    cmd_args.set_command("ZREVRANK");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(field);
     cmd_args.final();
@@ -3262,7 +3409,9 @@ int CRedisClient::zrevrank(const std::string& key, const std::string& field, Nod
 int64_t CRedisClient::zscore(const std::string& key, const std::string& field, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("ZSCORE");
+    cmd_args.set_key(key);
+    cmd_args.set_command("ZSCORE");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(field);
     cmd_args.final();
@@ -3326,7 +3475,9 @@ int64_t CRedisClient::zscan(
         int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("ZSCAN");
+    cmd_args.set_key(key);
+    cmd_args.set_command("ZSCAN");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(cursor);
     if (!pattern.empty())
@@ -3365,7 +3516,9 @@ int CRedisClient::xack(
 {
     std::string value;
     CommandArgs cmd_args;
-    cmd_args.add_arg("XACK");
+    cmd_args.set_key(key);
+    cmd_args.set_command("XACK");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(groupname);
     cmd_args.add_args(ids);
@@ -3396,7 +3549,9 @@ std::string CRedisClient::xadd(
 {
     std::string value;
     CommandArgs cmd_args;
-    cmd_args.add_arg("XADD");
+    cmd_args.set_key(key);
+    cmd_args.set_command("XADD");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg("MAXLEN");
     cmd_args.add_arg(c);
@@ -3419,7 +3574,9 @@ std::string CRedisClient::xadd(
 {
     std::string value;
     CommandArgs cmd_args;
-    cmd_args.add_arg("XADD");
+    cmd_args.set_key(key);
+    cmd_args.set_command("XADD");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(id);
     cmd_args.add_args(values);
@@ -3444,7 +3601,9 @@ void CRedisClient::xgroup_create(
 {
     // xgroup CREATE key groupname id-or-$
     CommandArgs cmd_args;
-    cmd_args.add_arg("XGROUP");
+    cmd_args.set_key(key);
+    cmd_args.set_command("XGROUP");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg("CREATE");
     cmd_args.add_arg(key);
     cmd_args.add_arg(groupname);
@@ -3473,7 +3632,9 @@ void CRedisClient::xgroup_destroy(const std::string& key, const std::string& gro
 {
     // xgroup DESTROY key groupname
     CommandArgs cmd_args;
-    cmd_args.add_arg("XGROUP");
+    cmd_args.set_key(key);
+    cmd_args.set_command("XGROUP");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg("DESTROY");
     cmd_args.add_arg(key);
     cmd_args.add_arg(groupname);
@@ -3489,7 +3650,9 @@ void CRedisClient::xgroup_setid(const std::string& key, const std::string& id, N
 {
     // xgroup SETID key id-or-$
     CommandArgs cmd_args;
-    cmd_args.add_arg("XGROUP");
+    cmd_args.set_key(key);
+    cmd_args.set_command("XGROUP");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg("SETID");
     cmd_args.add_arg(key);
     cmd_args.add_arg(id);
@@ -3503,7 +3666,9 @@ void CRedisClient::xgroup_delconsumer(const std::string& key, const std::string&
 {
     // xgroup DELCONSUMER key groupname consumername
     CommandArgs cmd_args;
-    cmd_args.add_arg("XGROUP");
+    cmd_args.set_key(key);
+    cmd_args.set_command("XGROUP");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg("DELCONSUMER");
     cmd_args.add_arg(key);
     cmd_args.add_arg(groupname);
@@ -3570,7 +3735,10 @@ void CRedisClient::xreadgroup(
         const std::string key = cluster_mode()? keys[0]: std::string("");
         std::string value;
         CommandArgs cmd_args;
-        cmd_args.add_arg("XREADGROUP");
+        if (!key.empty())
+            cmd_args.set_key(key);
+        cmd_args.set_command("XREADGROUP");
+        cmd_args.add_arg(cmd_args.get_command());
         cmd_args.add_arg("GROUP");
         cmd_args.add_arg(groupname);
         cmd_args.add_arg(consumername);
@@ -3698,7 +3866,10 @@ void CRedisClient::xread(
         const std::string key = cluster_mode()? keys[0]: std::string("");
         std::string value;
         CommandArgs cmd_args;
-        cmd_args.add_arg("XREAD");
+        if (!key.empty())
+            cmd_args.set_key(key);
+        cmd_args.set_command("XREAD");
+        cmd_args.add_arg(cmd_args.get_command());
         cmd_args.add_arg("COUNT");
         cmd_args.add_arg(count);
         if (block_milliseconds >= 0) // timeout is negative
@@ -3774,7 +3945,9 @@ void CRedisClient::xread(
 int CRedisClient::xdel(const std::string& key, const std::vector<std::string>& ids, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("XDEL");
+    cmd_args.set_key(key);
+    cmd_args.set_command("XDEL");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_args(ids);
     cmd_args.final();
@@ -3797,7 +3970,9 @@ int CRedisClient::xdel(const std::string& key, const std::string& id, Node* whic
 int64_t CRedisClient::xtrim(const std::string& key, int64_t maxlen, char c, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("XTRIM");
+    cmd_args.set_key(key);
+    cmd_args.set_command("XTRIM");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg("MAXLEN");
     cmd_args.add_arg(c);
@@ -3813,7 +3988,9 @@ int64_t CRedisClient::xtrim(const std::string& key, int64_t maxlen, char c, Node
 int64_t CRedisClient::xtrim(const std::string& key, int64_t maxlen, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("XTRIM");
+    cmd_args.set_key(key);
+    cmd_args.set_command("XTRIM");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg("MAXLEN");
     cmd_args.add_arg(maxlen);
@@ -3829,7 +4006,9 @@ int64_t CRedisClient::xtrim(const std::string& key, int64_t maxlen, Node* which,
 int64_t CRedisClient::xlen(const std::string& key, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("XLEN");
+    cmd_args.set_key(key);
+    cmd_args.set_command("XLEN");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.final();
 
@@ -3848,7 +4027,9 @@ void CRedisClient::xrange(
         Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("XRANGE");
+    cmd_args.set_key(key);
+    cmd_args.set_command("XRANGE");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(start);
     cmd_args.add_arg(end);
@@ -3881,7 +4062,9 @@ void CRedisClient::xrevrange(
         Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("XRANGE");
+    cmd_args.set_key(key);
+    cmd_args.set_command("XRANGE");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(end);
     cmd_args.add_arg(start);
@@ -3925,7 +4108,9 @@ int CRedisClient::xpending(
     else
     {
         CommandArgs cmd_args;
-        cmd_args.add_arg("XPENDING");
+        cmd_args.set_key(key);
+        cmd_args.set_command("XPENDING");
+        cmd_args.add_arg(cmd_args.get_command());
         cmd_args.add_arg(key);
         cmd_args.add_arg(groupname);
         // 如果指定了start，则end和count也必须指定，否则会报错“syntax error”
@@ -3959,7 +4144,9 @@ int CRedisClient::xpending(
         Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("XPENDING");
+    cmd_args.set_key(key);
+    cmd_args.set_command("XPENDING");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(groupname);
     cmd_args.final();
@@ -4045,7 +4232,9 @@ void CRedisClient::xclaim(
     else
     {
         CommandArgs cmd_args;
-        cmd_args.add_arg("XCLAIM");
+        cmd_args.set_key(key);
+        cmd_args.set_command("XCLAIM");
+        cmd_args.add_arg(cmd_args.get_command());
         cmd_args.add_arg(key);
         cmd_args.add_arg(groupname);
         cmd_args.add_arg(consumer);
@@ -4118,7 +4307,9 @@ void CRedisClient::xclaim(
     else
     {
         CommandArgs cmd_args;
-        cmd_args.add_arg("XCLAIM");
+        cmd_args.set_key(key);
+        cmd_args.set_command("XCLAIM");
+        cmd_args.add_arg(cmd_args.get_command());
         cmd_args.add_arg(key);
         cmd_args.add_arg(groupname);
         cmd_args.add_arg(consumer);
@@ -4180,7 +4371,9 @@ int CRedisClient::xinfo_consumers(
         Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("XINFO");
+    cmd_args.set_key(key);
+    cmd_args.set_command("XINFO");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg("CONSUMERS");
     cmd_args.add_arg(key);
     cmd_args.add_arg(groupname);
@@ -4198,7 +4391,9 @@ int CRedisClient::xinfo_groups(
         Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("XINFO");
+    cmd_args.set_key(key);
+    cmd_args.set_command("XINFO");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg("GROUPS");
     cmd_args.add_arg(key);
     cmd_args.final();
@@ -4215,7 +4410,9 @@ void CRedisClient::xinfo_stream(
         Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("XINFO");
+    cmd_args.set_key(key);
+    cmd_args.set_command("XINFO");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg("STREAM");
     cmd_args.add_arg(key);
     cmd_args.final();
@@ -4234,7 +4431,9 @@ void CRedisClient::setbit(const std::string& key, uint32_t offset, uint32_t valu
 #endif // setbit
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("SETBIT");
+    cmd_args.set_key(key);
+    cmd_args.set_command("SETBIT");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(offset);
     cmd_args.add_arg(value);
@@ -4250,7 +4449,9 @@ void CRedisClient::setbit(const std::string& key, uint32_t offset, uint32_t valu
 int CRedisClient::getbit(const std::string& key, uint32_t offset, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("GETBIT");
+    cmd_args.set_key(key);
+    cmd_args.set_command("GETBIT");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(offset);
     cmd_args.final();
@@ -4268,7 +4469,9 @@ int CRedisClient::getbit(const std::string& key, uint32_t offset, Node* which, i
 int CRedisClient::bitcount(const std::string& key, int32_t start, int32_t end, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("BITCOUNT");
+    cmd_args.set_key(key);
+    cmd_args.set_command("BITCOUNT");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);       
     cmd_args.add_arg(start);
     cmd_args.add_arg(end);
@@ -4287,7 +4490,9 @@ int CRedisClient::bitcount(const std::string& key, int32_t start, int32_t end, N
 int CRedisClient::bitpos(const std::string& key, uint8_t bit, int32_t start, int32_t end, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
-    cmd_args.add_arg("BITPOS");
+    cmd_args.set_key(key);
+    cmd_args.set_command("BITPOS");
+    cmd_args.add_arg(cmd_args.get_command());
     cmd_args.add_arg(key);
     cmd_args.add_arg(bit);        
     cmd_args.add_arg(start);
@@ -4320,7 +4525,7 @@ CRedisClient::redis_command(
     {
         // 集群模式必须指定key
         errinfo.errcode = ERROR_ZERO_KEY;
-        errinfo.raw_errmsg = format_string("[%s] key is empty in cluster node", command_args.get_command());
+        errinfo.raw_errmsg = format_string("[%s] key is empty in cluster node", command_args.get_command().c_str());
         errinfo.errmsg = format_string("[R3C_CMD][%s:%d] %s", __FILE__, __LINE__, errinfo.raw_errmsg.c_str());
         if (_enable_error_log)
             (*g_error_log)("%s\n", errinfo.errmsg.c_str());
@@ -4346,12 +4551,12 @@ CRedisClient::redis_command(
         }
         if (0==loop_counter && _command_monitor!= NULL)
         {
-            _command_monitor->before_execute(node, command_args.get_command_str(), command_args, readonly);
+            _command_monitor->before_execute(node, command_args.get_command(), command_args, readonly);
         }
         if (NULL == redis_node)
         {
             errinfo.errcode = ERROR_NO_ANY_NODE;
-            errinfo.raw_errmsg = format_string("[%s][%s][%s:%d] no any node", command_args.get_command(), get_mode_str(), node.first.c_str(), node.second);
+            errinfo.raw_errmsg = format_string("[%s][%s][%s:%d] no any node", command_args.get_command().c_str(), get_mode_str(), node.first.c_str(), node.second);
             errinfo.errmsg = format_string("[R3C_CMD][%s:%d] %s", __FILE__, __LINE__, errinfo.raw_errmsg.c_str());
             if (_enable_error_log)
                 (*g_error_log)("[NO_ANY_NODE] %s\n", errinfo.errmsg.c_str());
@@ -4394,7 +4599,7 @@ CRedisClient::redis_command(
         {
             // 成功立即返回
             if (_command_monitor!=NULL)
-                _command_monitor->after_execute(0, node, command_args.get_command_str(), redis_reply.get());
+                _command_monitor->after_execute(0, node, command_args.get_command(), redis_reply.get());
             return redis_reply;
         }
         else if (HR_ERROR == errcode)
@@ -4501,8 +4706,8 @@ CRedisClient::redis_command(
 
     // 错误以异常方式抛出
     if (_command_monitor!=NULL)
-        _command_monitor->after_execute(1, node, command_args.get_command_str(), redis_reply.get());
-    THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(errinfo, node.first, node.second, command_args.get_command_str());
+        _command_monitor->after_execute(1, node, command_args.get_command(), redis_reply.get());
+    THROW_REDIS_EXCEPTION_WITH_NODE_AND_COMMAND(errinfo, node.first, node.second, command_args.get_command(), command_args.get_key());
 }
 
 CRedisClient::HandleResult
@@ -4529,7 +4734,7 @@ CRedisClient::handle_redis_command_error(
     errinfo->raw_errmsg = format_string("[%s] (%d/%d)%s (%s)",
             redis_node->str().c_str(), redis_errcode, errinfo->errcode, redis_context->errstr, strerror(errinfo->errcode));
     errinfo->errmsg = format_string("[R3C_CMD_ERROR][%s:%d][%s] %s",
-            __FILE__, __LINE__, command_args.get_command(), errinfo->raw_errmsg.c_str());
+            __FILE__, __LINE__, command_args.get_command().c_str(), errinfo->raw_errmsg.c_str());
     if (_enable_error_log)
     {
         const unsigned int conn_errors = redis_node->get_conn_errors();
@@ -4608,7 +4813,7 @@ CRedisClient::handle_redis_replay_error(
     extract_errtype(redis_reply, &errinfo->errtype);
     errinfo->errcode = ERROR_COMMAND;
     errinfo->raw_errmsg = format_string("[%s] %s", redis_node->str().c_str(), redis_reply->str);
-    errinfo->errmsg = format_string("[R3C_REPLAY_ERROR][%s:%d][%s] %s", __FILE__, __LINE__, command_args.get_command(), errinfo->raw_errmsg.c_str());
+    errinfo->errmsg = format_string("[R3C_REPLAY_ERROR][%s:%d][%s] %s", __FILE__, __LINE__, command_args.get_command().c_str(), errinfo->raw_errmsg.c_str());
     if (_enable_error_log)
         (*g_error_log)("%s\n", errinfo->errmsg.c_str());
 
