@@ -3821,7 +3821,7 @@ void CRedisClient::xreadgroup(
     std::vector<std::string> ids(1);
 
     keys[0] = key;
-    ids[0] = "$";
+    ids[0] = ">";
     xreadgroup(groupname, consumername, keys, ids, count, block_milliseconds, noack, &streams, which, num_retries);
     if (!streams.empty())
         values->swap(streams[0].entries);
