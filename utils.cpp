@@ -654,6 +654,7 @@ int parse_nodes(std::vector<std::pair<std::string, uint16_t> >* nodes, const std
     std::string::size_type pos = 0;
     std::string::size_type comma_pos = 0;
 
+    nodes->clear();
     while (comma_pos != std::string::npos)
     {
         comma_pos = nodes_string.find(',', pos);
