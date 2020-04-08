@@ -52,6 +52,8 @@ static void test_mget_and_mset(const std::string& redis_cluster_nodes, const std
 // LIST
 static void test_list1(const std::string& redis_cluster_nodes, const std::string& redis_password);
 static void test_list2(const std::string& redis_cluster_nodes, const std::string& redis_password);
+static void test_list3(const std::string& redis_cluster_nodes, const std::string& redis_password);
+static void test_list4(const std::string& redis_cluster_nodes, const std::string& redis_password);
 
 ////////////////////////////////////////////////////////////////////////////
 // HASH
@@ -117,7 +119,7 @@ int main(int argc, char* argv[])
 
     r3c::set_info_log_write(my_log_write);
     r3c::set_debug_log_write(my_log_write);
-
+if (false) {
     ////////////////////////////////////////////////////////////////////////////
     // EVAL
     test_eval(redis_cluster_nodes, redis_password);
@@ -137,12 +139,14 @@ int main(int argc, char* argv[])
     test_incrby(redis_cluster_nodes, redis_password);
     test_setnxex(redis_cluster_nodes, redis_password);
     test_mget_and_mset(redis_cluster_nodes, redis_password);
-
+}
     ////////////////////////////////////////////////////////////////////////////
     // LIST
     test_list1(redis_cluster_nodes, redis_password);
     test_list2(redis_cluster_nodes, redis_password);
-
+    test_list3(redis_cluster_nodes, redis_password);
+    test_list4(redis_cluster_nodes, redis_password);
+if (false) {
     ////////////////////////////////////////////////////////////////////////////
     // HASH
     test_hget_and_hset1(redis_cluster_nodes, redis_password);
@@ -170,7 +174,7 @@ int main(int argc, char* argv[])
     test_zrevrangebyscore(redis_cluster_nodes, redis_password);
     test_zrem(redis_cluster_nodes, redis_password);
     test_zremrangebyrank(redis_cluster_nodes, redis_password);
-
+}
     ////////////////////////////////////////////////////////////////////////////
     // MISC
     const char* test_slots_env = getenv("TEST_SLOSTS");
@@ -1437,6 +1441,184 @@ void test_list2(const std::string& redis_cluster_nodes, const std::string& redis
 
         rc.del(k1);
         SUCCESS_PRINT("%s", "OK");
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        ERROR_PRINT("ERROR: %s", ex.str().c_str());
+    }
+}
+
+// Test rpop batch
+void test_list3(const std::string& redis_cluster_nodes, const std::string& redis_password)
+{
+    TIPS_PRINT();
+
+    try
+    {
+        int n = 0;
+        std::vector<std::string> values;
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
+        const std::string k = "lk";
+        rc.del(k);
+
+        if (rc.rpop(k, &values, 2) != 0)
+        {
+            ERROR_PRINT("%s", "rpop batch error");
+            return;
+        }
+        if (rc.llen(k) != 0)
+        {
+            ERROR_PRINT("%s", "rpop batch error");
+            return;
+        }
+
+        // 9 8 7 6 5 4 3 2 1
+        for (int i=1; i<10; ++i)
+        {
+            rc.lpush(k, r3c::int2string(i));
+        }
+        if (rc.llen(k) != 9)
+        {
+            ERROR_PRINT("%s", "lpush error");
+            rc.del(k);
+            return;
+        }
+        n = rc.rpop(k, &values, 3);
+        if (n != 3)
+        {
+            ERROR_PRINT("rpop batch error: %d", n);
+            rc.del(k);
+            return;
+        }
+        if (rc.llen(k) != 6)
+        {
+            ERROR_PRINT("%s", "rpop batch error");
+            rc.del(k);
+            return;
+        }
+        if (values[0] != "1" ||
+            values[1] != "2" ||
+            values[2] != "3")
+        {
+            ERROR_PRINT("%s", "rpop batch error");
+            rc.del(k);
+            return;
+        }
+
+        n = rc.rpop(k, &values, 10);
+        if (n != 6)
+        {
+            ERROR_PRINT("rpop batch error: %d", n);
+            rc.del(k);
+            return;
+        }
+        if (rc.llen(k) != 0)
+        {
+            ERROR_PRINT("%s", "rpop batch error");
+            rc.del(k);
+            return;
+        }
+        if (values[0] != "4" ||
+            values[1] != "5" ||
+            values[2] != "6" ||
+            values[5] != "9")
+        {
+            ERROR_PRINT("%s", "rpop batch error");
+            rc.del(k);
+            return;
+        }
+
+        SUCCESS_PRINT("%s", "rpop batch OK");
+        rc.del(k);
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        ERROR_PRINT("ERROR: %s", ex.str().c_str());
+    }
+}
+
+// Test lpop batch
+void test_list4(const std::string& redis_cluster_nodes, const std::string& redis_password)
+{
+    TIPS_PRINT();
+
+    try
+    {
+        int n = 0;
+        std::vector<std::string> values;
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
+        const std::string k = "lk";
+        rc.del(k);
+
+        if (rc.lpop(k, &values, 2) != 0)
+        {
+            ERROR_PRINT("%s", "lpop batch error");
+            return;
+        }
+        if (rc.llen(k) != 0)
+        {
+            ERROR_PRINT("%s", "lpop batch error");
+            return;
+        }
+
+        // 9 8 7 6 5 4 3 2 1
+        for (int i=1; i<10; ++i)
+        {
+            rc.lpush(k, r3c::int2string(i));
+        }
+        if (rc.llen(k) != 9)
+        {
+            ERROR_PRINT("%s", "lpush error");
+            rc.del(k);
+            return;
+        }
+        n = rc.lpop(k, &values, 3);
+        if (n != 3)
+        {
+            ERROR_PRINT("lpop batch error: %d", n);
+            rc.del(k);
+            return;
+        }
+        if (rc.llen(k) != 6)
+        {
+            ERROR_PRINT("%s", "lpop batch error");
+            rc.del(k);
+            return;
+        }
+        if (values[0] != "9" ||
+            values[1] != "8" ||
+            values[2] != "7")
+        {
+            ERROR_PRINT("lpop batch error: %s, %s, %s", values[0].c_str(), values[1].c_str(), values[2].c_str());
+            rc.del(k);
+            return;
+        }
+
+        n = rc.lpop(k, &values, 10);
+        if (n != 6)
+        {
+            ERROR_PRINT("lpop batch error: %d", n);
+            rc.del(k);
+            return;
+        }
+        if (rc.llen(k) != 0)
+        {
+            ERROR_PRINT("%s", "lpop batch error");
+            rc.del(k);
+            return;
+        }
+        if (values[0] != "6" ||
+            values[1] != "5" ||
+            values[2] != "4" ||
+            values[5] != "1")
+        {
+            ERROR_PRINT("%s", "lpop batch error");
+            rc.del(k);
+            return;
+        }
+
+        SUCCESS_PRINT("%s", "lpop batch OK");
+        rc.del(k);
     }
     catch (r3c::CRedisException& ex)
     {

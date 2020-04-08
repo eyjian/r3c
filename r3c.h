@@ -635,6 +635,11 @@ public: // LIST
     // Time complexity: O(1)
     bool lpop(const std::string& key, std::string* value, Node* which=NULL, int num_retries=NUM_RETRIES);
 
+    // 批量从队列的左侧取出 n 个元素
+    // Batch lpop
+    // Returns the number of values popped
+    int lpop(const std::string& key, std::vector<std::string>* values, int n, Node* which=NULL, int num_retries=NUM_RETRIES);
+
     // Prepend a value to a list.
     // Time complexity: O(1)
     int lpush(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=NUM_RETRIES);
@@ -648,6 +653,7 @@ public: // LIST
     // Returns the length of the list after the push operation.
     int lpushx(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=0);
 
+    // 返回范围（左起） [start,end] 间的元素
     // Get a range of elements from a list.
     //
     // Time complexity:
@@ -658,7 +664,8 @@ public: // LIST
     // Returns the number of elements in the specified range.
     int lrange(const std::string& key, int64_t start, int64_t end, std::vector<std::string>* values, Node* which=NULL, int num_retries=NUM_RETRIES);
 
-    // Trim a list to the specified range.
+    // 保留范围（左起） [start,end] 内的元素，范围外的被删除
+    // Trim an existing list so that it will contain only the specified range of elements specified.
     // Time complexity:
     // O(N) where N is the number of elements to be removed by the operation.
     void ltrim(const std::string& key, int64_t start, int64_t end, Node* which=NULL, int num_retries=NUM_RETRIES);
@@ -698,6 +705,11 @@ public: // LIST
     // Remove and get the last element in a list.
     // Time complexity: O(1)
     bool rpop(const std::string& key, std::string* value, Node* which=NULL, int num_retries=NUM_RETRIES);
+
+    // 批量从队列的右侧取出 n 个元素
+    // Batch rpop with LUA
+    // Returns the number of values popped
+    int rpop(const std::string& key, std::vector<std::string>* values, int n, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Append a value to a list.
     // Time complexity: O(1)
