@@ -711,6 +711,10 @@ public: // LIST
     // Returns the number of values popped
     int rpop(const std::string& key, std::vector<std::string>* values, int n, Node* which=NULL, int num_retries=NUM_RETRIES);
 
+    // Atomically returns and removes the last element (tail) of the list stored at source,
+    // and pushes the element at the first element (head) of the list stored at destination.
+    bool rpoppush(const std::string& source, const std::string& destination, std::string* value, Node* which=NULL, int num_retries=NUM_RETRIES);
+
     // Append a value to a list.
     // Time complexity: O(1)
     // Returns the length of the list after the push operation.

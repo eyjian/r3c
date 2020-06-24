@@ -2501,6 +2501,30 @@ int CRedisClient::rpop(const std::string& key, std::vector<std::string>* values,
 }
 
 // Time complexity: O(1)
+bool CRedisClient::rpoppush(
+        const std::string& source,
+        const std::string& destination,
+        std::string* value,
+        Node* which, int num_retries)
+{
+    CommandArgs cmd_args;
+    cmd_args.set_key(source);
+    cmd_args.set_command("RPOPLPUSH");
+    cmd_args.add_arg(cmd_args.get_command());
+    cmd_args.add_arg(source);
+    cmd_args.add_arg(destination);
+    cmd_args.final();
+
+    // Bulk string reply: the value of the last element, or nil when key does not exist.
+    const RedisReplyHelper redis_reply = redis_command(false, num_retries, source, cmd_args, which);
+    if (REDIS_REPLY_NIL == redis_reply->type)
+        return false;
+    if (REDIS_REPLY_STRING == redis_reply->type)
+        return get_value(redis_reply.get(), value);
+    return true;
+}
+
+// Time complexity: O(1)
 int CRedisClient::rpush(
         const std::string& key,
         const std::string& value,
