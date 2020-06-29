@@ -2317,6 +2317,15 @@ int CRedisClient::lpushx(const std::string& key, const std::string& value, Node*
 // and N is the number of elements in the specified range.
 //
 // LRANGE key start stop
+//
+// start和end值为-1时表示最右边一个，-2表示最右边倒数第二个，依次类推。。。
+//
+// 使用示例（lpush k 1 2 3 4 5）：
+// 1）查看最右边一个：lrange k -1 -1
+// 2）查看最右边两个：lrange k -2 -1
+// 3）查看最左边一个：lrange k 0 0
+// 4）查看最左边两个：lrange k 0 1
+// 5）查看全部：lrange k 0 -1
 int CRedisClient::lrange(
         const std::string& key,
         int64_t start, int64_t end,
@@ -2344,6 +2353,16 @@ int CRedisClient::lrange(
 // O(N) where N is the number of elements to be removed by the operation.
 //
 // LTRIM key start stop
+//
+// 注意：
+// 1）start和end值为-1时表示最右边一个，-2表示最右边倒数第二个，依次类推。。。
+// 2）start~stop 是“保留”区间而不是删除范围，两值相减的绝对值为保留的数量
+//
+// 使用示例（lpush k 1 2 3 4 5）：
+// 1）删除最右一个：ltrim k 0 -2
+// 2）删除最右两个：ltrim k 0 -3
+// 3）删除最左一个：ltrim k 1 -1
+// 4）删除最左两个：ltrim k 2 -1
 void CRedisClient::ltrim(
         const std::string& key,
         int64_t start, int64_t end,
