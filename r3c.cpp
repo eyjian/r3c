@@ -2500,23 +2500,46 @@ int CRedisClient::rpop(const std::string& key, std::vector<std::string>* values,
 {
     values->clear();
 
-    const std::string lua_scripts =
-            "local v=redis.call('LRANGE',KEYS[1],-ARGV[1], -1);"
-            "redis.call('LTRIM',KEYS[1],0,-(ARGV[1]+1));"
-            "return v;";
-    std::vector<std::string> parameters(1);
-    parameters[0] = int2string(n);
-    const RedisReplyHelper redis_reply = eval(key, lua_scripts, parameters, which, num_retries);
-    if (REDIS_REPLY_ARRAY == redis_reply->type)
+    if (n < 1)
     {
-        std::vector<std::string> v;
-        const int m = get_values(redis_reply.get(), &v);
-        // LRANGE 返回的结果是从左到右，对 r 操作需要倒过来
-        for (int i=m-1; i>-1; --i)
-            values->push_back(v[i]);
-        return m;
+        struct ErrorInfo errinfo;
+        errinfo.errcode = ERROR_PARAMETER;
+        errinfo.errmsg = "`n` is less than 1";
+        THROW_REDIS_EXCEPTION(errinfo);
     }
-    return 0;
+    else if (n == 1)
+    {
+        std::string value;
+        if (!rpop(key, &value, which, num_retries))
+        {
+            return 0;
+        }
+        else
+        {
+            values->push_back(value);
+            return 1;
+        }
+    }
+    else
+    {
+        const std::string lua_scripts =
+                "local v=redis.call('LRANGE',KEYS[1],-ARGV[1], -1);"
+                "redis.call('LTRIM',KEYS[1],0,-(ARGV[1]+1));"
+                "return v;";
+        std::vector<std::string> parameters(1);
+        parameters[0] = int2string(n);
+        const RedisReplyHelper redis_reply = eval(key, lua_scripts, parameters, which, num_retries);
+        if (REDIS_REPLY_ARRAY == redis_reply->type)
+        {
+            std::vector<std::string> v;
+            const int m = get_values(redis_reply.get(), &v);
+            // LRANGE 返回的结果是从左到右，对 r 操作需要倒过来
+            for (int i=m-1; i>-1; --i)
+                values->push_back(v[i]);
+            return m;
+        }
+        return 0;
+    }
 }
 
 // Time complexity: O(1)
