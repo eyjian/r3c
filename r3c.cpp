@@ -4621,6 +4621,48 @@ int CRedisClient::bitpos(const std::string& key, uint8_t bit, int32_t start, int
     return 0;
 }
 
+int CRedisClient::pfadd(const std::string& key, const std::string& element, Node* which, int num_retries)
+{
+    std::vector<std::string> elements(1);
+    elements[0] = element;
+    return pfadd(key, elements, which, num_retries);
+}
+
+int CRedisClient::pfadd(const std::string& key, const std::vector<std::string>& elements, Node* which, int num_retries)
+{
+    CommandArgs cmd_args;
+    cmd_args.set_key(key);
+    cmd_args.set_command("PFADD");
+    cmd_args.add_arg(cmd_args.get_command());
+    cmd_args.add_arg(key);
+    cmd_args.add_args(elements);
+    cmd_args.final();
+
+    // Integer reply:
+    // 1 if at least 1 HyperLogLog internal register was altered. 0 otherwise.
+    RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
+    if (REDIS_REPLY_INTEGER == redis_reply->type)
+        return static_cast<int>(redis_reply->integer);
+    return 0;
+}
+
+int CRedisClient::pfcount(const std::string& key, Node* which, int num_retries)
+{
+    CommandArgs cmd_args;
+    cmd_args.set_key(key);
+    cmd_args.set_command("PFCOUNT");
+    cmd_args.add_arg(cmd_args.get_command());
+    cmd_args.add_arg(key);
+    cmd_args.final();
+
+    // Integer reply:
+    // The approximated number of unique elements observed via PFADD.
+    RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
+    if (REDIS_REPLY_INTEGER == redis_reply->type)
+        return static_cast<int>(redis_reply->integer);
+    return 0;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 const RedisReplyHelper

@@ -83,6 +83,10 @@ static void test_zrevrangebyscore(const std::string& redis_cluster_nodes, const 
 static void test_zrem(const std::string& redis_cluster_nodes, const std::string& redis_password);
 static void test_zremrangebyrank(const std::string& redis_cluster_nodes, const std::string& redis_password);
 
+////////////////////////////////////////////////////////////////////////////
+// SORTED HyperLogLog
+static void test_hyper_log_log(const std::string& redis_cluster_nodes, const std::string& redis_password);
+
 static void my_log_write(const char* format, ...)
 {
     time_t seconds = time(NULL);
@@ -174,6 +178,10 @@ if (false) {
     test_zrevrangebyscore(redis_cluster_nodes, redis_password);
     test_zrem(redis_cluster_nodes, redis_password);
     test_zremrangebyrank(redis_cluster_nodes, redis_password);
+
+    ////////////////////////////////////////////////////////////////////////////
+    // HyperLogLog
+    test_hyper_log_log(redis_cluster_nodes, redis_password);
 }
     ////////////////////////////////////////////////////////////////////////////
     // MISC
@@ -3192,6 +3200,40 @@ void test_zremrangebyrank(const std::string& redis_cluster_nodes, const std::str
         }
 
         rc.del(key);
+        SUCCESS_PRINT("%s", "OK");
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        ERROR_PRINT("ERROR: %s", ex.str().c_str());
+    }
+}
+
+void test_hyper_log_log(const std::string& redis_cluster_nodes, const std::string& redis_password)
+{
+    TIPS_PRINT();
+
+    try
+    {
+        int count = -1;
+        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
+        const std::string key = "r3c_kk";
+        rc.pfadd(key, "1");
+        rc.pfadd(key, "2");
+        count = rc.pfcount(key);
+        if (count != 2)
+        {
+            ERROR_PRINT("pfadd error: %d", count);
+            rc.del(key);
+            return;
+        }
+        rc.pfadd(key, "3");
+        count = rc.pfcount(key);
+        if (count != 3)
+        {
+            ERROR_PRINT("pfadd error: %d", count);
+            rc.del(key);
+            return;
+        }
         SUCCESS_PRINT("%s", "OK");
     }
     catch (r3c::CRedisException& ex)

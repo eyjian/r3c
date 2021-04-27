@@ -1133,7 +1133,7 @@ public: // BITMAP
     // In particular, the range indicated by the start and end parameters is a range of bytes, not a series of bit ranges.
     //
     // Time complexity: O(N)
-    int bitcount(const std::string& key, int32_t start=0, int32_t end=-1,Node* which=NULL, int num_retries=NUM_RETRIES);
+    int bitcount(const std::string& key, int32_t start=0, int32_t end=-1, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Returns the position of the first bit in the bitmap whose value is bit.
     // By default, the command will detect the entire bitmap, 
@@ -1141,7 +1141,17 @@ public: // BITMAP
     // In particular, the range indicated by the start and end parameters is a range of bytes, not a series of bit ranges.
     //
     // Time complexity: O(N)
-    int bitpos(const std::string& key, uint8_t bit, int32_t start=0, int32_t end=-1,Node* which=NULL, int num_retries=NUM_RETRIES);
+    int bitpos(const std::string& key, uint8_t bit, int32_t start=0, int32_t end=-1, Node* which=NULL, int num_retries=NUM_RETRIES);
+
+public: // HyperLogLog
+    // Adds all the element arguments to the HyperLogLog data structure stored at the variable name specified as first argument.
+    // Returns 1 if at least 1 HyperLogLog internal register was altered. 0 otherwise.
+    int pfadd(const std::string& key, const std::string& element, Node* which=NULL, int num_retries=NUM_RETRIES);
+    int pfadd(const std::string& key, const std::vector<std::string>& elements, Node* which=NULL, int num_retries=NUM_RETRIES);
+
+    // Returns the approximated cardinality computed by the HyperLogLog data structure stored at the specified variable,
+    // which is 0 if the variable does not exist.
+    int pfcount(const std::string& key, Node* which=NULL, int num_retries=NUM_RETRIES);
 
 public:
     // Standlone: key should be empty
