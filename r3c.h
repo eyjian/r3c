@@ -633,20 +633,20 @@ public: // LIST
 
     // Remove and get the first element in a list.
     // Time complexity: O(1)
-    bool lpop(const std::string& key, std::string* value, Node* which=NULL, int num_retries=NUM_RETRIES);
+    bool lpop(const std::string& key, std::string* value, Node* which=NULL, int num_retries=0);
 
     // 批量从队列的左侧取出 n 个元素
     // Batch lpop
     // Returns the number of values popped
-    int lpop(const std::string& key, std::vector<std::string>* values, int n, Node* which=NULL, int num_retries=NUM_RETRIES);
+    int lpop(const std::string& key, std::vector<std::string>* values, int n, Node* which=NULL, int num_retries=0);
 
     // Prepend a value to a list.
     // Time complexity: O(1)
-    int lpush(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=NUM_RETRIES);
+    int lpush(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=0);
 
     // Prepend one or multiple values to a list.
     // Time complexity: O(1)
-    int lpush(const std::string& key, const std::vector<std::string>& values, Node* which=NULL, int num_retries=NUM_RETRIES);
+    int lpush(const std::string& key, const std::vector<std::string>& values, Node* which=NULL, int num_retries=0);
 
     // Inserts value at the head of the list stored at key, only if key already exists and holds a list.
     // Time complexity: O(1)
@@ -704,26 +704,26 @@ public: // LIST
 
     // Remove and get the last element in a list.
     // Time complexity: O(1)
-    bool rpop(const std::string& key, std::string* value, Node* which=NULL, int num_retries=NUM_RETRIES);
+    bool rpop(const std::string& key, std::string* value, Node* which=NULL, int num_retries=0);
 
     // 批量从队列的右侧取出 n 个元素
     // Batch rpop with LUA
     // Returns the number of values popped
-    int rpop(const std::string& key, std::vector<std::string>* values, int n, Node* which=NULL, int num_retries=NUM_RETRIES);
+    int rpop(const std::string& key, std::vector<std::string>* values, int n, Node* which=NULL, int num_retries=0);
 
     // Atomically returns and removes the last element (tail) of the list stored at source,
     // and pushes the element at the first element (head) of the list stored at destination.
-    bool rpoppush(const std::string& source, const std::string& destination, std::string* value, Node* which=NULL, int num_retries=NUM_RETRIES);
+    bool rpoppush(const std::string& source, const std::string& destination, std::string* value, Node* which=NULL, int num_retries=0);
 
     // Append a value to a list.
     // Time complexity: O(1)
     // Returns the length of the list after the push operation.
-    int rpush(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=NUM_RETRIES);
+    int rpush(const std::string& key, const std::string& value, Node* which=NULL, int num_retries=0);
 
     // Append one or multiple values to a list.
     // Time complexity: O(1)
     // Returns the length of the list after the push operation.
-    int rpush(const std::string& key, const std::vector<std::string>& values, Node* which=NULL, int num_retries=NUM_RETRIES);
+    int rpush(const std::string& key, const std::vector<std::string>& values, Node* which=NULL, int num_retries=0);
 
     // Inserts value at the tail of the list stored at key,
     // only if key already exists and holds a list. In contrary to RPUSH,
