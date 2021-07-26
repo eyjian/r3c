@@ -609,7 +609,7 @@ std::string format_string(const char* format, ...)
         expected = vsnprintf(buffer_p, size, format, ap);
 
         va_end(ap);
-        if (expected>-1 && expected<=static_cast<int>(size))
+        if (expected>-1 && expected<static_cast<int>(size))
         {
             break;
         }
