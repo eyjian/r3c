@@ -54,8 +54,8 @@ struct NodeHasher
     size_t operator ()(const Node& node) const;
 };
 
-extern std::string& node2string(const Node& node, std::string* str);
-extern std::string node2string(const Node& node);
+std::string& node2string(const Node& node, std::string* str);
+std::string node2string(const Node& node);
 
 struct NodeInfo
 {
@@ -105,15 +105,16 @@ private:
     mutable const redisReply* _redis_reply;
 };
 
-extern bool is_ask_error(const std::string& errtype);
-extern bool is_clusterdown_error(const std::string& errtype);
-extern bool is_moved_error(const std::string& errtype);
-extern bool is_noauth_error(const std::string& errtype);
-extern bool is_noscript_error(const std::string& errtype);
-extern bool is_wrongtype_error(const std::string& errtype);
-extern bool is_busygroup_error(const std::string& errtype);
-extern bool is_nogroup_error(const std::string& errtype);
-extern bool is_crossslot_error(const std::string& errtype);
+bool is_general_error(const std::string& errtype);
+bool is_ask_error(const std::string& errtype);
+bool is_clusterdown_error(const std::string& errtype);
+bool is_moved_error(const std::string& errtype);
+bool is_noauth_error(const std::string& errtype);
+bool is_noscript_error(const std::string& errtype);
+bool is_wrongtype_error(const std::string& errtype);
+bool is_busygroup_error(const std::string& errtype);
+bool is_nogroup_error(const std::string& errtype);
+bool is_crossslot_error(const std::string& errtype);
 
 // NOTICE: not thread safe
 // A redis client than support redis cluster
@@ -257,10 +258,10 @@ struct Stream
     std::vector<struct StreamEntry> entries;
 };
 
-extern std::ostream& operator <<(std::ostream& os, const std::vector<struct Stream>& streams);
-extern std::ostream& operator <<(std::ostream& os, const std::vector<struct StreamEntry>& entries);
+std::ostream& operator <<(std::ostream& os, const std::vector<struct Stream>& streams);
+std::ostream& operator <<(std::ostream& os, const std::vector<struct StreamEntry>& entries);
 // Returns the number of IDs
-extern int extract_ids(const std::vector<struct StreamEntry>& entries, std::vector<std::string>* ids);
+int extract_ids(const std::vector<struct StreamEntry>& entries, std::vector<std::string>* ids);
 
 struct ConsumerPending
 {
@@ -310,7 +311,7 @@ struct StreamInfo
     struct StreamEntry first_entry;
     struct StreamEntry last_entry;
 };
-extern std::ostream& operator <<(std::ostream& os, const struct StreamInfo& streaminfo);
+std::ostream& operator <<(std::ostream& os, const struct StreamInfo& streaminfo);
 
 // NOTICE:
 // 1) ALL keys and values can be binary except EVAL commands.
@@ -1347,32 +1348,32 @@ enum
 
 // Set NULL to discard log
 typedef void (*LOG_WRITE)(const char* format, ...) __attribute__((format(printf, 1, 2)));
-extern void set_error_log_write(LOG_WRITE error_log);
-extern void set_info_log_write(LOG_WRITE info_log);
-extern void set_debug_log_write(LOG_WRITE debug_log);
+void set_error_log_write(LOG_WRITE error_log);
+void set_info_log_write(LOG_WRITE info_log);
+void set_debug_log_write(LOG_WRITE debug_log);
 
-extern std::string strsha1(const std::string& str);
-extern void debug_redis_reply(const char* command, const redisReply* redis_reply, int depth=0, int index=0);
-extern uint16_t crc16(const char *buf, int len);
-extern uint64_t crc64(uint64_t crc, const unsigned char *s, uint64_t l);
+std::string strsha1(const std::string& str);
+void debug_redis_reply(const char* command, const redisReply* redis_reply, int depth=0, int index=0);
+uint16_t crc16(const char *buf, int len);
+uint64_t crc64(uint64_t crc, const unsigned char *s, uint64_t l);
 
-extern void millisleep(int milliseconds);
-extern std::string get_formatted_current_datetime(bool with_milliseconds=false);
-extern std::string format_string(const char* format, ...) __attribute__((format(printf, 1, 2)));
-extern int split(std::vector<std::string>* tokens, const std::string& source, const std::string& sep, bool skip_sep=false);
-extern int get_key_slot(const std::string* key);
-extern bool keys_crossslots(const std::vector<std::string>& keys);
-extern std::string int2string(int64_t n);
-extern std::string int2string(int32_t n);
-extern std::string int2string(int16_t n);
-extern std::string int2string(uint64_t n);
-extern std::string int2string(uint32_t n);
-extern std::string int2string(uint16_t n);
+void millisleep(int milliseconds);
+std::string get_formatted_current_datetime(bool with_milliseconds=false);
+std::string format_string(const char* format, ...) __attribute__((format(printf, 1, 2)));
+int split(std::vector<std::string>* tokens, const std::string& source, const std::string& sep, bool skip_sep=false);
+int get_key_slot(const std::string* key);
+bool keys_crossslots(const std::vector<std::string>& keys);
+std::string int2string(int64_t n);
+std::string int2string(int32_t n);
+std::string int2string(int16_t n);
+std::string int2string(uint64_t n);
+std::string int2string(uint32_t n);
+std::string int2string(uint16_t n);
 
 // Convert a string into a int64_t. Returns true if the string could be parsed into a
 // (non-overflowing) int64_t, false otherwise. The value will be set to the parsed value when appropriate.
-extern bool string2int(const char* s, size_t len, int64_t* val, int64_t errval=-1);
-extern bool string2int(const char* s, size_t len, int32_t* val, int32_t errval=-1);
+bool string2int(const char* s, size_t len, int64_t* val, int64_t errval=-1);
+bool string2int(const char* s, size_t len, int32_t* val, int32_t errval=-1);
 
 } // namespace r3c {
 #endif // REDIS_CLUSTER_CLIENT_H

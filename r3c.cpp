@@ -605,6 +605,11 @@ std::string CRedisException::str() const throw ()
 #endif // __cplusplus < 201103L
 }
 
+bool is_general_error(const std::string& errtype)
+{
+    return (errtype.size() == sizeof("ERR")-1) && (errtype == "ERR");
+}
+
 bool is_ask_error(const std::string& errtype)
 {
     return (errtype.size() == sizeof("ASK")-1) && (errtype == "ASK");
