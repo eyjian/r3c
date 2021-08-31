@@ -4892,7 +4892,7 @@ CRedisClient::handle_redis_command_error(
     // For other values, the "errstr" field will hold a description.
     const int redis_errcode = redis_context->err;
     errinfo->errcode = errno;
-    errinfo->raw_errmsg = format_string("[%s] (%d/%d)%s (%s)",
+    errinfo->raw_errmsg = format_string("[%s] (hiredis:%d,errno:%d)%s (%s)",
             redis_node->str().c_str(), redis_errcode, errinfo->errcode, redis_context->errstr, strerror(errinfo->errcode));
     errinfo->errmsg = format_string("[R3C_CMD_ERROR][%s:%d][%s] %s",
             __FILE__, __LINE__, command_args.get_command().c_str(), errinfo->raw_errmsg.c_str());
@@ -4903,28 +4903,39 @@ CRedisClient::handle_redis_command_error(
             (*g_error_log)("%s\n", errinfo->errmsg.c_str());
     }
 
-    // REDIS_ERR_IO:
+    // REDIS_ERR_IO (1):
     // There was an I/O error while creating the connection, trying to write
     // to the socket or read from the socket. If you included `errno.h` in your
     // application, you can use the global `errno` variable to find out what is wrong.
     //
-    // REDIS_ERR_EOF:
+    // REDIS_ERR_EOF (3):
     // The server closed the connection which resulted in an empty read.
     //
-    // REDIS_ERR_PROTOCOL:
+    // REDIS_ERR_PROTOCOL (4):
     // There was an error while parsing the protocol.
     //
     // REDIS_ERR_OTHER:
     // Any other error. Currently, it is only used when a specified hostname to connect to cannot be resolved.
+    //
+    // #define   EAGAIN          11      /* Try again */
+    // #define   EINPROGRESS     115     /* Operation now in progress */
+    // #define   ECONNRESET      104     /* Connection reset by peer */
     if ((redis_errcode != REDIS_ERR_IO) &&
         (redis_errcode != REDIS_ERR_EOF))
     {
         return HR_ERROR; // Not retry
     }
-    else if (REDIS_ERR_EOF == redis_errcode)
+    else if (redis_errcode == REDIS_ERR_EOF)
     {
+        // (3/115)Server closed the connection (Operation now in progress)
         redis_node->inc_conn_errors();
-        return HR_RECONN_COND; // Retry unconditionally and reconnect
+        return HR_RECONN_UNCOND; // Retry unconditionally and reconnect
+    }
+    else if (redis_errcode == REDIS_ERR_IO && errinfo->errcode != EAGAIN)
+    {
+        // (1/104)Connection reset by peer (Connection reset by peer)
+        redis_node->inc_conn_errors();
+        return HR_RECONN_UNCOND; // Retry unconditionally and reconnect
     }
     else
     {
