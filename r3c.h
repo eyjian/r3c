@@ -160,6 +160,7 @@ public:
 
 public:
     void add_arg(const std::string& arg);
+    void add_arg(char arg);
     void add_arg(int32_t arg);
     void add_arg(uint32_t arg);
     void add_arg(int64_t arg);

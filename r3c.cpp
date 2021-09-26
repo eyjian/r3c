@@ -159,6 +159,12 @@ void CommandArgs::add_arg(const std::string& arg)
     _args.push_back(arg);
 }
 
+void CommandArgs::add_arg(char arg)
+{
+    const std::string str(&arg, 1);
+    add_arg(str);
+}
+
 void CommandArgs::add_arg(int32_t arg)
 {
     _args.push_back(int2string(arg));
