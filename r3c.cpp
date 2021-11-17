@@ -3719,7 +3719,7 @@ std::string CRedisClient::xadd(
 // the M entries inside the consumer group pending entries list (PEL).
 //
 // XGROUP CREATE key(topic) groupname id-or-$
-void CRedisClient::xgroup_create(
+bool CRedisClient::xgroup_create(
         const std::string& key, const std::string& groupname, const std::string& id,
         bool mkstream,
         Node* which, int num_retries)
@@ -3734,26 +3734,45 @@ void CRedisClient::xgroup_create(
     cmd_args.add_arg(groupname);
     cmd_args.add_arg(id);
     if (mkstream)
+    {
+        // ERR The XGROUP subcommand requires the key to exist.
+        // Note that for CREATE you may want to use the MKSTREAM option to create an empty stream automatically.
         cmd_args.add_arg("MKSTREAM");
+    }
     cmd_args.final();
 
-    // If the specified consumer group already exists, the command returns a -BUSYGROUP error.
-    // Otherwise the operation is performed and OK is returned.
-    // There are no hard limits to the number of consumer groups you can associate to a given stream.
-    //
-    // Consumers in a consumer group are auto-created every time a new consumer name is mentioned by some command.
-    //
-    // 如果key不存在，则会报如下错误：
-    // The XGROUP subcommand requires the key to exist.
-    // Note that for CREATE you may want to use the MKSTREAM option to create an empty stream automatically.
-    (void)redis_command(false, num_retries, key, cmd_args, which);
+    try
+    {
+        // If the specified consumer group already exists, the command returns a -BUSYGROUP error.
+        // Otherwise the operation is performed and OK is returned.
+        // There are no hard limits to the number of consumer groups you can associate to a given stream.
+        //
+        // Consumers in a consumer group are auto-created every time a new consumer name is mentioned by some command.
+        //
+        // 如果key不存在，则会报如下错误：
+        // The XGROUP subcommand requires the key to exist.
+        // Note that for CREATE you may want to use the MKSTREAM option to create an empty stream automatically.
+        const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+        std::string val;
+        get_value(redis_reply.get(), &val);
+        // When a consumer group with the same name already exists, the command returns a -BUSYGROUP error.
+        return val == "OK";
+    }
+    catch (r3c::CRedisException& ex)
+    {
+        // BUSYGROUP Consumer Group name already exists
+        if (r3c::is_busygroup_error(ex.errtype()))
+            return false;
+        else
+            throw;
+    }
 }
 
 // To just remove a given consumer from a consumer group.
 // Consumers in a consumer group are auto-created every time a new consumer name is mentioned by some command.
 //
 // XGROUP DESTROY key groupname
-void CRedisClient::xgroup_destroy(const std::string& key, const std::string& groupname, Node* which, int num_retries)
+bool CRedisClient::xgroup_destroy(const std::string& key, const std::string& groupname, Node* which, int num_retries)
 {
     // xgroup DESTROY key groupname
     CommandArgs cmd_args;
@@ -3767,7 +3786,9 @@ void CRedisClient::xgroup_destroy(const std::string& key, const std::string& gro
 
     // The consumer group will be destroyed even if there are active consumers
     // and pending messages, so make sure to call this command only when really needed.
-    (void)redis_command(false, num_retries, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+    // Integer reply: the number of destroyed consumer groups (0 or 1)
+    return get_value(redis_reply.get()) == 1;
 }
 
 // XGROUP SETID key groupname id-or-$
@@ -3787,7 +3808,7 @@ void CRedisClient::xgroup_setid(const std::string& key, const std::string& id, N
 }
 
 // XGROUP DELCONSUMER key groupname consumername
-void CRedisClient::xgroup_delconsumer(const std::string& key, const std::string& groupname, const std::string& consumername, Node* which, int num_retries)
+int64_t CRedisClient::xgroup_delconsumer(const std::string& key, const std::string& groupname, const std::string& consumername, Node* which, int num_retries)
 {
     // xgroup DELCONSUMER key groupname consumername
     CommandArgs cmd_args;
@@ -3800,7 +3821,8 @@ void CRedisClient::xgroup_delconsumer(const std::string& key, const std::string&
     cmd_args.add_arg(consumername);
     cmd_args.final();
 
-    (void)redis_command(false, num_retries, key, cmd_args, which);
+    const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+    return get_value(redis_reply.get());
 }
 
 // XREADGROUP命令是XREAD命令的特殊版本，支持消费者组
@@ -4105,9 +4127,7 @@ int64_t CRedisClient::xtrim(const std::string& key, int64_t maxlen, char c, Node
     cmd_args.final();
 
     const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
-    if (REDIS_REPLY_INTEGER == redis_reply->type)
-        return static_cast<int>(redis_reply->integer);
-    return 0;
+    return get_value(redis_reply.get());
 }
 
 int64_t CRedisClient::xtrim(const std::string& key, int64_t maxlen, Node* which, int num_retries)
@@ -4122,9 +4142,7 @@ int64_t CRedisClient::xtrim(const std::string& key, int64_t maxlen, Node* which,
     cmd_args.final();
 
     const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
-    if (REDIS_REPLY_INTEGER == redis_reply->type)
-        return static_cast<int>(redis_reply->integer);
-    return 0;
+    return get_value(redis_reply.get());
 }
 
 // XLEN key
@@ -4139,9 +4157,7 @@ int64_t CRedisClient::xlen(const std::string& key, Node* which, int num_retries)
 
     // Integer reply: the number of entries of the stream at key.
     const RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
-    if (REDIS_REPLY_INTEGER == redis_reply->type)
-        return static_cast<int>(redis_reply->integer);
-    return 0;
+    return get_value(redis_reply.get());
 }
 
 // XRANGE key start end [COUNT count]
@@ -4591,7 +4607,7 @@ int CRedisClient::getbit(const std::string& key, uint32_t offset, Node* which, i
 
 // BITCOUNT key [start end]
 // Time complexity: O(N)
-int CRedisClient::bitcount(const std::string& key, int32_t start, int32_t end, Node* which, int num_retries)
+int64_t CRedisClient::bitcount(const std::string& key, int32_t start, int32_t end, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.set_key(key);
@@ -4605,14 +4621,12 @@ int CRedisClient::bitcount(const std::string& key, int32_t start, int32_t end, N
     // Integer reply:
     // the number of bits set to 1.
     RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
-    if (REDIS_REPLY_INTEGER == redis_reply->type)
-        return static_cast<int>(redis_reply->integer);
-    return 0;
+    return get_value(redis_reply.get());
 }
 
 // BITPOS key bit [start] [end]
 // Time complexity: O(N)
-int CRedisClient::bitpos(const std::string& key, uint8_t bit, int32_t start, int32_t end, Node* which, int num_retries)
+int64_t CRedisClient::bitpos(const std::string& key, uint8_t bit, int32_t start, int32_t end, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.set_key(key);
@@ -4627,19 +4641,17 @@ int CRedisClient::bitpos(const std::string& key, uint8_t bit, int32_t start, int
     // Integer reply:
     // the position of the first bit in the bitmap whose value is bit.
     RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
-    if (REDIS_REPLY_INTEGER == redis_reply->type)
-        return static_cast<int>(redis_reply->integer);
-    return 0;
+    return get_value(redis_reply.get());
 }
 
-int CRedisClient::pfadd(const std::string& key, const std::string& element, Node* which, int num_retries)
+int64_t CRedisClient::pfadd(const std::string& key, const std::string& element, Node* which, int num_retries)
 {
     std::vector<std::string> elements(1);
     elements[0] = element;
     return pfadd(key, elements, which, num_retries);
 }
 
-int CRedisClient::pfadd(const std::string& key, const std::vector<std::string>& elements, Node* which, int num_retries)
+int64_t CRedisClient::pfadd(const std::string& key, const std::vector<std::string>& elements, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.set_key(key);
@@ -4652,12 +4664,10 @@ int CRedisClient::pfadd(const std::string& key, const std::vector<std::string>& 
     // Integer reply:
     // 1 if at least 1 HyperLogLog internal register was altered. 0 otherwise.
     RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
-    if (REDIS_REPLY_INTEGER == redis_reply->type)
-        return static_cast<int>(redis_reply->integer);
-    return 0;
+    return get_value(redis_reply.get());
 }
 
-int CRedisClient::pfcount(const std::string& key, Node* which, int num_retries)
+int64_t CRedisClient::pfcount(const std::string& key, Node* which, int num_retries)
 {
     CommandArgs cmd_args;
     cmd_args.set_key(key);
@@ -4669,9 +4679,7 @@ int CRedisClient::pfcount(const std::string& key, Node* which, int num_retries)
     // Integer reply:
     // The approximated number of unique elements observed via PFADD.
     RedisReplyHelper redis_reply = redis_command(true, num_retries, key, cmd_args, which);
-    if (REDIS_REPLY_INTEGER == redis_reply->type)
-        return static_cast<int>(redis_reply->integer);
-    return 0;
+    return get_value(redis_reply.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5830,6 +5838,14 @@ void CRedisClient::extract_errtype(const redisReply* redis_reply, std::string* e
             }
         }
     }
+}
+
+int64_t CRedisClient::get_value(const redisReply* redis_reply)
+{
+    if (redis_reply->type != REDIS_REPLY_INTEGER)
+        return 0;
+    else
+        return static_cast<int64_t>(redis_reply->integer);
 }
 
 bool CRedisClient::get_value(const redisReply* redis_reply, std::string* value)

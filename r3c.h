@@ -969,15 +969,23 @@ public: // STREAM (key like kafka's topic), available since 5.0.0.
     // There are no hard limits to the number of consumer groups you can associate to a given stream.
     //
     // '$' the ID of the last item in the stream
-    void xgroup_create(const std::string& key, const std::string& groupname,
+    bool xgroup_create(const std::string& key, const std::string& groupname,
             const std::string& id=std::string("$"), bool mkstream=false,
             Node* which=NULL, int num_retries=NUM_RETRIES);
-    void xgroup_destroy(const std::string& key, const std::string& groupname,
+
+    // O(N) where N is the number of entries in the group's pending entries list (PEL).
+    // The consumer group will be destroyed even if there are active consumers, and pending messages,
+    // so make sure to call this command only when really needed.
+    bool xgroup_destroy(const std::string& key, const std::string& groupname,
             Node* which=NULL, int num_retries=NUM_RETRIES);
+
     void xgroup_setid(const std::string& key,
             const std::string& id=std::string("$"),
             Node* which=NULL, int num_retries=NUM_RETRIES);
-    void xgroup_delconsumer(const std::string& key, const std::string& groupname, const std::string& consumername,
+
+    // Deletes a consumer from the consumer group.
+    // return the number of pending messages that the consumer had before it was deleted
+    int64_t xgroup_delconsumer(const std::string& key, const std::string& groupname, const std::string& consumername,
             Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Reads more than one keys
@@ -1135,7 +1143,7 @@ public: // BITMAP
     // In particular, the range indicated by the start and end parameters is a range of bytes, not a series of bit ranges.
     //
     // Time complexity: O(N)
-    int bitcount(const std::string& key, int32_t start=0, int32_t end=-1, Node* which=NULL, int num_retries=NUM_RETRIES);
+    int64_t bitcount(const std::string& key, int32_t start=0, int32_t end=-1, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Returns the position of the first bit in the bitmap whose value is bit.
     // By default, the command will detect the entire bitmap, 
@@ -1143,17 +1151,17 @@ public: // BITMAP
     // In particular, the range indicated by the start and end parameters is a range of bytes, not a series of bit ranges.
     //
     // Time complexity: O(N)
-    int bitpos(const std::string& key, uint8_t bit, int32_t start=0, int32_t end=-1, Node* which=NULL, int num_retries=NUM_RETRIES);
+    int64_t bitpos(const std::string& key, uint8_t bit, int32_t start=0, int32_t end=-1, Node* which=NULL, int num_retries=NUM_RETRIES);
 
 public: // HyperLogLog
     // Adds all the element arguments to the HyperLogLog data structure stored at the variable name specified as first argument.
     // Returns 1 if at least 1 HyperLogLog internal register was altered. 0 otherwise.
-    int pfadd(const std::string& key, const std::string& element, Node* which=NULL, int num_retries=NUM_RETRIES);
-    int pfadd(const std::string& key, const std::vector<std::string>& elements, Node* which=NULL, int num_retries=NUM_RETRIES);
+    int64_t pfadd(const std::string& key, const std::string& element, Node* which=NULL, int num_retries=NUM_RETRIES);
+    int64_t pfadd(const std::string& key, const std::vector<std::string>& elements, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Returns the approximated cardinality computed by the HyperLogLog data structure stored at the specified variable,
     // which is 0 if the variable does not exist.
-    int pfcount(const std::string& key, Node* which=NULL, int num_retries=NUM_RETRIES);
+    int64_t pfcount(const std::string& key, Node* which=NULL, int num_retries=NUM_RETRIES);
 
 public:
     // Standlone: key should be empty
@@ -1224,7 +1232,10 @@ public:
     CommandMonitor* get_command_monitor() const { return _command_monitor; }
 
 public:
-    // Called by: get,hget,key_type,lpop,rpop,srandmember
+    // Called by: xgroup_destroy
+    static int64_t get_value(const redisReply* redis_reply);
+
+    // Called by: get,hget,key_type,lpop,rpop,srandmember,xgroup_create
     static bool get_value(const redisReply* redis_reply, std::string* value);
 
     // Called by: hkeys,hvals,lrange,mget,scan,smembers,spop,srandmember,sscan
