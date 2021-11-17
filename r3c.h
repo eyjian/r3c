@@ -1220,56 +1220,56 @@ private:
     void extract_errtype(const redisReply* redis_reply, std::string* errtype) const;
 
 public:
+    void set_command_monitor(CommandMonitor* command_monitor) { _command_monitor = command_monitor; }
+    CommandMonitor* get_command_monitor() const { return _command_monitor; }
+
+public:
     // Called by: get,hget,key_type,lpop,rpop,srandmember
-    bool get_value(const redisReply* redis_reply, std::string* value);
+    static bool get_value(const redisReply* redis_reply, std::string* value);
 
     // Called by: hkeys,hvals,lrange,mget,scan,smembers,spop,srandmember,sscan
-    int get_values(const redisReply* redis_reply, std::vector<std::string>* values);
+    static int get_values(const redisReply* redis_reply, std::vector<std::string>* values);
 
     // Called by: sscan
-    int get_values(const redisReply* redis_reply, std::set<std::string>* values);
+    static int get_values(const redisReply* redis_reply, std::set<std::string>* values);
 
     // Called by: zrange & zrevrange & zrangebyscore & zrevrangebyscore & zscan
-    int get_values(const redisReply* redis_reply, std::vector<std::pair<std::string, int64_t> >* vec, bool withscores);
+    static int get_values(const redisReply* redis_reply, std::vector<std::pair<std::string, int64_t> >* vec, bool withscores);
 
     // Called by: hgetall & hscan
-    int get_values(const redisReply* redis_reply, std::map<std::string, std::string>* map);
+    static int get_values(const redisReply* redis_reply, std::map<std::string, std::string>* map);
 
     // Called by: hmget
-    int get_values(const redisReply* redis_reply, const std::vector<std::string>& fields, bool keep_null, std::map<std::string, std::string>* map);
+    static int get_values(const redisReply* redis_reply, const std::vector<std::string>& fields, bool keep_null, std::map<std::string, std::string>* map);
 
     // Called by: hmincrby
-    int get_values(const redisReply* redis_reply, std::vector<int64_t>* values);
+    static int get_values(const redisReply* redis_reply, std::vector<int64_t>* values);
 
 public: // Stream
     // Called by: xreadgroup
-    int get_values(const redisReply* redis_reply, std::vector<Stream>* values);
+    static int get_values(const redisReply* redis_reply, std::vector<Stream>* values);
 
     // Called by xrange & xrevrange
-    int get_values(const redisReply* redis_reply, std::vector<StreamEntry>* values);
+    static int get_values(const redisReply* redis_reply, std::vector<StreamEntry>* values);
 
     // Called by xpending
-    int get_values(const redisReply* redis_reply, std::vector<struct DetailedPending>* pendings);
+    static int get_values(const redisReply* redis_reply, std::vector<struct DetailedPending>* pendings);
 
     // Called by xpending
     // Returns the total number of pending messages for this consumer group
-    int get_values(const redisReply* redis_reply, struct GroupPending* groups);
+    static int get_values(const redisReply* redis_reply, struct GroupPending* groups);
 
     // Called by xinfo_consumers
-    int get_values(const redisReply* redis_reply, std::vector<struct ConsumerInfo>* infos);
+    static int get_values(const redisReply* redis_reply, std::vector<struct ConsumerInfo>* infos);
 
     // Called by xinfo_groups
-    int get_values(const redisReply* redis_reply, std::vector<struct GroupInfo>* infos);
+    static int get_values(const redisReply* redis_reply, std::vector<struct GroupInfo>* infos);
 
     // Called by xinfo_stream
-    void get_value(const redisReply* redis_reply, struct StreamInfo* info);
+    static void get_value(const redisReply* redis_reply, struct StreamInfo* info);
 
     // Called by xinfo_stream
-    void get_entry(const redisReply* entry_redis_reply, struct StreamEntry* entry);
-
-public:
-    void set_command_monitor(CommandMonitor* command_monitor) { _command_monitor = command_monitor; }
-    CommandMonitor* get_command_monitor() const { return _command_monitor; }
+    static void get_entry(const redisReply* entry_redis_reply, struct StreamEntry* entry);
 
 private:
     bool _enable_debug_log; // Default: true
