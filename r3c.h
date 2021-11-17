@@ -1009,8 +1009,20 @@ public: // STREAM (key like kafka's topic), available since 5.0.0.
             int64_t count, int64_t block_milliseconds, std::vector<StreamEntry>* values,
             Node* which=NULL, int num_retries=NUM_RETRIES);
 
-    // Reads more than one keys
-    // xreadgroup is not read command
+    // The consumer name is the string that is used by the client to identify itself inside the group.
+    // The consumer is auto created inside the consumer group the first time it is saw.
+    // Different clients should select a different consumer name.
+    //
+    // With xreadgroup, the server will remember that a given message was delivered to you:
+    // the message will be stored inside the consumer group in what is called a Pending Entries List (PEL),
+    // that is a list of message IDs delivered but not yet acknowledged.
+    //
+    // The client will have to acknowledge the message processing using xack in order for
+    // the pending entry to be removed from the PEL. The PEL can be inspected using the xpending command.
+    //
+    // The special > ID, which means that the consumer want to receive
+    // only messages that were never delivered to any other consumer.
+    // It just means, give me new messages.
     void xreadgroup(const std::string& groupname, const std::string& consumername,
             const std::vector<std::string>& keys, const std::vector<std::string>& ids,
             int64_t count, int64_t block_milliseconds, bool noack, std::vector<Stream>* values,
@@ -1023,8 +1035,6 @@ public: // STREAM (key like kafka's topic), available since 5.0.0.
             const std::vector<std::string>& keys, const std::vector<std::string>& ids,
             bool noack, std::vector<Stream>* values,
             Node* which=NULL, int num_retries=NUM_RETRIES);
-
-    // Only read one key
     void xreadgroup(const std::string& groupname, const std::string& consumername,
             const std::string& key, const std::vector<std::string>& ids,
             int64_t count, int64_t block_milliseconds, bool noack, std::vector<StreamEntry>* values,
