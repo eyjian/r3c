@@ -3647,6 +3647,7 @@ int CRedisClient::xack(
     cmd_args.add_arg(key);
     cmd_args.add_arg(groupname);
     cmd_args.add_args(ids);
+    cmd_args.final();
 
     const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
     if (REDIS_REPLY_INTEGER == redis_reply->type)
