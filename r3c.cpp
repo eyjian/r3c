@@ -895,6 +895,25 @@ bool CRedisClient::expire(
     return true;
 }
 
+bool CRedisClient::expireat(const std::string& key, int64_t timestamp, Node* which, int num_retries)
+{
+    CommandArgs cmd_args;
+    cmd_args.set_key(key);
+    cmd_args.set_command("EXPIREAT");
+    cmd_args.add_arg(cmd_args.get_command());
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(timestamp);
+    cmd_args.final();
+
+    // Integer reply, specifically:
+    // 1 if the timeout was set.
+    // 0 if key does not exist.
+    const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+    if (REDIS_REPLY_INTEGER == redis_reply->type)
+        return 1 == redis_reply->integer;
+    return true;
+}
+
 // Time complexity: O(1)
 // EXISTS key [key ...]
 bool CRedisClient::exists(const std::string& key, Node* which, int num_retries)

@@ -387,6 +387,11 @@ public: // KV
     // Returns true if the timeout was set, or false when key does not exist.
     bool expire(const std::string& key, uint32_t seconds, Node* which=NULL, int num_retries=NUM_RETRIES);
 
+    // Specifying the number of seconds representing the TTL (time to live),
+    // it takes an absolute Unix timestamp (seconds since January 1, 1970).
+    // A timestamp in the past will delete the key immediately.
+    bool expireat(const std::string& key, int64_t timestamp, Node* which=NULL, int num_retries=NUM_RETRIES);
+
     // Determine if a key exists.
     // Time complexity: O(1)
     // Returns true if the key exists, or false when the key does not exist.
