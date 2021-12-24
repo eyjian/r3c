@@ -137,6 +137,6 @@ install(
         DESTINATION lib
 )
 install(
-        FILES r3c.h
+        FILES r3c.h r3c_helper.h
         DESTINATION include/r3c
 )
