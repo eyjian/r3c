@@ -48,7 +48,7 @@ int main(int argc, char* argv[])
             exit(1);
         }
 
-        int i = 0, j=0;
+        int i = 0;
         int ret = 0;
         int offset = 0;
         int count = 0;
@@ -321,23 +321,14 @@ int main(int argc, char* argv[])
         else if (0 == strcasecmp(cmd, "incrby"))
         {
             // INCRBY command
-            if ((argc != 4) && (argc != 5))
+            if (argc != 4)
             {
                 fprintf(stderr, "Usage1: r3c_cmd incrby key increment\n");
-                fprintf(stderr, "Usage2: r3c_cmd incrby key increment timeout_seconds\n");
                 exit(1);
             }
 
             increment = atoll(argv[3]);
-            if (4 == argc)
-            {
-                new_value_int64 = redis_client.incrby(key, increment, &which_node);
-            }
-            else
-            {
-                seconds = static_cast<uint32_t>(atoll(argv[4]));
-                new_value_int64 = redis_client.incrby(key, increment, increment, seconds, &which_node);
-            }
+            new_value_int64 = redis_client.incrby(key, increment, &which_node);
             fprintf(stdout, "%" PRId64"\n", new_value_int64);
         }
         else if (0 == strcasecmp(cmd, "scan"))
@@ -561,18 +552,6 @@ int main(int argc, char* argv[])
 
             redis_client.hset(key, argv[3], argv[4], &which_node);
         }
-        else if (0 == strcasecmp(cmd, "hsetex"))
-        {
-            // HSET command
-            if (argc != 6)
-            {
-                fprintf(stderr, "Usage: r3c_cmd hsetex key field value timeout_seconds\n");
-                exit(1);
-            }
-
-            seconds = static_cast<uint32_t>(atoll(argv[5]));
-            redis_client.hsetex(key, argv[3], argv[4], seconds, &which_node);
-        }
         else if (0 == strcasecmp(cmd, "hsetnx"))
         {
             // HSETNX command
@@ -583,21 +562,6 @@ int main(int argc, char* argv[])
             }
 
             if (redis_client.hsetnx(key, argv[3], argv[4], &which_node))
-                fprintf(stdout, "[%s:%s] ok\n", key, argv[3]);
-            else
-                fprintf(stderr, "[%s:%s] exists\n", key, argv[3]);
-        }
-        else if (0 == strcasecmp(cmd, "hsetnxex"))
-        {
-            // HSETNX command
-            if (argc != 6)
-            {
-                fprintf(stderr, "Usage: r3c_cmd hsetnxex key field value timeout_seconds\n");
-                exit(1);
-            }
-
-            seconds = static_cast<uint32_t>(atoll(argv[5]));
-            if (redis_client.hsetnxex(key, argv[3], argv[4], seconds, &which_node))
                 fprintf(stdout, "[%s:%s] ok\n", key, argv[3]);
             else
                 fprintf(stderr, "[%s:%s] exists\n", key, argv[3]);
@@ -625,30 +589,12 @@ int main(int argc, char* argv[])
             // HINCRBY command
             if ((argc < 5) || (argc%2 != 1))
             {
-                fprintf(stderr, "Usage: r3c_cmd hincrby key field1 increment1 field2 increment2 ...\n");
+                fprintf(stderr, "Usage: r3c_cmd hincrby key field1 increment1\n");
                 exit(1);
             }
-
-            if (5 == argc)
-            {
-                increment = atoll(argv[4]);
-                new_value_int64 = redis_client.hincrby(key, argv[3], increment, &which_node);
-                fprintf(stdout, "%" PRId64"\n", new_value_int64);
-            }
-            else
-            {
-                std::vector<std::pair<std::string, int64_t> > increments((argc-3)/2);
-                for (i=3,j=0; i<argc; i+=2,++j)
-                {
-                    increments[j].first = argv[i];
-                    increments[j].second = static_cast<int64_t>(atoll(argv[i+1]));
-                }
-
-                std::vector<int64_t> values;
-                redis_client.hmincrby(key, increments, &values, &which_node);
-                for (std::vector<int64_t>::size_type k=0; k<values.size(); ++k)
-                    fprintf(stdout, "%" PRId64"\n", values[k]);
-            }
+            increment = atoll(argv[4]);
+            new_value_int64 = redis_client.hincrby(key, argv[3], increment, &which_node);
+            fprintf(stdout, "%" PRId64"\n", new_value_int64);
         }
         else if (0 == strcasecmp(cmd, "hmset"))
         {

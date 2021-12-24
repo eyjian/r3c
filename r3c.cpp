@@ -1206,6 +1206,7 @@ int64_t CRedisClient::incrby(
     return 0;
 }
 
+#if 0
 int64_t CRedisClient::incrby(
         const std::string& key,
         int64_t increment, int64_t expired_increment, uint32_t expired_seconds,
@@ -1235,6 +1236,7 @@ int64_t CRedisClient::incrby(
     const int64_t expired_increment = increment;
     return incrby(key, increment, expired_increment, expired_seconds, which, num_retries);
 }
+#endif
 
 bool CRedisClient::key_type(const std::string& key, std::string* key_type, Node* which, int num_retries)
 {
@@ -1364,16 +1366,6 @@ int64_t CRedisClient::scan(
 
 // Time complexity: Depends on the script that is executed.
 // EVAL script numkeys key [key ...] arg [arg ...]
-//
-// e.g.
-// eval("r3c_k1", "local v=redis.call('set','r3c_k1','123');return v;");
-// eval("r3c_k1", "local v=redis.call('get','r3c_k1');return v;");
-// Time complexity: Depends on the script that is executed.
-// EVAL script numkeys key [key ...] arg [arg ...]
-//
-// e.g.
-// eval("r3c_k1", "local v=redis.call('set','r3c_k1','123');return v;");
-// eval("r3c_k1", "local v=redis.call('get','r3c_k1');return v;");
 const RedisReplyHelper CRedisClient::eval(
         const std::string& key,
         const std::string& lua_scripts,
@@ -1628,6 +1620,7 @@ bool CRedisClient::hset(
     return true;
 }
 
+#if 0
 bool CRedisClient::hsetex(
         const std::string& key,
         const std::string& field,
@@ -1649,6 +1642,7 @@ bool CRedisClient::hsetex(
         return 1 == redis_reply->integer;
     return true;
 }
+#endif
 
 // HSETNX key field value
 // Time complexity: O(1)
@@ -1677,6 +1671,7 @@ bool CRedisClient::hsetnx(
     return true;
 }
 
+#if 0
 bool CRedisClient::hsetnxex(
         const std::string& key,
         const std::string& field,
@@ -1699,6 +1694,7 @@ bool CRedisClient::hsetnxex(
         return 1 == redis_reply->integer;
     return true;
 }
+#endif
 
 // Time complexity: O(1)
 // HGET key field
@@ -1767,6 +1763,7 @@ else
   return redis.call('HINCRBY',KEYS[1],ARGV[1],ARGV[2])
 end
 */
+#if 0
 bool CRedisClient::hincrby(
         const std::string& key,
         const std::string& field,
@@ -1964,6 +1961,7 @@ HMINCRBY_NOSCRIPT_RETRY:
         }
     }
 }
+#endif
 
 void CRedisClient::hset(
         const std::string& key,
@@ -2250,6 +2248,7 @@ bool CRedisClient::lpop(const std::string& key, std::string* value, Node* which,
     return true; // MULTI & EXEC the type always is REDIS_REPLY_STATUS
 }
 
+#if 0
 int CRedisClient::lpop(const std::string& key, std::vector<std::string>* values, int n, Node* which, int num_retries)
 {
     values->clear();
@@ -2274,6 +2273,7 @@ int CRedisClient::lpop(const std::string& key, std::vector<std::string>* values,
         return get_values(redis_reply.get(), values);
     return 0;
 }
+#endif
 
 bool CRedisClient::blpop(const std::string& key, std::string* value, uint32_t seconds, Node* which, int num_retries)
 {

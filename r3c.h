@@ -455,10 +455,10 @@ public: // KV
     //
     // e.g.,
     // incrby(key, 1, 1, 10);
-    int64_t incrby(const std::string& key, int64_t increment, int64_t expired_increment, uint32_t expired_seconds, Node* which=NULL, int num_retries=0);
+    //int64_t incrby(const std::string& key, int64_t increment, int64_t expired_increment, uint32_t expired_seconds, Node* which=NULL, int num_retries=0);
 
     // Same as incrby(key, increment, increment, expired_seconds, which, num_retries)
-    int64_t incrby(const std::string& key, int64_t increment, uint32_t expired_seconds, Node* which=NULL, int num_retries=0);
+    //int64_t incrby(const std::string& key, int64_t increment, uint32_t expired_seconds, Node* which=NULL, int num_retries=0);
 
     // Determine the type stored at key.
     // Time complexity: O(1)
@@ -499,8 +499,6 @@ public: // KV
     const RedisReplyHelper eval(const std::string& key, const std::string& lua_scripts, const std::vector<std::string>& parameters, Node* which=NULL, int num_retries=NUM_RETRIES);
     const RedisReplyHelper evalsha(const std::string& key, const std::string& sha1, const std::vector<std::string>& parameters, Node* which=NULL, int num_retries=NUM_RETRIES);
 
-    // Only standlone
-    //
     // Example:
     //
     // const std::string lua_scripts = "for i=1,#ARGV,2 do redis.call('SET',KEYS[i],ARGV[i]); end;redis.status_reply('OK');";
@@ -552,7 +550,7 @@ public: // HASH
     bool hsetnx(const std::string& key, const std::string& field, const std::string& value, Node* which=NULL, int num_retries=0);
 
     // Based on EVAL, NOT SUPPORT binary key & field & value
-    bool hsetnxex(const std::string& key, const std::string& field, const std::string& value, uint32_t expired_seconds, Node* which=NULL, int num_retries=0);
+    //bool hsetnxex(const std::string& key, const std::string& field, const std::string& value, uint32_t expired_seconds, Node* which=NULL, int num_retries=0);
 
     // Time complexity: O(1)
     // Returns true if exists, or false when field is not present in the hash or key does not exist.
@@ -568,19 +566,19 @@ public: // HASH
     // uid Unique ID
     // Hash tag: {key}uid
     // Based on EVAL, NOT SUPPORT binary key & field
-    bool hincrby(const std::string& key, const std::string& field, int64_t increment, const std::string& uid, uint32_t expired_seconds=60, int64_t* newvalue=NULL, Node* which=NULL, int num_retries=NUM_RETRIES);
+    //bool hincrby(const std::string& key, const std::string& field, int64_t increment, const std::string& uid, uint32_t expired_seconds=60, int64_t* newvalue=NULL, Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Based on EVAL, NOT SUPPORT binary key & field
-    void hincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* newvalues=NULL, Node* which=NULL, int num_retries=0);
+    //void hincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* newvalues=NULL, Node* which=NULL, int num_retries=0);
 
     // Based on EVAL, NOT SUPPORT binary key & field
-    void hmincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* newvalues=NULL, Node* which=NULL, int num_retries=0);
+    //void hmincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* newvalues=NULL, Node* which=NULL, int num_retries=0);
 
     // Safely retry within the specified time by expired_seconds
     // uid Unique ID
     // Hash tag: {key}uid
     // Based on EVAL, NOT SUPPORT binary key & field
-    bool hmincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, const std::string& uid, uint32_t expired_seconds=60, std::vector<int64_t>* newvalues=NULL, Node* which=NULL, int num_retries=0);
+    //bool hmincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, const std::string& uid, uint32_t expired_seconds=60, std::vector<int64_t>* newvalues=NULL, Node* which=NULL, int num_retries=0);
 
     // Set multiple hash fields to multiple values.
     // Time complexity: O(N) where N is the number of fields being set.
@@ -645,7 +643,7 @@ public: // LIST
     // Batch lpop
     // Returns the number of values popped
     // Note, not supported binary values.
-    int lpop(const std::string& key, std::vector<std::string>* values, int n, Node* which=NULL, int num_retries=0);
+    //int lpop(const std::string& key, std::vector<std::string>* values, int n, Node* which=NULL, int num_retries=0);
 
     // The blocking version of lpop
     bool blpop(const std::string& key, std::string* value, uint32_t seconds, Node* which=NULL, int num_retries=0);

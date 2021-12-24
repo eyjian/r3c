@@ -30,7 +30,6 @@ static void success_print(const char* file, int line, const char* function, cons
 static void test_slots(const std::string& redis_cluster_nodes, const std::string& redis_password);
 
 // EVAL
-static void test_eval(const std::string& redis_cluster_nodes, const std::string& redis_password);
 
 // TRANSACTION (MULTI & EXEC)
 static void test_transaction(const std::string& redis_cluster_nodes, const std::string& redis_password);
@@ -53,7 +52,6 @@ static void test_mget_and_mset(const std::string& redis_cluster_nodes, const std
 static void test_list1(const std::string& redis_cluster_nodes, const std::string& redis_password);
 static void test_list2(const std::string& redis_cluster_nodes, const std::string& redis_password);
 static void test_list3(const std::string& redis_cluster_nodes, const std::string& redis_password);
-static void test_list4(const std::string& redis_cluster_nodes, const std::string& redis_password);
 
 ////////////////////////////////////////////////////////////////////////////
 // HASH
@@ -63,9 +61,7 @@ static void test_hmget_and_hmset1(const std::string& redis_cluster_nodes, const 
 static void test_hmget_and_hmset2(const std::string& redis_cluster_nodes, const std::string& redis_password);
 static void test_hscan(const std::string& redis_cluster_nodes, const std::string& redis_password);
 static void test_hincrby_and_hlen(const std::string& redis_cluster_nodes, const std::string& redis_password);
-static void test_hmincrby(const std::string& redis_cluster_nodes, const std::string& redis_password);
 static void test_hsetnx(const std::string& redis_cluster_nodes, const std::string& redis_password);
-static void test_hsetnxex(const std::string& redis_cluster_nodes, const std::string& redis_password);
 
 ////////////////////////////////////////////////////////////////////////////
 // SET
@@ -126,7 +122,6 @@ int main(int argc, char* argv[])
 if (false) {
     ////////////////////////////////////////////////////////////////////////////
     // EVAL
-    test_eval(redis_cluster_nodes, redis_password);
 
     // TRANSACTION (MULTI & EXEC)
     test_transaction(redis_cluster_nodes, redis_password);
@@ -149,7 +144,6 @@ if (false) {
     test_list1(redis_cluster_nodes, redis_password);
     test_list2(redis_cluster_nodes, redis_password);
     test_list3(redis_cluster_nodes, redis_password);
-    test_list4(redis_cluster_nodes, redis_password);
 if (false) {
     ////////////////////////////////////////////////////////////////////////////
     // HASH
@@ -159,9 +153,7 @@ if (false) {
     test_hmget_and_hmset2(redis_cluster_nodes, redis_password);
     test_hscan(redis_cluster_nodes, redis_password);
     test_hincrby_and_hlen(redis_cluster_nodes, redis_password);
-    test_hmincrby(redis_cluster_nodes, redis_password);
     test_hsetnx(redis_cluster_nodes, redis_password);
-    test_hsetnxex(redis_cluster_nodes, redis_password);
 
     ////////////////////////////////////////////////////////////////////////////
     // SET
@@ -290,65 +282,6 @@ void test_slots(const std::string& redis_cluster_nodes, const std::string& redis
 
 ////////////////////////////////////////////////////////////////////////////
 // EVAL
-void test_eval(const std::string& redis_cluster_nodes, const std::string& redis_password)
-{
-    TIPS_PRINT();
-
-    try
-    {
-        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
-        const uint32_t timeout_seconds = 3;
-        const std::string key = "eval_key";
-        const std::string& lua_scripts = r3c::format_string("local n; n=redis.call('incrby','%s','2016');redis.call('expire','%s','%u'); return n;", key.c_str(), key.c_str(), timeout_seconds);
-        rc.del(key);
-        const r3c::RedisReplyHelper redis_reply = rc.eval(key, lua_scripts);
-        if (!redis_reply)
-        {
-            ERROR_PRINT("%s", "EVAL ERROR");
-            return;
-        }
-
-        if (redis_reply->type != REDIS_REPLY_INTEGER)
-        {
-            ERROR_PRINT("%s", "EVAL RUN ERROR");
-            return;
-        }
-        if (redis_reply->integer != 2016)
-        {
-            ERROR_PRINT("%s", "EVAL RESULT ERROR");
-            return;
-        }
-
-        sleep(1);
-
-        std::string value1;
-        if (!rc.get(key, &value1))
-        {
-            ERROR_PRINT("%s", "EVAL GET1 ERROR");
-            return;
-        }
-        if (value1 != "2016")
-        {
-            ERROR_PRINT("%s: %s", "EVAL ERROR VALUE: ", value1.c_str());
-            return;
-        }
-
-        sleep(timeout_seconds);
-        std::string value2;
-        if (rc.get(key, &value2))
-        {
-            ERROR_PRINT("%s", "EVAL GET2 ERROR");
-            return;
-        }
-
-        rc.del(key);
-        SUCCESS_PRINT("%s", "OK");
-    }
-    catch (r3c::CRedisException& ex)
-    {
-        ERROR_PRINT("ERROR: %s", ex.str().c_str());
-    }
-}
 
 void test_transaction(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
@@ -488,43 +421,6 @@ void test_empty_key(const std::string& redis_cluster_nodes, const std::string& r
             }
 
             // eval
-            try
-            {
-                const std::string& lua_scripts = "redis.call('get', 'f1')";
-                rc.eval(key, lua_scripts);
-            }
-            catch (r3c::CRedisException& ex)
-            {
-                if (ex.errcode() != r3c::ERROR_ZERO_KEY)
-                {
-                    ERROR_PRINT("eval ERROR: %s", ex.str().c_str());
-                    return;
-                }
-                else
-                {
-                    fprintf(stderr, "%s\n", ex.str().c_str());
-                }
-            }
-
-            // eval
-            try
-            {
-                const std::string& lua_scripts = "redis.call('get', '')";
-                rc.eval(key, lua_scripts);
-            }
-            catch (r3c::CRedisException& ex)
-            {
-                if (ex.errcode() != r3c::ERROR_ZERO_KEY)
-                {
-                    ERROR_PRINT("eval ERROR: %s", ex.str().c_str());
-                    return;
-                }
-                else
-                {
-                    fprintf(stderr, "%s\n", ex.str().c_str());
-                }
-            }
-
             SUCCESS_PRINT("%s", "OK");
         }
     }
@@ -911,7 +807,6 @@ void test_incrby(const std::string& redis_cluster_nodes, const std::string& redi
     try
     {
         r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
-        const uint32_t expired_seconds = 2;
         const std::string key = "r3c kk";
         std::string value;
 
@@ -920,120 +815,6 @@ void test_incrby(const std::string& redis_cluster_nodes, const std::string& redi
         if (n != 2016)
         {
             ERROR_PRINT("%s", "incrby ERROR1");
-            return;
-        }
-
-        sleep(2);
-        if (!rc.get(key, &value) && (value != "2016"))
-        {
-            ERROR_PRINT("%s", "incrby ERROR2");
-            return;
-        }
-
-        value.clear();
-        rc.del(key);
-        n = rc.incrby(key, 2016, 2016, expired_seconds);
-        if (n != 2016)
-        {
-            ERROR_PRINT("%s", "incrby ERROR3");
-            return;
-        }
-
-        sleep(3);
-        value.clear();
-        if (rc.get(key, &value))
-        {
-            ERROR_PRINT("incrby ERROR4: %s", value.c_str());
-            rc.del(key);
-            return;
-        }
-
-        // Test:
-        // incrby(key, increment, expired_seconds, which, retry_times)
-        value.clear();
-        rc.del(key);
-        n = rc.incrby(key, 2018, 2);
-        if (n != 2018)
-        {
-            ERROR_PRINT("incrby ERROR5: %" PRId64, n);
-            return;
-        }
-        if (!rc.get(key, &value))
-        {
-            ERROR_PRINT("%s", "incrby ERROR6");
-            return;
-        }
-        if (value != "2018")
-        {
-            ERROR_PRINT("incrby ERROR7: %s", value.c_str());
-            return;
-        }
-        if (!rc.exists(key))
-        {
-            ERROR_PRINT("%s", "incrby ERROR8");
-            return;
-        }
-
-        sleep(3);
-        if (rc.exists(key))
-        {
-            ERROR_PRINT("%s", "incrby ERROR9");
-            return;
-        }
-
-        value.clear();
-
-        // Test:
-        // incrby(key, increment, expired_increment, expired_seconds, which, retry_times)
-        n = rc.incrby(key, 2020, 2020, 2);
-        if (n != 2020)
-        {
-            ERROR_PRINT("incrby ERROR10: %" PRId64, n);
-            return;
-        }
-        if (!rc.get(key, &value))
-        {
-            ERROR_PRINT("%s", "incrby ERROR11");
-            return;
-        }
-        if (value != "2020")
-        {
-            ERROR_PRINT("incrby ERROR12: %s", value.c_str());
-            return;
-        }
-
-        value.clear();
-        sleep(3);
-        if (rc.get(key, &value))
-        {
-            ERROR_PRINT("incrby ERROR13: %s", value.c_str());
-            return;
-        }
-        if (rc.exists(key))
-        {
-            ERROR_PRINT("%s", "incrby ERROR14");
-            return;
-        }
-
-        value.clear();
-
-        // Test:
-        // incrby(key, increment, expired_increment, expired_seconds, which, retry_times)
-        // 此重载版本的incrby，只有incrby返回的值等于expired_increment时，才会设置过期。
-        n = rc.incrby(key, 2000, 2018, 2);
-        if (n != 2000)
-        {
-            ERROR_PRINT("incrby ERROR15: %" PRId64, n);
-            return;
-        }
-        if (!rc.get(key, &value))
-        {
-            ERROR_PRINT("%s", "incrby ERROR16");
-            return;
-        }
-        if (value != "2000")
-        {
-            ERROR_PRINT("incrby ERROR17: %s", value.c_str());
             return;
         }
 
@@ -1047,32 +828,6 @@ void test_incrby(const std::string& redis_cluster_nodes, const std::string& redi
         if (value != "2000")
         {
             ERROR_PRINT("incrby ERROR19: %s", value.c_str());
-            return;
-        }
-
-        n = rc.incrby(key, 10, 2018, 2);
-        sleep(3);
-        value.clear();
-        if (n != 2010)
-        {
-            ERROR_PRINT("incrby ERROR20: %" PRId64, n);
-            return;
-        }
-        if (!rc.get(key, &value))
-        {
-            ERROR_PRINT("%s", "incrby ERROR21");
-            return;
-        }
-        if (value != "2010")
-        {
-            ERROR_PRINT("incrby ERROR22: %s", value.c_str());
-            return;
-        }
-
-        n = rc.incrby(key, 8, 2018, 2);
-        if (n != 2018)
-        {
-            ERROR_PRINT("incrby ERROR23: %" PRId64, n);
             return;
         }
 
@@ -1545,95 +1300,6 @@ void test_list3(const std::string& redis_cluster_nodes, const std::string& redis
     }
 }
 
-// Test lpop batch
-void test_list4(const std::string& redis_cluster_nodes, const std::string& redis_password)
-{
-    TIPS_PRINT();
-
-    try
-    {
-        int n = 0;
-        std::vector<std::string> values;
-        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
-        const std::string k = "lk";
-        rc.del(k);
-
-        if (rc.lpop(k, &values, 2) != 0)
-        {
-            ERROR_PRINT("%s", "lpop batch error");
-            return;
-        }
-        if (rc.llen(k) != 0)
-        {
-            ERROR_PRINT("%s", "lpop batch error");
-            return;
-        }
-
-        // 9 8 7 6 5 4 3 2 1
-        for (int i=1; i<10; ++i)
-        {
-            rc.lpush(k, r3c::int2string(i));
-        }
-        if (rc.llen(k) != 9)
-        {
-            ERROR_PRINT("%s", "lpush error");
-            rc.del(k);
-            return;
-        }
-        n = rc.lpop(k, &values, 3);
-        if (n != 3)
-        {
-            ERROR_PRINT("lpop batch error: %d", n);
-            rc.del(k);
-            return;
-        }
-        if (rc.llen(k) != 6)
-        {
-            ERROR_PRINT("%s", "lpop batch error");
-            rc.del(k);
-            return;
-        }
-        if (values[0] != "9" ||
-            values[1] != "8" ||
-            values[2] != "7")
-        {
-            ERROR_PRINT("lpop batch error: %s, %s, %s", values[0].c_str(), values[1].c_str(), values[2].c_str());
-            rc.del(k);
-            return;
-        }
-
-        n = rc.lpop(k, &values, 10);
-        if (n != 6)
-        {
-            ERROR_PRINT("lpop batch error: %d", n);
-            rc.del(k);
-            return;
-        }
-        if (rc.llen(k) != 0)
-        {
-            ERROR_PRINT("%s", "lpop batch error");
-            rc.del(k);
-            return;
-        }
-        if (values[0] != "6" ||
-            values[1] != "5" ||
-            values[2] != "4" ||
-            values[5] != "1")
-        {
-            ERROR_PRINT("%s", "lpop batch error");
-            rc.del(k);
-            return;
-        }
-
-        SUCCESS_PRINT("%s", "lpop batch OK");
-        rc.del(k);
-    }
-    catch (r3c::CRedisException& ex)
-    {
-        ERROR_PRINT("ERROR: %s", ex.str().c_str());
-    }
-}
-
 ////////////////////////////////////////////////////////////////////////////
 // HASH
 void test_hget_and_hset1(const std::string& redis_cluster_nodes, const std::string& redis_password)
@@ -2014,65 +1680,6 @@ void test_hincrby_and_hlen(const std::string& redis_cluster_nodes, const std::st
     }
 }
 
-void test_hmincrby(const std::string& redis_cluster_nodes, const std::string& redis_password)
-{
-    TIPS_PRINT();
-
-    try
-    {
-        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
-        const std::string key = "r3c_kk";
-        rc.del(key);
-
-        std::vector<std::pair<std::string, int64_t> > increments1(3);
-        increments1[0].first = "f1";
-        increments1[0].second = 3;
-        increments1[1].first = "f2";
-        increments1[1].second = 4;
-        increments1[2].first = "f3";
-        increments1[2].second = 5;
-        rc.hmincrby(key, increments1);
-
-        std::vector<std::string> fields(3);
-        std::map<std::string, std::string> map1;
-        fields[0] = "f1";
-        fields[1] = "f2";
-        fields[2] = "f3";
-        int n = rc.hmget(key, fields, &map1);
-        printf("n=%d\n", n);
-        if ((map1["f1"] != "3") || (map1["f2"] != "4") || (map1["f3"] != "5"))
-        {
-            ERROR_PRINT("hincrby ERROR1: %s, %s, %s", map1["f1"].c_str(), map1["f2"].c_str(), map1["f3"].c_str());
-            rc.del(key);
-            return;
-        }
-
-        std::vector<std::pair<std::string, int64_t> > increments2(2);
-        increments2[0].first = "f1";
-        increments2[0].second = 1;
-        increments2[1].first = "f3";
-        increments2[1].second = 1;
-        rc.hmincrby(key, increments2);
-
-        std::map<std::string, std::string> map2;
-        n = rc.hmget(key, fields, &map2);
-        printf("n=%d\n", n);
-        if ((map2["f1"] != "4") || (map2["f2"] != "4") || (map2["f3"] != "6"))
-        {
-            ERROR_PRINT("hincrby ERROR2: %s, %s, %s", map2["f1"].c_str(), map2["f2"].c_str(), map2["f3"].c_str());
-            rc.del(key);
-            return;
-        }
-
-        rc.del(key);
-        SUCCESS_PRINT("%s", "OK");
-    }
-    catch (r3c::CRedisException& ex)
-    {
-        ERROR_PRINT("ERROR: %s", ex.str().c_str());
-    }
-}
-
 void test_hsetnx(const std::string& redis_cluster_nodes, const std::string& redis_password)
 {
     TIPS_PRINT();
@@ -2118,86 +1725,6 @@ void test_hsetnx(const std::string& redis_cluster_nodes, const std::string& redi
         }
 
         rc.del(key);
-        SUCCESS_PRINT("%s", "OK");
-    }
-    catch (r3c::CRedisException& ex)
-    {
-        ERROR_PRINT("ERROR: %s", ex.str().c_str());
-    }
-}
-
-void test_hsetnxex(const std::string& redis_cluster_nodes, const std::string& redis_password)
-{
-    TIPS_PRINT();
-
-    try
-    {
-        r3c::CRedisClient rc(redis_cluster_nodes, redis_password);
-        const std::string key = "r3c kk";
-        std::string value;
-
-        rc.del(key);
-        if (!rc.hsetnxex(key, "f1", "20180212", 2))
-        {
-            ERROR_PRINT("%s", "NOT EXISTS");
-            return;
-        }
-        if (!rc.hexists(key, "f1"))
-        {
-            ERROR_PRINT("%s", "NOT EXISTS");
-            return;
-        }
-        if (!rc.hget(key, "f1", &value))
-        {
-            ERROR_PRINT("%s", "NOT EXISTS");
-            return;
-        }
-        if (value != "20180212")
-        {
-            ERROR_PRINT("value error: %s", value.c_str());
-            return;
-        }
-
-        value.clear();
-        if (rc.hsetnxex(key, "f1", "v12", 2))
-        {
-            ERROR_PRINT("%s", "NOT EXISTS");
-            return;
-        }
-        if (!rc.hget(key, "f1", &value))
-        {
-            ERROR_PRINT("%s", "NOT EXISTS");
-            return;
-        }
-        if (value != "20180212")
-        {
-            ERROR_PRINT("value error: %s", value.c_str());
-            return;
-        }
-
-        r3c::millisleep(3000);
-        value.clear();
-        if (rc.hexists(key, "f1"))
-        {
-            ERROR_PRINT("%s", "EXISTS");
-            return;
-        }
-        if (!rc.hsetnxex(key, "f1", "V22", 2))
-        {
-            ERROR_PRINT("%s", "EXISTS");
-            return;
-        }
-        if (!rc.hget(key, "f1", &value))
-        {
-            ERROR_PRINT("%s", "NOT EXISTS");
-            return;
-        }
-        if (value != "V22")
-        {
-            ERROR_PRINT("value error: %s", value.c_str());
-            return;
-        }
-
         SUCCESS_PRINT("%s", "OK");
     }
     catch (r3c::CRedisException& ex)
