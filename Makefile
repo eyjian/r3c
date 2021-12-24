@@ -25,9 +25,28 @@ INSTALL_INCLUDE_PATH= $(PREFIX)/$(INCLUDE_PATH)
 INSTALL_LIBRARY_PATH= $(PREFIX)/$(LIBRARY_PATH)
 INSTALL?=install
 
-CPLUSPLUSONEONE=$(shell gcc --version|awk -F[\ .]+ '/GCC/{if($$3>=4&&$$4>=7) printf("-std=c++11");}')
+# 9.1 => C++20
+ifeq ("$(CPLUSPLUS)","")
+	CPLUSPLUS=$(shell gcc --version|awk -F[\ .]+ '/GCC/{if($$3>=9&&$$4>=1) printf(" -std=c++20");}')
+endif
+
+# 5.0 => C++17
+ifeq ("$(CPLUSPLUS)","")
+	CPLUSPLUS=$(shell gcc --version|awk -F[\ .]+ '/GCC/{if($$3>=5&&$$4>=0) printf(" -std=c++17");}')
+endif
+
+# 4.9 => C++14
+ifeq ("$(CPLUSPLUS)","")
+	CPLUSPLUS=$(shell gcc --version|awk -F[\ .]+ '/GCC/{if($$3>=4&&$$4>=9) printf(" -std=c++14");}')
+endif
+
+# 4.8.1 => C++11
+ifeq ("$(CPLUSPLUS)","")
+	CPLUSPLUS=$(shell gcc --version|awk -F[\ .]+ '/GCC/{if($$3>=4&&$$4>=8&&$$5>=1) printf(" -std=c++11");}')
+endif
+
 #OPTIMIZATION?=-O2
-DEBUG?=-g -ggdb $(CPLUSPLUSONEONE) -DSLEEP_USE_POLL # -DR3C_TEST
+DEBUG?=-g -ggdb $(CPLUSPLUS) -DSLEEP_USE_POLL # -DR3C_TEST
 WARNINGS=-Wall -W -Wwrite-strings -Wno-missing-field-initializers
 REAL_CPPFLAGS=$(CPPFLAGS) -I. -I$(HIREDIS)/include -DSLEEP_USE_POLL=1 -D__STDC_FORMAT_MACROS=1 -D__STDC_CONSTANT_MACROS -fstrict-aliasing -fPIC  -pthread $(DEBUG) $(OPTIMIZATION) $(WARNINGS)
 REAL_LDFLAGS=$(LDFLAGS) -fPIC -pthread $(HIREDIS)/lib/libhiredis.a
