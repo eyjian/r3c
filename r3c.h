@@ -448,18 +448,6 @@ public: // KV
     // Returns the value of key after the increment.
     int64_t incrby(const std::string& key, int64_t increment, Node* which=NULL, int num_retries=0);
 
-    // Atomically increment and expire a key with given seconds.
-    // Expiration is set only if the value returned by incrby is equal to expired_increment.
-    //
-    // Based on EVAL, NOT SUPPORT binary key
-    //
-    // e.g.,
-    // incrby(key, 1, 1, 10);
-    //int64_t incrby(const std::string& key, int64_t increment, int64_t expired_increment, uint32_t expired_seconds, Node* which=NULL, int num_retries=0);
-
-    // Same as incrby(key, increment, increment, expired_seconds, which, num_retries)
-    //int64_t incrby(const std::string& key, int64_t increment, uint32_t expired_seconds, Node* which=NULL, int num_retries=0);
-
     // Determine the type stored at key.
     // Time complexity: O(1)
     bool key_type(const std::string& key, std::string* key_type, Node* which=NULL, int num_retries=NUM_RETRIES);
@@ -549,9 +537,6 @@ public: // HASH
     // or field already exists in the hash and no operation was performed.
     bool hsetnx(const std::string& key, const std::string& field, const std::string& value, Node* which=NULL, int num_retries=0);
 
-    // Based on EVAL, NOT SUPPORT binary key & field & value
-    //bool hsetnxex(const std::string& key, const std::string& field, const std::string& value, uint32_t expired_seconds, Node* which=NULL, int num_retries=0);
-
     // Time complexity: O(1)
     // Returns true if exists, or false when field is not present in the hash or key does not exist.
     bool hget(const std::string& key, const std::string& field, std::string* value, Node* which=NULL, int num_retries=NUM_RETRIES);
@@ -561,24 +546,6 @@ public: // HASH
     // Time complexity: O(1)
     // Returns the value at field after the increment operation.
     int64_t hincrby(const std::string& key, const std::string& field, int64_t increment, Node* which=NULL, int num_retries=0);
-
-    // Safely retry within the specified time by expired_seconds
-    // uid Unique ID
-    // Hash tag: {key}uid
-    // Based on EVAL, NOT SUPPORT binary key & field
-    //bool hincrby(const std::string& key, const std::string& field, int64_t increment, const std::string& uid, uint32_t expired_seconds=60, int64_t* newvalue=NULL, Node* which=NULL, int num_retries=NUM_RETRIES);
-
-    // Based on EVAL, NOT SUPPORT binary key & field
-    //void hincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* newvalues=NULL, Node* which=NULL, int num_retries=0);
-
-    // Based on EVAL, NOT SUPPORT binary key & field
-    //void hmincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* newvalues=NULL, Node* which=NULL, int num_retries=0);
-
-    // Safely retry within the specified time by expired_seconds
-    // uid Unique ID
-    // Hash tag: {key}uid
-    // Based on EVAL, NOT SUPPORT binary key & field
-    //bool hmincrby(const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, const std::string& uid, uint32_t expired_seconds=60, std::vector<int64_t>* newvalues=NULL, Node* which=NULL, int num_retries=0);
 
     // Set multiple hash fields to multiple values.
     // Time complexity: O(N) where N is the number of fields being set.

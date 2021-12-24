@@ -15,8 +15,10 @@
 #define PRECISION 0.000001
 
 #define TIPS_PRINT() tips_print(__FUNCTION__)
-#define ERROR_PRINT(format, ...) do { sg_faild_cases.push_back(__FUNCTION__); error_print(__FILE__, __LINE__, __FUNCTION__, format, __VA_ARGS__); } while(false)
-#define SUCCESS_PRINT(format, ...) do { sg_success_cases.push_back(__FUNCTION__); success_print(__FILE__, __LINE__, __FUNCTION__, format, __VA_ARGS__); } while(false)
+#define ERROR_PRINT(format, ...) \
+    do { sg_faild_cases.push_back(__FUNCTION__); error_print(__FILE__, __LINE__, __FUNCTION__, format, __VA_ARGS__); } while(false)
+#define SUCCESS_PRINT(format, ...) \
+    do { sg_success_cases.push_back(__FUNCTION__); success_print(__FILE__, __LINE__, __FUNCTION__, format, __VA_ARGS__); } while(false)
 
 static std::vector<std::string> sg_success_cases;
 static std::vector<std::string> sg_faild_cases;
@@ -815,27 +817,6 @@ void test_incrby(const std::string& redis_cluster_nodes, const std::string& redi
         if (n != 2016)
         {
             ERROR_PRINT("%s", "incrby ERROR1");
-            return;
-        }
-
-        sleep(3);
-        value.clear();
-        if (!rc.get(key, &value))
-        {
-            ERROR_PRINT("%s", "incrby ERROR18");
-            return;
-        }
-        if (value != "2000")
-        {
-            ERROR_PRINT("incrby ERROR19: %s", value.c_str());
-            return;
-        }
-
-        sleep(3);
-        value.clear();
-        if (rc.get(key, &value))
-        {
-            ERROR_PRINT("incrby ERROR24: %s", value.c_str());
             return;
         }
 
