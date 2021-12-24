@@ -642,10 +642,13 @@ public: // LIST
     // Time complexity: O(1)
     bool lpop(const std::string& key, std::string* value, Node* which=NULL, int num_retries=0);
 
-    // 批量从队列的左侧取出 n 个元素
     // Batch lpop
     // Returns the number of values popped
+    // Note, not supported binary values.
     int lpop(const std::string& key, std::vector<std::string>* values, int n, Node* which=NULL, int num_retries=0);
+
+    // The blocking version of lpop
+    bool blpop(const std::string& key, std::string* value, uint32_t seconds, Node* which=NULL, int num_retries=0);
 
     // Prepend a value to a list.
     // Time complexity: O(1)
@@ -718,9 +721,15 @@ public: // LIST
     // Returns the number of values popped
     int rpop(const std::string& key, std::vector<std::string>* values, int n, Node* which=NULL, int num_retries=0);
 
+    // The blocking version of rpop
+    bool brpop(const std::string& key, std::string* value, uint32_t seconds, Node* which=NULL, int num_retries=0);
+
     // Atomically returns and removes the last element (tail) of the list stored at source,
     // and pushes the element at the first element (head) of the list stored at destination.
     bool rpoppush(const std::string& source, const std::string& destination, std::string* value, Node* which=NULL, int num_retries=0);
+
+    // The blocking version of rpoppush
+    bool brpoppush(const std::string& source, const std::string& destination, std::string* value, uint32_t seconds, Node* which=NULL, int num_retries=0);
 
     // Append a value to a list.
     // Time complexity: O(1)

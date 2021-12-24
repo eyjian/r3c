@@ -2275,6 +2275,28 @@ int CRedisClient::lpop(const std::string& key, std::vector<std::string>* values,
     return 0;
 }
 
+bool CRedisClient::blpop(const std::string& key, std::string* value, uint32_t seconds, Node* which, int num_retries)
+{
+    CommandArgs cmd_args;
+    cmd_args.set_key(key);
+    cmd_args.set_command("BLPOP");
+    cmd_args.add_arg(cmd_args.get_command());
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(seconds);
+    cmd_args.final();
+
+    // Array reply:
+    // 1) A nil multi-bulk when no element could be popped and the timeout expired.
+    // 2) A two-element multi-bulk with the first element being the name of the key
+    //    where an element was popped and the second element being the value of the popped element.
+    const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+    if (redis_reply->type == REDIS_REPLY_NIL)
+        return false;
+    if (redis_reply->type != REDIS_REPLY_ARRAY)
+        return false;
+    return get_value(redis_reply->element[1], value);
+}
+
 // Time complexity: O(1)
 // LPUSH key value [value ...]
 int CRedisClient::lpush(
@@ -2572,6 +2594,28 @@ int CRedisClient::rpop(const std::string& key, std::vector<std::string>* values,
     }
 }
 
+bool CRedisClient::brpop(const std::string& key, std::string* value, uint32_t seconds, Node* which, int num_retries)
+{
+    CommandArgs cmd_args;
+    cmd_args.set_key(key);
+    cmd_args.set_command("BRPOP");
+    cmd_args.add_arg(cmd_args.get_command());
+    cmd_args.add_arg(key);
+    cmd_args.add_arg(seconds);
+    cmd_args.final();
+
+    // Array reply:
+    // 1) A nil multi-bulk when no element could be popped and the timeout expired.
+    // 2) A two-element multi-bulk with the first element being the name of the key
+    //    where an element was popped and the second element being the value of the popped element.
+    const RedisReplyHelper redis_reply = redis_command(false, num_retries, key, cmd_args, which);
+    if (redis_reply->type == REDIS_REPLY_NIL)
+        return false;
+    if (redis_reply->type != REDIS_REPLY_ARRAY)
+        return false;
+    return get_value(redis_reply->element[1], value);
+}
+
 // Time complexity: O(1)
 bool CRedisClient::rpoppush(
         const std::string& source,
@@ -2592,6 +2636,27 @@ bool CRedisClient::rpoppush(
     if (REDIS_REPLY_NIL == redis_reply->type)
         return false;
     if (REDIS_REPLY_STRING == redis_reply->type)
+        return get_value(redis_reply.get(), value);
+    return true;
+}
+
+// Time complexity: O(1)
+bool CRedisClient::brpoppush(const std::string& source, const std::string& destination, std::string* value, uint32_t seconds, Node* which, int num_retries)
+{
+    CommandArgs cmd_args;
+    cmd_args.set_key(source);
+    cmd_args.set_command("BRPOPLPUSH");
+    cmd_args.add_arg(cmd_args.get_command());
+    cmd_args.add_arg(source);
+    cmd_args.add_arg(destination);
+    cmd_args.add_arg(seconds);
+    cmd_args.final();
+
+    // Bulk string reply: the value of the last element, or nil when key does not exist.
+    const RedisReplyHelper redis_reply = redis_command(false, num_retries, source, cmd_args, which);
+    if (redis_reply->type == REDIS_REPLY_NIL)
+        return false;
+    if (redis_reply->type == REDIS_REPLY_STRING)
         return get_value(redis_reply.get(), value);
     return true;
 }
