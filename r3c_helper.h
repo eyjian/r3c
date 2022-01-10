@@ -81,7 +81,7 @@ inline void hmincrby(CRedisClient* redis, const std::string& key, const std::vec
     }
     const RedisReplyHelper redis_reply = redis->eval(key, lua_scripts, parameters, which, num_retries);
     if (REDIS_REPLY_ARRAY == redis_reply->type)
-        get_values(redis_reply.get(), newvalues);
+        CRedisClient::get_values(redis_reply.get(), newvalues);
 }
 
 } // namespace r3c {
