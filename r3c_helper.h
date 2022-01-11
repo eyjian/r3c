@@ -125,7 +125,7 @@ inline void xadd(
         parameters.push_back(fvpair.value);
     }
     const RedisReplyHelper redis_reply = redis->eval(key, xadd_lua_script, parameters, which, num_retries);
-    if (redis_reply->type != REDIS_REPLY_NIL)
+    if (redis_reply->type != REDIS_REPLY_NIL && values != NULL)
         CRedisClient::get_values(redis_reply.get(), values);
 }
 
