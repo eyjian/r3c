@@ -5,7 +5,10 @@
 namespace r3c {
 
 // Batch to lpop
-inline int lpop(CRedisClient* redis, const std::string& key, std::vector<std::string>* values, int n, Node* which=NULL, int num_retries=0)
+inline int lpop(
+        CRedisClient* redis, const std::string& key,
+        std::vector<std::string>* values, int n,
+        Node* which=NULL, int num_retries=0)
 {
     values->clear();
 
@@ -33,7 +36,10 @@ inline int lpop(CRedisClient* redis, const std::string& key, std::vector<std::st
     return 0;
 }
 
-inline bool hsetex(CRedisClient* redis, const std::string& key, const std::string& field, const std::string& value, uint32_t expired_seconds, Node* which=NULL, int num_retries=0)
+inline bool hsetex(
+        CRedisClient* redis, const std::string& key,
+        const std::string& field, const std::string& value, uint32_t expired_seconds,
+        Node* which=NULL, int num_retries=0)
 {
     const std::string lua_scripts =
             "local n;n=redis.call('HSET',KEYS[1],ARGV[1],ARGV[2]);"
@@ -48,7 +54,10 @@ inline bool hsetex(CRedisClient* redis, const std::string& key, const std::strin
     return true;
 }
 
-inline bool hsetnxex(CRedisClient* redis, const std::string& key, const std::string& field, const std::string& value, uint32_t expired_seconds, Node* which=NULL, int num_retries=0)
+inline bool hsetnxex(
+        CRedisClient* redis, const std::string& key,
+        const std::string& field, const std::string& value, uint32_t expired_seconds,
+        Node* which=NULL, int num_retries=0)
 {
     const std::string lua_scripts =
             "local n=redis.call('HLEN',KEYS[1]);"
@@ -64,7 +73,10 @@ inline bool hsetnxex(CRedisClient* redis, const std::string& key, const std::str
     return true;
 }
 
-inline void hmincrby(CRedisClient* redis, const std::string& key, const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* newvalues, Node* which=NULL, int num_retries=0)
+inline void hmincrby(
+        CRedisClient* redis, const std::string& key,
+        const std::vector<std::pair<std::string, int64_t> >& increments, std::vector<int64_t>* newvalues,
+        Node* which=NULL, int num_retries=0)
 {
     const std::string lua_scripts =
             "local j=1;local results={};"
@@ -84,7 +96,11 @@ inline void hmincrby(CRedisClient* redis, const std::string& key, const std::vec
         CRedisClient::get_values(redis_reply.get(), newvalues);
 }
 
-inline void xadd(CRedisClient* redis, const std::string& key, int32_t maxlen, int32_t count, const std::vector<FVPair>& fvpairs, std::vector<StreamEntry>* values, Node* which=NULL, int num_retries=0)
+inline void xadd(
+        CRedisClient* redis, const std::string& key,
+        int32_t maxlen, int32_t count,
+        const std::vector<FVPair>& fvpairs, std::vector<StreamEntry>* values,
+        Node* which=NULL, int num_retries=0)
 {
     static std::string xadd_lua_script =
         "local key=KEYS[1];"
