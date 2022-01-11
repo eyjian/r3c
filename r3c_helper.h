@@ -84,4 +84,33 @@ inline void hmincrby(CRedisClient* redis, const std::string& key, const std::vec
         CRedisClient::get_values(redis_reply.get(), newvalues);
 }
 
+inline void xadd(CRedisClient* redis, const std::string& key, int32_t maxlen, int32_t count, const std::vector<FVPair>& fvpairs, std::vector<StreamEntry>* values, Node* which=NULL, int num_retries=0)
+{
+    static std::string xadd_lua_script =
+        "local key=KEYS[1];"
+        "local maxlen=ARGV[1];"
+        "local count=ARGV[2];"
+        "for i=3,#ARGV,2 do"
+        " local field=ARGV[i];"
+        " local value=ARGV[i+1];"
+        " redis.call('XADD',key,'MAXLEN','~',maxlen,'*',field,value);"
+        "end;"
+        "if tonumber(count)>0 then"
+        " return redis.call('XRANGE',key,'-','+','COUNT',count);"
+        "end;"
+        "return nil;";
+    std::vector<std::string> parameters;
+
+    parameters.push_back(int2string(maxlen));
+    parameters.push_back(int2string(count));
+    for (auto& fvpair: fvpairs)
+    {
+        parameters.push_back(fvpair.field);
+        parameters.push_back(fvpair.value);
+    }
+    const RedisReplyHelper redis_reply = redis->eval(key, xadd_lua_script, parameters, which, num_retries);
+    if (redis_reply->type != REDIS_REPLY_NIL)
+        CRedisClient::get_values(redis_reply.get(), values);
+}
+
 } // namespace r3c {
