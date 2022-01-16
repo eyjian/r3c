@@ -110,8 +110,8 @@ $(CMD): tests/r3c_cmd.o $(STLIBNAME)
 $(TEST): tests/r3c_test.o $(STLIBNAME)
 	$(CXX) -o $@ $^ $(REAL_LDFLAGS)
 
-$(STRESS): tests/r3c_stress.o $(STLIBNAME)
-	$(CXX) -o $@ $^ $(REAL_LDFLAGS)
+#$(STRESS): tests/r3c_stress.o $(STLIBNAME)
+#	$(CXX) -o $@ $^ $(REAL_LDFLAGS)
 
 $(ROBUST): tests/r3c_robust.o $(STLIBNAME)
 	$(CXX) -o $@ $^ $(REAL_LDFLAGS) -pthread
