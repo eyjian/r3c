@@ -686,7 +686,7 @@ public: // LIST
     // Returns the number of values popped
     int rpop(const std::string& key, std::vector<std::string>* values, int n, Node* which=NULL, int num_retries=0);
 
-    // The blocking version of rpop
+    // The blocking version of rpop (NOTICE: seconds should less than connection time)
     bool brpop(const std::string& key, std::string* value, uint32_t seconds, Node* which=NULL, int num_retries=0);
 
     // Atomically returns and removes the last element (tail) of the list stored at source,
