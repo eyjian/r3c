@@ -13,7 +13,7 @@ STREAM=tests/r3c_stream
 EXTENSION=tests/redis_command_extension.so
 
 HIREDIS?=/usr/local/hiredis
-PREFIX?=/usr/local
+PREFIX?=/usr/local/r3c
 INCLUDE_PATH?=include/r3c
 LIBRARY_PATH?=lib
 
