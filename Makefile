@@ -7,7 +7,7 @@
 LIBNAME=libr3c
 CMD=tests/r3c_cmd
 TEST=tests/r3c_test
-STRESS=tests/r3c_stress
+#STRESS=tests/r3c_stress
 ROBUST=tests/r3c_robust
 STREAM=tests/r3c_stream
 EXTENSION=tests/redis_command_extension.so
