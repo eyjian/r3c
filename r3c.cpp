@@ -598,9 +598,10 @@ const char* CRedisException::what() const throw()
 
 std::string CRedisException::str() const throw ()
 {
-    const std::string& errmsg = format_string("redis_exception://%s:%d/CMD:%s/%s/(%d)%s@%s:%d",
+    const std::string& errmsg = format_string("redis_exception://%s:%d/CMD:%s/KEY:%.*s/%s/(%d)%s@%s:%d",
             _node_ip.c_str(), _node_port,
             _command.c_str(),
+            static_cast<int>(_key.size()), _key.c_str(),
             _errinfo.errtype.c_str(), _errinfo.errcode, _errinfo.errmsg.c_str(),
             _file.c_str(), _line);
 
