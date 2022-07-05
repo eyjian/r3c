@@ -1,11 +1,11 @@
 // Writed by yijian (eyjian@qq.com)
+// 可用于测试redis在不同数量的key的表现
+
 #include "r3c.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <vector>
 
-// 可用于测试异常时接口的正确性，
-// 比如集群中节点挂掉，或节点挂起等异常情况
 
 // argv[1] redis nodes
 // argv[2] number of keys

@@ -34,15 +34,27 @@ target_link_libraries(
 )
 
 # r3c_stress
-#add_executable(
-#    r3c_stress
-#    r3c_stress.cpp
-#)
-#target_link_libraries(
-#    r3c_stress
-#    libr3c.a
-#    libhiredis.a
-#)
+add_executable(
+    r3c_stress
+    r3c_stress.cpp
+)
+target_link_libraries(
+    r3c_stress
+    libr3c.a
+    libhiredis.a
+)
+
+# r3c_stress_hash
+add_executable(
+    r3c_stress_hash
+    stop_watch.h
+    r3c_stress_hash.cpp
+)
+target_link_libraries(
+    r3c_stress_hash
+    libr3c.a
+    libhiredis.a
+)
 
 # r3c_stream
 add_executable(

@@ -1,4 +1,6 @@
-
+.idea
 .cproject
 .project
 .settings/language.settings.xml
+cmake-build-debug/
+deps/

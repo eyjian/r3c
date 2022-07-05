@@ -1,4 +1,7 @@
 // Writed by yijian (eyjian@qq.com)
+// 可用于测试异常时接口的正确性，
+// 比如集群中节点挂掉，或节点挂起等异常情况
+
 #include "r3c.h"
 #include "utils.h"
 #include <libgen.h> // basename

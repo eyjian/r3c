@@ -1,4 +1,4 @@
-Redis Cluster C++ Client, based on hiredis, support password and standalone, it's easy to make and use, not depends on C++11 or later.
+Redis Cluster C++ Client, based on hiredis, support password and standalone, it's easy to make and use, not depends on C++11 or later.<br>
 r3c::CRedisClient is not thread safe, you can use __thread to create a object of r3c::CRedisClient for every thread.
 
 r3c基于redis官方的c库hiredis实现，全称是redis cluster C++ client，支持redis cluster，支持密码访问。
@@ -58,23 +58,24 @@ make install<br>
 https://github.com/eyjian/libmooon/blob/master/tools/r3c_stress.cpp
 
 单机性能数据：<br>
-r3c_stress --redis=192.168.0.88:6379 --requests=100000 --threads=20 
-set:
+> r3c_stress --redis=192.168.0.88:6379 --requests=100000 --threads=20
+
+> set:
 microseconds=18867143, milliseconds=18867, seconds=18
 total: 2000000, success: 2000000, failure: 0
 qps: 111111
 
-get:
+> get:
 microseconds=16063882, milliseconds=16063, seconds=16
 total: 2000000, success: 2000000, failure: 0, not exists: 0
 qps: 125000
 
-hset:
+> hset:
 microseconds=16134011, milliseconds=16134, seconds=16
 total: 1999992, success: 1999992, failure: 0
 qps: 124999
 
-hget:
+> hget:
 microseconds=15249201, milliseconds=15249, seconds=15
 total: 2000000, success: 2000000, failure: 0, not exists: 0
 qps: 133333
