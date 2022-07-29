@@ -58,6 +58,12 @@ static int get_retry_sleep_milliseconds(int loop_counter)
         return sleep_milliseconds_table[loop_counter];
 }
 
+// Calculate the time elapsed to execute the redis command in microseconds.
+static int64_t calc_elapsed_time(const struct timeval& start_tv, const struct timeval& stop_tv)
+{
+    return static_cast<int64_t>((stop_tv.tv_sec - start_tv.tv_sec) * (__UINT64_C(1000000)) + (stop_tv.tv_usec - start_tv.tv_usec));
+}
+
 enum
 {
     CLUSTER_SLOTS = 16384 // number of slots, defined in cluster.h
@@ -4507,6 +4513,9 @@ CRedisClient::redis_command(
         }
         else
         {
+            struct timeval start_tv, stop_tv;
+            int64_t cost_us = 0;
+
             // When a slot is set as MIGRATING, the node will accept all queries that are about this hash slot,
             // but only if the key in question exists,
             // otherwise the query is forwarded using a -ASK redirection to the node that is target of the migration.
@@ -4519,6 +4528,7 @@ CRedisClient::redis_command(
             // as would happen normally.
             // 当一个槽状态为 IMPORTING时，只有在接受到 ASKING命令之后节点才会接受所有查询这个哈希槽的请求，
             // 如果客户端一直没有发送 ASKING命令，那么查询都会通过MOVED重定向错误转发到真正处理这个哈希槽的节点那里。
+            gettimeofday(&start_tv, NULL);
             if (ask_node != NULL)
             {
                 redis_reply = (redisReply*)redisCommand(redis_node->get_redis_context(), "ASKING");
@@ -4539,10 +4549,13 @@ CRedisClient::redis_command(
 #if R3C_TEST // for test
             debug_redis_reply(command_args.get_command(), redis_reply.get());
 #endif // R3C_TEST==1
+
+            gettimeofday(&stop_tv, NULL);
+            cost_us = calc_elapsed_time(start_tv, stop_tv);
             if (!redis_reply)
-                errcode = handle_redis_command_error(redis_node, command_args, &errinfo);
+                errcode = handle_redis_command_error(cost_us, redis_node, command_args, &errinfo);
             else
-                errcode = handle_redis_reply(redis_node, command_args, redis_reply.get(), &errinfo);
+                errcode = handle_redis_reply(cost_us, redis_node, command_args, redis_reply.get(), &errinfo);
         }
 
         ask_node = NULL;
@@ -4663,6 +4676,7 @@ CRedisClient::redis_command(
 
 CRedisClient::HandleResult
 CRedisClient::handle_redis_command_error(
+        int64_t cost_us,
         CRedisNode* redis_node,
         const CommandArgs& command_args,
         struct ErrorInfo* errinfo)
@@ -4682,8 +4696,8 @@ CRedisClient::handle_redis_command_error(
     // For other values, the "errstr" field will hold a description.
     const int redis_errcode = redis_context->err;
     errinfo->errcode = errno;
-    errinfo->raw_errmsg = format_string("[%s] (hiredis:%d,errno:%d)%s (%s)",
-            redis_node->str().c_str(), redis_errcode, errinfo->errcode, redis_context->errstr, strerror(errinfo->errcode));
+    errinfo->raw_errmsg = format_string("[%s][cost:%ldus] (hiredis:%d,errno:%d)%s (%s)",
+            redis_node->str().c_str(), cost_us, redis_errcode, errinfo->errcode, redis_context->errstr, strerror(errinfo->errcode));
     errinfo->errmsg = format_string("[R3C_CMD_ERROR][%s:%d][%s] %s",
             __FILE__, __LINE__, command_args.get_command().c_str(), errinfo->raw_errmsg.c_str());
     if (_enable_error_log)
@@ -4744,6 +4758,7 @@ CRedisClient::handle_redis_command_error(
 
 CRedisClient::HandleResult
 CRedisClient::handle_redis_reply(
+        int64_t cost_us,
         CRedisNode* redis_node,
         const CommandArgs& command_args,
         const redisReply* redis_reply,
@@ -4754,11 +4769,12 @@ CRedisClient::handle_redis_reply(
     if (redis_reply->type != REDIS_REPLY_ERROR)
         return HR_SUCCESS;
     else
-        return handle_redis_replay_error(redis_node, command_args, redis_reply, errinfo);
+        return handle_redis_replay_error(cost_us, redis_node, command_args, redis_reply, errinfo);
 }
 
 CRedisClient::HandleResult
 CRedisClient::handle_redis_replay_error(
+        int64_t cost_us,
         CRedisNode* redis_node,
         const CommandArgs& command_args,
         const redisReply* redis_reply,
@@ -4774,7 +4790,7 @@ CRedisClient::handle_redis_replay_error(
     // ERR Error running script (call to f_64b2246244d60088e7351656c216c00cb1d7d2fd) : @user_script:1: @user_script: 1: Lua script attempted to access a non local key in a cluster node
     extract_errtype(redis_reply, &errinfo->errtype);
     errinfo->errcode = ERROR_COMMAND;
-    errinfo->raw_errmsg = format_string("[%s] %s", redis_node->str().c_str(), redis_reply->str);
+    errinfo->raw_errmsg = format_string("[%s][cost:%ldus] %s", redis_node->str().c_str(), cost_us, redis_reply->str);
     errinfo->errmsg = format_string("[R3C_REPLAY_ERROR][%s:%d][%s] %s", __FILE__, __LINE__, command_args.get_command().c_str(), errinfo->raw_errmsg.c_str());
     if (_enable_error_log)
         (*g_error_log)("%s\n", errinfo->errmsg.c_str());
