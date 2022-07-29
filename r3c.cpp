@@ -4519,10 +4519,23 @@ CRedisClient::redis_command(
             // as would happen normally.
             // 当一个槽状态为 IMPORTING时，只有在接受到 ASKING命令之后节点才会接受所有查询这个哈希槽的请求，
             // 如果客户端一直没有发送 ASKING命令，那么查询都会通过MOVED重定向错误转发到真正处理这个哈希槽的节点那里。
-            if (ask_node != NULL) (void)redisCommand(redis_node->get_redis_context(), "ASKING");
-            redis_reply = (redisReply*)redisCommandArgv(
-                    redis_node->get_redis_context(),
-                    command_args.get_argc(), command_args.get_argv(), command_args.get_argvlen());
+            if (ask_node != NULL)
+            {
+                redis_reply = (redisReply*)redisCommand(redis_node->get_redis_context(), "ASKING");
+                if (redis_reply)
+                {
+                    redis_reply = (redisReply*)redisCommandArgv(
+                            redis_node->get_redis_context(),
+                            command_args.get_argc(), command_args.get_argv(), command_args.get_argvlen());
+                }
+            }
+            else
+            {
+                redis_reply = (redisReply*)redisCommandArgv(
+                        redis_node->get_redis_context(),
+                        command_args.get_argc(), command_args.get_argv(), command_args.get_argvlen());
+            }
+
 #if R3C_TEST // for test
             debug_redis_reply(command_args.get_command(), redis_reply.get());
 #endif // R3C_TEST==1
