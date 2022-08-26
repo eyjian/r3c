@@ -1002,6 +1002,12 @@ public: // STREAM (key like kafka's topic), available since 5.0.0.
     // The special > ID, which means that the consumer want to receive
     // only messages that were never delivered to any other consumer.
     // It just means, give me new messages.
+    //
+    // Any other ID, that is, 0 or any other valid ID or incomplete ID (just the millisecond time part),
+    // will have the effect of returning entries that are pending for the consumer sending the command
+    // with IDs greater than the one provided. So basically if the ID is not >,
+    // then the command will just let the client access its pending entries: messages delivered to it,
+    // but not yet acknowledged. Note that in this case, both BLOCK and NOACK are ignored.
     void xreadgroup(const std::string& groupname, const std::string& consumername,
             const std::vector<std::string>& keys, const std::vector<std::string>& ids,
             int64_t count, int64_t block_milliseconds, bool noack, std::vector<Stream>* values,
