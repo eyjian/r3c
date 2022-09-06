@@ -969,6 +969,7 @@ public: // STREAM (key like kafka's topic), available since 5.0.0.
 
     // Reads more than one keys
     // xread is a read command, can be called on slaves, xreadgroup is not
+    // NOTICE: The size of keys should be equal to the size of ids.
     void xread(const std::vector<std::string>& keys, const std::vector<std::string>& ids,
             int64_t count, int64_t block_milliseconds, std::vector<Stream>* values,
             Node* which=NULL, int num_retries=NUM_RETRIES);
@@ -980,7 +981,7 @@ public: // STREAM (key like kafka's topic), available since 5.0.0.
             Node* which=NULL, int num_retries=NUM_RETRIES);
 
     // Only read one key
-    void xread(const std::string& key, const std::vector<std::string>& ids,
+    void xread(const std::string& key, const std::string& id,
             int64_t count, int64_t block_milliseconds, std::vector<StreamEntry>* values,
             Node* which=NULL, int num_retries=NUM_RETRIES);
     // Use '>' as id
@@ -1010,6 +1011,8 @@ public: // STREAM (key like kafka's topic), available since 5.0.0.
     // with IDs greater than the one provided. So basically if the ID is not >,
     // then the command will just let the client access its pending entries: messages delivered to it,
     // but not yet acknowledged. Note that in this case, both BLOCK and NOACK are ignored.
+    //
+    // NOTICE: The size of keys should be equal to the size of ids.
     void xreadgroup(const std::string& groupname, const std::string& consumername,
             const std::vector<std::string>& keys, const std::vector<std::string>& ids,
             int64_t count, int64_t block_milliseconds, bool noack, std::vector<Stream>* values,
@@ -1023,7 +1026,7 @@ public: // STREAM (key like kafka's topic), available since 5.0.0.
             bool noack, std::vector<Stream>* values,
             Node* which=NULL, int num_retries=NUM_RETRIES);
     void xreadgroup(const std::string& groupname, const std::string& consumername,
-            const std::string& key, const std::vector<std::string>& ids,
+            const std::string& key, const std::string& id,
             int64_t count, int64_t block_milliseconds, bool noack, std::vector<StreamEntry>* values,
             Node* which=NULL, int num_retries=NUM_RETRIES);
     // Use '>' as id

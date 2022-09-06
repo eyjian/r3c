@@ -3708,7 +3708,7 @@ void CRedisClient::xreadgroup(
 // Only read one key
 void CRedisClient::xreadgroup(
         const std::string& groupname, const std::string& consumername,
-        const std::string& key, const std::vector<std::string>& ids,
+        const std::string& key, const std::string& id,
         int64_t count, int64_t block_milliseconds,
         bool noack,
         std::vector<StreamEntry>* values,
@@ -3716,8 +3716,10 @@ void CRedisClient::xreadgroup(
 {
     std::vector<Stream> streams;
     std::vector<std::string> keys(1);
+    std::vector<std::string> ids(1);
 
     keys[0] = key;
+    ids[0] = id;
     xreadgroup(groupname, consumername, keys, ids, count, block_milliseconds, noack, &streams, which, num_retries);
     if (!streams.empty())
         values->swap(streams[0].entries);
@@ -3825,15 +3827,17 @@ void CRedisClient::xread(
 
 // Only read one key
 void CRedisClient::xread(
-        const std::string& key, const std::vector<std::string>& ids,
+        const std::string& key, const std::string& id,
         int64_t count, int64_t block_milliseconds,
         std::vector<StreamEntry>* values,
         Node* which, int num_retries)
 {
     std::vector<Stream> streams;
     std::vector<std::string> keys(1);
+    std::vector<std::string> ids(1);
 
     keys[0] = key;
+    ids[0] = id;
     xread(keys, ids, count, block_milliseconds, &streams, which, num_retries);
     if (!streams.empty())
         values->swap(streams[0].entries);
